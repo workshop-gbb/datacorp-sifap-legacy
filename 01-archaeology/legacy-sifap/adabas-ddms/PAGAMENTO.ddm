@@ -1,0 +1,109 @@
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+* DDM:       PAGAMENTO
+* ARQUIVO:   152
+* SISTEMA:   SIFAP - SIST. FISC. ADM. PAGAMENTOS
+* AUTOR:     ROBERTO CARLOS FERREIRA - DBA ADABAS
+* DATA:      15/05/1997
+* ALTERADO:  10/01/1999 - MARCIA A. SOUZA - CAMPOS BATCH
+*            05/09/2002 - ROBERTO C. FERREIRA - INTEGRACAO SIAFI
+*            22/04/2005 - ADILSON BATISTA - CAMPOS AUDITORIA CRUZADA
+*            17/11/2015 - CARLOS E. MENDES - CAMPO HASH ARQUIVO
+* DESCRICAO: HISTORICO DE PAGAMENTOS PROCESSADOS PELO SIFAP
+*            TABELA TRANSACIONAL - APROX 180 MILHOES REGISTROS
+* OBS:       ARQUIVO CRITICO - BACKUP DIARIO OBRIGATORIO
+*            NAO REORGANIZAR SEM JANELA DE MANUTENCAO AUTORIZADA
+*            CRESCIMENTO MEDIO: 3.8 MILHOES REGISTROS/MES
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*
+* DBID: 57    FNR: 152    DEFAULT SEQUENCE: AA
+*
+* LEVEL  NAME                 FORMAT  LENGTH  OCC   REMARK
+* -----  -------------------  ------  ------  ----  ---------------------------
+*
+  1  AA  NUM-PAGAMENTO          N       15     -     SEQUENCIAL UNICO (DE)
+  1  AB  NUM-CPF                A       11     -     CPF BENEFICIARIO (DE)
+  1  AC  NUM-INSCRICAO          N       11     -     MATRICULA BENEF
+  1  AD  COD-PROGRAMA           A        4     -     PROG SOCIAL (DE)
+  1  AE  ANO-MES-REF            N        6     -     AAAAMM - COMPETENCIA (DE)
+  1  AF  NUM-CICLO              N        6     -     CICLO PROCESSAMENTO
+*
+* --- VALORES ---
+*
+  1  BA  VLR-BRUTO              N        9.2   -     VALOR BRUTO CALCULADO
+  1  BB  VLR-LIQUIDO            N        9.2   -     VALOR LIQUIDO (BRUTO - DESCONTOS)
+  1  BC  VLR-DESCONTO-TOTAL     N        7.2   -     SOMA DESCONTOS
+*
+* --- DESCONTOS DETALHADOS (GRUPO PERIODICO - MAX 8 TIPOS) ---
+*
+  1  CA  GRP-DESCONTO          PE        -     8     DESCONTOS APLICADOS
+  2  CB  TIPO-DESCONTO          A        3     -     IR/JD/CS/PA/EM/TX/OU/EX
+  2  CC  VLR-DESCONTO           N        7.2   -     VALOR DESCONTO
+  2  CD  PCT-DESCONTO           N        3.2   -     PERCENTUAL APLICADO
+  2  CE  NUM-PROCESSO           A       20     -     NUM PROC JUDICIAL (SE JD)
+  2  CF  DT-INICIO-DSCT         N        8     -     AAAAMMDD
+  2  CG  DT-FIM-DSCT            N        8     -     AAAAMMDD (0=INDEFINIDO)
+*
+* --- STATUS E PROCESSAMENTO ---
+*
+  1  DA  SIT-PAGAMENTO          A        1     -     P=PEND G=GERADO E=EMITIDO
+*                                                     C=CONFIRMADO D=DEVOLVIDO
+*                                                     X=CANCELADO R=REPROCESSADO
+  1  DB  DT-GERACAO             N        8     -     AAAAMMDD - GERACAO BATCH (DE)
+  1  DC  HR-GERACAO             N        6     -     HHMMSS
+  1  DD  DT-EMISSAO             N        8     -     AAAAMMDD - ENVIO AO BANCO
+  1  DE  DT-CONFIRMACAO         N        8     -     AAAAMMDD - RETORNO BANCO
+  1  DF  DT-CANCELAMENTO        N        8     -     AAAAMMDD (SE APLIC)
+  1  DG  MOT-CANCELAMENTO       A        3     -     COD MOTIVO (TAB INTERNA)
+*
+* --- DADOS BANCARIOS ---
+*
+  1  EA  COD-BANCO              A        3     -     COD FEBRABAN
+  1  EB  COD-AGENCIA            A        6     -     NUM AGENCIA
+  1  EC  NUM-CONTA              A       13     -     NUM CONTA
+  1  ED  TIPO-CONTA             A        1     -     C=CORRENTE P=POUPANCA
+  1  EE  COD-OPERACAO           A        3     -     OP CAIXA (SE APLIC)
+*
+* --- INTEGRACAO SIAFI (ADICIONADO 2002) ---
+*
+  1  FA  NUM-OB-SIAFI           A       12     -     ORDEM BANCARIA SIAFI
+  1  FB  NUM-NE-SIAFI           A       12     -     NOTA EMPENHO SIAFI
+  1  FC  COD-UG-EMITENTE        A        6     -     UNIDADE GESTORA
+  1  FD  COD-GESTAO             A        5     -     COD GESTAO SIAFI
+  1  FE  SIT-INTEG-SIAFI        A        1     -     I=INTEGRADO P=PEND E=ERRO
+*
+* --- CONCILIACAO BANCARIA ---
+*
+  1  GA  DT-CONCILIACAO         N        8     -     AAAAMMDD
+  1  GB  SIT-CONCILIACAO        A        1     -     C=CONCIL D=DIVERG P=PEND N=NA
+  1  GC  VLR-CONCILIADO         N        9.2   -     VALOR CONFIRMADO BANCO
+  1  GD  COD-RETORNO-BANCO      A        2     -     COD RETORNO CNAB 240
+  1  GE  DES-RETORNO-BANCO      A       40     -     DESCRICAO RETORNO
+*
+* --- HASH ARQUIVO (ADICIONADO 2015) ---
+*
+  1  HA  HASH-ARQ-REMESSA       A       64     -     SHA-256 ARQ REMESSA
+  1  HB  HASH-ARQ-RETORNO       A       64     -     SHA-256 ARQ RETORNO
+*
+* --- CONTROLE ---
+*
+  1  IA  DT-INCLUSAO            N        8     -     AAAAMMDD
+  1  IB  HR-INCLUSAO            N        6     -     HHMMSS
+  1  IC  USR-INCLUSAO           A        8     -     LOGIN - GERALMENTE 'BATCH'
+  1  ID  DT-ULT-ALTERACAO       N        8     -     AAAAMMDD
+  1  IE  HR-ULT-ALTERACAO       N        6     -     HHMMSS
+  1  IF  USR-ULT-ALTERACAO      A        8     -
+*
+* SUPERDESCRIPTORS:
+*   S1 = AB(1-11) + AE(1-6) -- CPF + COMPETENCIA
+*   S2 = AD(1-4) + AE(1-6) + DA(1-1) -- PROGRAMA + COMPET + SITUACAO
+*   S3 = AF(1-6) + DA(1-1) -- CICLO + SITUACAO
+*
+* TOTAL CAMPOS: 50
+* TAMANHO MEDIO REGISTRO: ~720 BYTES
+* ESTIMATIVA REGISTROS: 180.000.000 (ABR/2018)
+*
+* NOTA: ARQUIVO NAO POSSUI POLITICA DE PURGE
+*       TODOS OS REGISTROS DESDE 1998 ESTAO PRESENTES
+*       REORGANIZACAO TRIMESTRAL OBRIGATORIA (ITSM-SIFAP-002)
+*
+* * * FIM DO DDM PAGAMENTO * * *

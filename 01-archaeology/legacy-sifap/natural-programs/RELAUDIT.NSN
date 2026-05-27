@@ -1,0 +1,234 @@
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+* PROGRAMA: RELAUDIT
+* SISTEMA:  SIFAP - SIST. FISC. ADM. PAGAMENTOS
+* AUTOR:    ROBERTO MENDES JUNIOR
+* DATA:     20/08/2002
+* ALTERADO: 12/12/2006 - ROBERTO MENDES - INC FILTROS
+* ALTERADO: 30/04/2011 - ANDERSON LIMA  - AJUSTE FORMATO
+* ALTERADO: 15/09/2014 - FERNANDA COSTA - LIMPEZA RELATORIO
+* OBJETIVO: RELATORIO TRILHA AUDITORIA DO SISTEMA
+*           LISTAGEM EVENTOS C/ FILTROS POR PERIODO/ACAO
+*           SAIDA IMPRESSORA/TELA - ARQ 170
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+DEFINE DATA
+LOCAL
+  1 AUDITORIA-V VIEW OF AUDITORIA
+    2 SEQ-AUDIT          (N10)
+    2 DT-EVENTO          (N8)
+    2 HR-EVENTO          (N6)
+    2 USUARIO            (A8)
+    2 ACAO               (A2)
+    2 TABELA-REF         (A15)
+    2 CHAVE-REF          (A20)
+    2 VLR-ANTERIOR       (A60)
+    2 VLR-NOVO           (A60)
+    2 DESCRICAO          (A80)
+*
+  1 #DT-INI              (N8)
+  1 #DT-FIM              (N8)
+  1 #ACAO-FILTRO         (A2)
+  1 #USUARIO-FILTRO      (A8)
+  1 #TABELA-FILTRO       (A15)
+  1 #DT-HOJE             (N8)
+  1 #TIPO-SAIDA          (A1)   /* T=TELA I=IMPRESSORA */
+*
+* CONTADORES
+  1 #QTD-TOTAL           (N8)
+  1 #QTD-EXIBIDOS        (N8)
+  1 #QTD-FILTRADOS       (N8)
+*
+* CONTADORES POR ACAO
+  1 #QTD-INCLUSAO        (N8)
+  1 #QTD-ALTERACAO       (N8)
+  1 #QTD-CONSULTA        (N8)
+  1 #QTD-CONCILIACAO     (N8)
+  1 #QTD-DIVERGENCIA     (N8)
+  1 #QTD-OUTROS          (N8)
+*
+  1 #PAG                 (N4)
+  1 #LINHA               (N2)
+  1 #MAX-LINHAS          (N2)
+  1 #I                   (N2)
+  1 #ACAO-DESC           (A20)
+  1 #HR-FORMAT           (A8)
+  1 #HR-STR              (A6)
+END-DEFINE
+*
+MOVE *DATN TO #DT-HOJE
+MOVE 66 TO #MAX-LINHAS
+MOVE 0 TO #PAG
+MOVE 99 TO #LINHA
+MOVE 0 TO #QTD-TOTAL
+MOVE 0 TO #QTD-EXIBIDOS
+MOVE 0 TO #QTD-FILTRADOS
+MOVE 0 TO #QTD-INCLUSAO
+MOVE 0 TO #QTD-ALTERACAO
+MOVE 0 TO #QTD-CONSULTA
+MOVE 0 TO #QTD-CONCILIACAO
+MOVE 0 TO #QTD-DIVERGENCIA
+MOVE 0 TO #QTD-OUTROS
+*
+INPUT 'SIFAP - RELATORIO AUDITORIA' /
+      '============================' /
+      'DATA INICIAL.....:' #DT-INI /
+      'DATA FINAL.......:' #DT-FIM /
+      'ACAO (BRANCO=TODAS):' #ACAO-FILTRO /
+      'USUARIO (BRANCO=TODOS):' #USUARIO-FILTRO /
+      'TABELA (BRANCO=TODAS):' #TABELA-FILTRO /
+      'SAIDA (T=TELA I=IMPR):' #TIPO-SAIDA
+*
+IF #TIPO-SAIDA = ' '
+  MOVE 'T' TO #TIPO-SAIDA
+END-IF
+*
+IF #DT-INI = 0
+  MOVE 19970101 TO #DT-INI
+END-IF
+IF #DT-FIM = 0
+  MOVE #DT-HOJE TO #DT-FIM
+END-IF
+*
+* PROCESSAMENTO
+READ AUDITORIA-V BY DT-EVENTO
+  IF AUDITORIA-V.DT-EVENTO < #DT-INI
+    ESCAPE TOP
+  END-IF
+  IF AUDITORIA-V.DT-EVENTO > #DT-FIM
+    ESCAPE BOTTOM
+  END-IF
+*
+  ADD 1 TO #QTD-TOTAL
+*
+* ============================================
+* FILTRO ACAO - EXCLUSOES NAO SAO EXIBIDAS
+* ============================================
+  IF AUDITORIA-V.ACAO = 'EX'
+    ADD 1 TO #QTD-FILTRADOS
+    ESCAPE TOP
+  END-IF
+*
+* FILTRO ACAO (SE INFORMADO)
+  IF #ACAO-FILTRO NE ' '
+    IF AUDITORIA-V.ACAO NE #ACAO-FILTRO
+      ADD 1 TO #QTD-FILTRADOS
+      ESCAPE TOP
+    END-IF
+  END-IF
+*
+* FILTRO USUARIO (SE INFORMADO)
+  IF #USUARIO-FILTRO NE ' '
+    IF AUDITORIA-V.USUARIO NE #USUARIO-FILTRO
+      ADD 1 TO #QTD-FILTRADOS
+      ESCAPE TOP
+    END-IF
+  END-IF
+*
+* FILTRO TABELA (SE INFORMADO)
+  IF #TABELA-FILTRO NE ' '
+    IF AUDITORIA-V.TABELA-REF NE #TABELA-FILTRO
+      ADD 1 TO #QTD-FILTRADOS
+      ESCAPE TOP
+    END-IF
+  END-IF
+*
+  ADD 1 TO #QTD-EXIBIDOS
+*
+* CONTADORES POR TIPO ACAO
+  DECIDE ON FIRST VALUE OF AUDITORIA-V.ACAO
+    VALUE 'IN'
+      ADD 1 TO #QTD-INCLUSAO
+      MOVE 'INCLUSAO' TO #ACAO-DESC
+    VALUE 'AL'
+      ADD 1 TO #QTD-ALTERACAO
+      MOVE 'ALTERACAO' TO #ACAO-DESC
+    VALUE 'CO'
+      ADD 1 TO #QTD-CONCILIACAO
+      MOVE 'CONCILIACAO' TO #ACAO-DESC
+    VALUE 'CN'
+      ADD 1 TO #QTD-CONSULTA
+      MOVE 'CONSULTA' TO #ACAO-DESC
+    VALUE 'DV'
+      ADD 1 TO #QTD-DIVERGENCIA
+      MOVE 'DIVERGENCIA' TO #ACAO-DESC
+    NONE
+      ADD 1 TO #QTD-OUTROS
+      MOVE 'OUTRA' TO #ACAO-DESC
+  END-DECIDE
+*
+* FORMATAR HORA
+  MOVE AUDITORIA-V.HR-EVENTO TO #HR-STR
+  COMPRESS SUBSTR(#HR-STR,1,2) ':' SUBSTR(#HR-STR,3,2) ':'
+           SUBSTR(#HR-STR,5,2) INTO #HR-FORMAT LEAVING NO SPACE
+*
+* PAGINACAO
+  IF #LINHA >= (#MAX-LINHAS - 5)
+    PERFORM IMPRIME-CAB-AUDIT
+  END-IF
+*
+* IMPRIMIR DETALHE
+  IF #TIPO-SAIDA = 'T'
+    WRITE AUDITORIA-V.DT-EVENTO ' '
+          #HR-FORMAT ' '
+          AUDITORIA-V.USUARIO ' '
+          #ACAO-DESC ' '
+          AUDITORIA-V.TABELA-REF ' '
+          AUDITORIA-V.CHAVE-REF
+  ELSE
+    PRINT AUDITORIA-V.DT-EVENTO ' '
+          #HR-FORMAT ' '
+          AUDITORIA-V.USUARIO ' '
+          #ACAO-DESC ' '
+          AUDITORIA-V.TABELA-REF ' '
+          AUDITORIA-V.CHAVE-REF ' '
+          AUDITORIA-V.DESCRICAO
+  END-IF
+  ADD 1 TO #LINHA
+*
+END-READ
+*
+* RESUMO
+WRITE ' ' /
+      '====================================' /
+      'RESUMO AUDITORIA' /
+      '====================================' /
+      'TOTAL REGISTROS....:' #QTD-TOTAL /
+      'EXIBIDOS...........:' #QTD-EXIBIDOS /
+      'FILTRADOS..........:' #QTD-FILTRADOS /
+      ' ' /
+      'POR TIPO ACAO:' /
+      '  INCLUSOES........:' #QTD-INCLUSAO /
+      '  ALTERACOES.......:' #QTD-ALTERACAO /
+      '  CONSULTAS........:' #QTD-CONSULTA /
+      '  CONCILIACOES.....:' #QTD-CONCILIACAO /
+      '  DIVERGENCIAS.....:' #QTD-DIVERGENCIA /
+      '  OUTRAS...........:' #QTD-OUTROS /
+      '===================================='
+*
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+DEFINE SUBROUTINE IMPRIME-CAB-AUDIT
+  ADD 1 TO #PAG
+  IF #TIPO-SAIDA = 'T'
+    WRITE '/'
+    WRITE 'SIFAP - TRILHA DE AUDITORIA'
+          40X 'PAG:' #PAG
+    WRITE 'PERIODO:' #DT-INI 'A' #DT-FIM
+          40X 'DATA:' #DT-HOJE
+    WRITE 100('-')
+    WRITE 'DATA       HORA     USUARIO  ACAO'
+          20X 'TABELA          CHAVE'
+    WRITE 100('-')
+  ELSE
+    PRINT '/'
+    PRINT 'SIFAP - TRILHA DE AUDITORIA'
+          40X 'PAG:' #PAG
+    PRINT 'PERIODO:' #DT-INI 'A' #DT-FIM
+          40X 'DATA:' #DT-HOJE
+    PRINT 120('-')
+    PRINT 'DATA       HORA     USUARIO  ACAO'
+          20X 'TABELA          CHAVE               DESCRICAO'
+    PRINT 120('-')
+  END-IF
+  MOVE 7 TO #LINHA
+END-SUBROUTINE
+*
+END

@@ -1,0 +1,97 @@
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+* DDM:       AUDITORIA
+* ARQUIVO:   153
+* SISTEMA:   SIFAP - SIST. FISC. ADM. PAGAMENTOS
+* AUTOR:     ROBERTO CARLOS FERREIRA - DBA ADABAS
+* DATA:      20/05/1997
+* ALTERADO:  15/04/2005 - ADILSON BATISTA - CAMPOS DETALHAMENTO
+*            09/02/2012 - FERNANDA OLIVEIRA - CAMPO IP ORIGEM
+* DESCRICAO: LOG DE AUDITORIA - TRILHA DE ALTERACOES DO SIFAP
+*            REGISTRO IMUTAVEL - NAO PERMITE UPDATE/DELETE
+*            OBRIGATORIEDADE LEGAL: IN-TCU 63/2010
+* OBS:       >>> ESTE ARQUIVO NAO DEVE SER REORGANIZADO <<<
+*            >>> RETENCAO MINIMA: 10 ANOS (ART 14 LEI 8159) <<<
+*            CONSULTAS PESADAS DEVEM USAR SUPERDESCRIPTOR S2
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*
+* DBID: 57    FNR: 153    DEFAULT SEQUENCE: AA
+*
+* LEVEL  NAME                 FORMAT  LENGTH  OCC   REMARK
+* -----  -------------------  ------  ------  ----  ---------------------------
+*
+  1  AA  NUM-AUDITORIA          N       15     -     SEQUENCIAL UNICO (DE)
+  1  AB  DT-EVENTO              N        8     -     AAAAMMDD (DE)
+  1  AC  HR-EVENTO              N        6     -     HHMMSS
+  1  AD  TS-EVENTO              N       14     -     AAAAMMDDHHMMSS (PRECISAO)
+*
+* --- ACAO ---
+*
+  1  BA  COD-ACAO               A        2     -     TIPO ACAO (DE)
+*                                                     IN=INCLUSAO
+*                                                     AL=ALTERACAO
+*                                                     EX=EXCLUSAO
+*                                                     CO=CONSULTA
+*                                                     LG=LOGIN
+*                                                     LO=LOGOUT
+*                                                     BT=BATCH
+*                                                     ER=ERRO
+*                                                     AU=AUTORIZACAO
+*                                                     RE=REJEICAO
+  1  BB  COD-MODULO             A        8     -     NOME PROGRAMA NATURAL
+  1  BC  DES-ACAO               A       80     -     DESCRICAO LIVRE DA ACAO
+*
+* --- ENTIDADE AFETADA ---
+*
+  1  CA  TIPO-ENTIDADE          A        4     -     BENF/PGTO/PROG/ADMN/SIST
+  1  CB  ID-ENTIDADE            A       15     -     CHAVE DA ENTIDADE (DE)
+  1  CC  NUM-CPF-AFETADO        A       11     -     CPF (SE APLIC) (DE)
+*
+* --- DADOS ANTES/DEPOIS (ADICIONADO 2005) ---
+*
+  1  DA  GRP-ANTES              -        -     -     GRUPO ESTADO ANTERIOR
+  2  DB  CAMPO-ALTERADO-ANT    MU   A   30    20     NOME CAMPO (MU MAX 20)
+  2  DC  VALOR-ANTERIOR        MU   A   80    20     VALOR ANTERIOR (MU MAX 20)
+  1  DD  GRP-DEPOIS             -        -     -     GRUPO ESTADO POSTERIOR
+  2  DE  CAMPO-ALTERADO-DEP    MU   A   30    20     NOME CAMPO (MU MAX 20)
+  2  DF  VALOR-POSTERIOR       MU   A   80    20     VALOR POSTERIOR (MU MAX 20)
+*
+* --- USUARIO E ORIGEM ---
+*
+  1  EA  USR-EVENTO             A        8     -     LOGIN NATURAL (DE)
+  1  EB  NOME-USUARIO           A       40     -     NOME COMPLETO
+  1  EC  COD-PERFIL             A        3     -     ADM/OPR/CON/AUD/SUP
+  1  ED  COD-LOTACAO            A       10     -     COD UNIDADE ORGANIZACIONAL
+  1  EE  IP-ORIGEM              A       15     -     IP TERMINAL (ADIC 2012)
+  1  EF  ID-SESSAO              A       20     -     IDENTIFICADOR SESSAO
+*
+* --- CONTEXTO BATCH (SE BT) ---
+*
+  1  FA  NUM-CICLO-BATCH        N        6     -     CICLO PROCESSAMENTO
+  1  FB  NUM-SEQ-BATCH          N       10     -     SEQUENCIAL DENTRO CICLO
+  1  FC  NOM-JOB-BATCH          A       16     -     NOME JOB JES2/JCL
+  1  FD  SIT-BATCH              A        1     -     S=SUCESSO E=ERRO W=WARNING
+  1  FE  DES-ERRO-BATCH         A      120     -     MSG ERRO (SE APLIC)
+*
+* --- CORRELACAO (PARA RASTREAR OPERACOES COMPOSTAS) ---
+*
+  1  GA  ID-CORRELACAO          A       36     -     UUID OPERACAO COMPOSTA
+  1  GB  NUM-SEQ-CORRELACAO     N        3     -     SEQUENCIAL DENTRO OPER
+*
+* SUPERDESCRIPTORS:
+*   S1 = AB(1-8) + BA(1-2) -- DATA + ACAO
+*   S2 = CA(1-4) + CB(1-15) + AB(1-8) -- ENTIDADE + DATA
+*   S3 = EA(1-8) + AB(1-8) -- USUARIO + DATA
+*
+* TOTAL CAMPOS: 34
+* TAMANHO MEDIO REGISTRO: ~1.2 KB (VARIAVEL - MU FIELDS)
+* ESTIMATIVA REGISTROS: 25.000.000 (ABR/2018)
+*
+* NOTA: ACOES 'CO' (CONSULTA) NAO SAO GRAVADAS DESDE 2010
+*       POR QUESTAO DE VOLUME (DECISAO CGTI - PORT. 213/2010)
+*       RETENCAO ATIVA DESDE 1998 - NENHUM REGISTRO PURGADO
+*
+* NOTA2: CUIDADO - PROGRAMA RELAUDIT.NSN FILTRA ACOES 'EX'
+*        NA EXIBICAO. PARA VER EXCLUSOES, CONSULTAR
+*        DIRETAMENTE VIA ADABAS ONLINE (SYSAOS)
+*
+* * * FIM DO DDM AUDITORIA * * *

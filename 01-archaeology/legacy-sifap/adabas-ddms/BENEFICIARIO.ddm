@@ -1,0 +1,105 @@
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+* DDM:       BENEFICIARIO
+* ARQUIVO:   150
+* SISTEMA:   SIFAP - SIST. FISC. ADM. PAGAMENTOS
+* AUTOR:     ROBERTO CARLOS FERREIRA - DBA ADABAS
+* DATA:      12/05/1997
+* ALTERADO:  18/07/2005 - ADILSON BATISTA - CAMPOS BIOMETRIA
+*            03/11/2015 - CARLOS E. MENDES - CAMPO EMAIL/CELULAR
+* DESCRICAO: CADASTRO DE BENEFICIARIOS DE PROGRAMAS SOCIAIS
+*            BASE PRINCIPAL DO SIFAP - APROX 4.2 MILHOES REGISTROS
+* OBS:       ATENCAO - NAO ALTERAR ORDEM DOS CAMPOS SEM AUTORIZACAO
+*            DO COMITE TECNICO CGTI/MDAS (PORT. 847/2003)
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*
+* DBID: 57    FNR: 150    DEFAULT SEQUENCE: AA
+*
+* LEVEL  NAME                 FORMAT  LENGTH  OCC   REMARK
+* -----  -------------------  ------  ------  ----  ---------------------------
+*
+  1  AA  NUM-INSCRICAO          N       11     -     ISN ALTERNATIVO / MATRICULA
+  1  AB  NUM-CPF                A       11     -     CPF SEM FORMATACAO (DE)
+  1  AC  NOME-COMPLETO          A       60     -     NOME CIVIL OFICIAL
+  1  AD  NOME-MAE               A       60     -     NOME DA MAE (OBRIGAT)
+  1  AE  NOME-PAI               A       60     -     NOME DO PAI (OPCNAL)
+  1  AF  DT-NASCIMENTO          N        8     -     AAAAMMDD
+  1  AG  SEXO                   A        1     -     M/F/I (I=INDEFINIDO)
+  1  AH  EST-CIVIL              A        1     -     S=SOLT C=CAS D=DIV V=VIUV U=UN.EST
+  1  AI  RG-NUMERO              A       15     -     NUMERO RG
+  1  AJ  RG-ORGAO               A       10     -     ORGAO EXPEDIDOR
+  1  AK  RG-UF                  A        2     -     UF EXPEDICAO
+  1  AL  RG-DT-EXPEDICAO        N        8     -     AAAAMMDD
+*
+* --- GRUPO ENDERECO ---
+*
+  1  BA  GRP-ENDERECO           -        -     -     GRUPO ENDERECO
+  2  BB  LOGRADOURO             A       60     -     RUA/AV/TRAV ETC
+  2  BC  NUMERO                 A       10     -     NUM (ALFANUM P/ S/N ETC)
+  2  BD  COMPLEMENTO            A       30     -     APTO/BLOCO/SALA
+  2  BE  BAIRRO                 A       40     -
+  2  BF  MUNICIPIO              A       40     -
+  2  BG  UF                     A        2     -     SIGLA UF (DE)
+  2  BH  CEP                    N        8     -     CEP SEM HIFEN
+  2  BI  COD-IBGE               N        7     -     COD MUNICIPIO IBGE
+  2  BJ  COD-REGIAO             A        2     -     01-05 OU 99 (ESPECIAL)
+*
+* --- DADOS DO BENEFICIO ---
+*
+  1  CA  COD-PROGRAMA           A        4     -     COD DO PROG SOCIAL (PE)
+  1  CB  DT-CADASTRO            N        8     -     AAAAMMDD (DE)
+  1  CC  DT-INICIO-BENEF        N        8     -     AAAAMMDD
+  1  CD  DT-FIM-BENEF           N        8     -     AAAAMMDD (0 = SEM PRAZO)
+  1  CE  SIT-BENEFICIARIO       A        1     -     A=ATV S=SUSP C=CANC I=INAT D=DESL
+  1  CF  MOT-SITUACAO           A        3     -     COD MOTIVO (TAB INTERNA)
+  1  CG  DT-ULT-SITUACAO        N        8     -     AAAAMMDD
+  1  CH  VLR-RENDA-FAMILIAR     N        9.2   -     RENDA DECLARADA
+  1  CI  QTD-MEMBROS-FAMILIA    N        2     -     MEMBROS NO DOMICILIO
+  1  CJ  IND-RENDA-PERCAP       N        7.2   -     RENDA PER CAPITA CALC
+*
+* --- DEPENDENTES (GRUPO PERIODICO - MAX 10 OCORRENCIAS) ---
+*
+  1  DA  GRP-DEPENDENTE        PE        -    10     GRUPO PERIODICO
+  2  DB  CPF-DEPENDENTE         A       11     -     CPF OU 00000000000
+  2  DC  NOME-DEPENDENTE        A       60     -
+  2  DD  DT-NASC-DEPEND         N        8     -     AAAAMMDD
+  2  DE  PARENTESCO             A        2     -     FI=FILHO CJ=CONJ NT=NETO TU=TUTEL
+  2  DF  SIT-DEPENDENTE         A        1     -     A=ATV I=INAT D=DESL
+  2  DG  IND-DEFICIENCIA        A        1     -     S/N
+*
+* --- CONTATO (ADICIONADO 2015 - CARLOS E. MENDES) ---
+*
+  1  EA  TEL-FIXO               A       14     -     (DD) NNNN-NNNN
+  1  EB  TEL-CELULAR            A       15     -     (DD) NNNNN-NNNN
+  1  EC  EMAIL                  A       80     -     EMAIL P/ NOTIFICACAO
+*
+* --- BIOMETRIA (ADICIONADO 2005 - ADILSON BATISTA) ---
+*
+  1  FA  IND-BIOMETRIA          A        1     -     S=SIM N=NAO P=PENDENTE
+  1  FB  DT-COLETA-BIO          N        8     -     AAAAMMDD
+  1  FC  COD-POSTO-BIO          A        6     -     COD POSTO COLETA
+  1  FD  HASH-DIGITAL           A       64     -     SHA-256 TEMPLATE (NAO IMPL)
+*
+* --- CONTROLE INTERNO ---
+*
+  1  GA  DT-INCLUSAO            N        8     -     AAAAMMDD (DE)
+  1  GB  HR-INCLUSAO            N        6     -     HHMMSS
+  1  GC  USR-INCLUSAO           A        8     -     LOGIN NATURAL
+  1  GD  DT-ULT-ALTERACAO       N        8     -     AAAAMMDD
+  1  GE  HR-ULT-ALTERACAO       N        6     -     HHMMSS
+  1  GF  USR-ULT-ALTERACAO      A        8     -     LOGIN NATURAL
+  1  GG  NUM-VERSAO             N        5     -     CONTROLE CONCORRENCIA
+*
+* (DE) = DESCRIPTOR (CAMPO INDEXADO PARA BUSCA)
+* (PE) = PERIODIC GROUP
+* (MU) = MULTIPLE VALUE FIELD
+*
+* SUPERDESCRIPTORS:
+*   S1 = AB(1-11) -- CPF COMPLETO
+*   S2 = BG(1-2) + CE(1-1) -- UF + SITUACAO
+*   S3 = CA(1-4) + CE(1-1) -- PROGRAMA + SITUACAO
+*
+* TOTAL CAMPOS: 52
+* TAMANHO MEDIO REGISTRO: ~850 BYTES
+* ESTIMATIVA REGISTROS: 4.200.000 (ABR/2018)
+*
+* * * FIM DO DDM BENEFICIARIO * * *

@@ -1,0 +1,97 @@
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+* DDM:       PROGRAMA-SOCIAL
+* ARQUIVO:   151
+* SISTEMA:   SIFAP - SIST. FISC. ADM. PAGAMENTOS
+* AUTOR:     ROBERTO CARLOS FERREIRA - DBA ADABAS
+* DATA:      12/05/1997
+* ALTERADO:  22/03/2002 - ROBERTO C. FERREIRA - NOVOS PROGRAMAS MDS
+*            14/08/2008 - ADILSON BATISTA - CAMPO FATOR-K
+*            05/06/2015 - CARLOS E. MENDES - TIPOS DESCONTO
+* DESCRICAO: CADASTRO DE PROGRAMAS SOCIAIS E REGRAS DE ELEGIBILIDADE
+*            TABELA PARAMETRICA - APROX 45 PROGRAMAS ATIVOS
+* OBS:       FATOR-K UTILIZADO EM CALCULOS - NAO ALTERAR SEM
+*            AUTORIZACAO DA COORDENACAO DE BENEFICIOS (SENARC)
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+*
+* DBID: 57    FNR: 151    DEFAULT SEQUENCE: AA
+*
+* LEVEL  NAME                 FORMAT  LENGTH  OCC   REMARK
+* -----  -------------------  ------  ------  ----  ---------------------------
+*
+  1  AA  COD-PROGRAMA           A        4     -     CHAVE PRIMARIA (DE)
+  1  AB  NOME-PROGRAMA          A       60     -     NOME OFICIAL
+  1  AC  SIGLA-PROGRAMA         A       10     -     SIGLA (EX: PBF, BPC, PETI)
+  1  AD  TIPO-PROGRAMA          A        1     -     A=ASSISTENC T=TRABALHO P=PREVID
+  1  AE  ORGAO-RESPONSAVEL      A       10     -     COD ORGAO MDS/MDAS
+  1  AF  LEI-CRIACAO            A       20     -     NUM LEI OU DECRETO
+  1  AG  DT-CRIACAO             N        8     -     AAAAMMDD
+  1  AH  DT-ENCERRAMENTO       N        8     -     AAAAMMDD (0=VIGENTE)
+  1  AI  SIT-PROGRAMA           A        1     -     A=ATV I=INAT E=ENCERR
+*
+* --- VALORES BASE ---
+*
+  1  BA  VLR-BASE-INDIVIDUAL    N        7.2   -     VALOR MENSAL BASE POR PESSOA
+  1  BB  VLR-BASE-FAMILIAR      N        7.2   -     VALOR MENSAL BASE POR FAMILIA
+  1  BC  VLR-TETO-BENEF         N        9.2   -     VALOR MAXIMO DO BENEFICIO
+  1  BD  VLR-PISO-BENEF         N        7.2   -     VALOR MINIMO DO BENEFICIO
+  1  BE  PCT-REAJUSTE-ANUAL     N        3.2   -     PERCENTUAL REAJUSTE (EX: 5.75)
+  1  BF  DT-ULT-REAJUSTE        N        8     -     AAAAMMDD
+  1  BG  FATOR-K                N        5.4   -     FATOR CORRECAO ESPECIAL
+*                                                     >>> NAO DOCUMENTADO <<<
+*                                                     INSERIDO AGO/2008 POR ADILSON
+*                                                     "ATENDE SOLICITACAO SENARC"
+*                                                     SEM MAIS DETALHES NO CHAMADO
+*
+* --- ELEGIBILIDADE ---
+*
+  1  CA  RENDA-MAX-PERCAP       N        7.2   -     RENDA PER CAPITA MAXIMA
+  1  CB  IDADE-MIN              N        3     -     IDADE MINIMA BENEF (0=SEM)
+  1  CC  IDADE-MAX              N        3     -     IDADE MAXIMA BENEF (0=SEM)
+  1  CD  IND-EXIGE-FILHOS       A        1     -     S/N
+  1  CE  QTD-MIN-FILHOS         N        2     -     MINIMO FILHOS (SE CD='S')
+  1  CF  IND-EXIGE-ESCOLA       A        1     -     S/N - FREQ ESCOLAR
+  1  CG  IND-EXIGE-VACINA       A        1     -     S/N - CART VACINA
+  1  CH  IND-EXIGE-PRENATAL     A        1     -     S/N - PRENATAL
+  1  CI  IND-EXIGE-BIOMETRIA    A        1     -     S/N (OBRIG A PARTIR 2005)
+*
+* --- REGRAS DE CALCULO (GRUPO PERIODICO - MAX 5 FAIXAS) ---
+*
+  1  DA  GRP-FAIXA-CALCULO     PE        -     5     FAIXAS DE CALCULO
+  2  DB  RENDA-INICIO           N        7.2   -     INICIO FAIXA RENDA
+  2  DC  RENDA-FIM              N        7.2   -     FIM FAIXA RENDA
+  2  DD  FATOR-MULTIPLICADOR    N        3.4   -     FATOR SOBRE VLR BASE
+  2  DE  VLR-ADICIONAL          N        7.2   -     VALOR FIXO ADICIONAL
+  2  DF  IND-ACUMULATIVO        A        1     -     S=ACUMULA COM FAIXA ANT
+*
+* --- TIPOS DE DESCONTO APLICAVEIS (MU - MAX 8) ---
+*
+  1  EA  TIPO-DSCT-APLIC       MU   A    3     8     TIPOS DESCONTO VALIDOS
+*                                                     IR=IRRF JD=JUDICIAL
+*                                                     CS=CONSIGNADO PA=PENS.ALIM
+*                                                     EM=EMPRESTIMO TX=TAXA
+*                                                     OU=OUTROS EX=EXTRAORDINARIO
+*
+* --- PARAMETROS REGIONAIS (GRUPO PERIODICO - 5 REGIOES + ESPECIAL) ---
+*
+  1  FA  GRP-PARAM-REGIONAL    PE        -     6     1=N 2=NE 3=CO 4=SE 5=S 6=ESP
+  2  FB  COD-REGIAO             A        2     -     01-05 OU 99
+  2  FC  FATOR-REGIONAL         N        3.4   -     MULTIPLICADOR REGIONAL
+  2  FD  VLR-COMPLEMENTO-REG    N        7.2   -     COMPLEMENTO FIXO REGIONAL
+  2  FE  IND-ATIVO-REGIAO       A        1     -     S/N
+*
+* --- CONTROLE ---
+*
+  1  GA  DT-INCLUSAO            N        8     -     AAAAMMDD
+  1  GB  USR-INCLUSAO           A        8     -
+  1  GC  DT-ULT-ALTERACAO       N        8     -     AAAAMMDD
+  1  GD  USR-ULT-ALTERACAO      A        8     -
+*
+* SUPERDESCRIPTORS:
+*   S1 = AA(1-4) -- COD PROGRAMA
+*   S2 = AD(1-1) + AI(1-1) -- TIPO + SITUACAO
+*
+* TOTAL CAMPOS: 42
+* TAMANHO MEDIO REGISTRO: ~420 BYTES
+* ESTIMATIVA REGISTROS: 45 (ABR/2018)
+*
+* * * FIM DO DDM PROGRAMA-SOCIAL * * *

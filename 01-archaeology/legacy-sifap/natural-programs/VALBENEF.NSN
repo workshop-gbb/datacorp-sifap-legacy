@@ -1,0 +1,279 @@
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+* PROGRAMA: VALBENEF
+* SISTEMA:  SIFAP - SIST. FISC. ADM. PAGAMENTOS
+* AUTOR:    MARCIA HELENA OLIVEIRA
+* DATA:     08/01/1998
+* ALTERADO: 17/05/2005 - MARCIA HELENA - AJUSTE VALID CPF
+* ALTERADO: 30/11/2010 - JOSE FERREIRA - INC VALID NOME
+* OBJETIVO: VALIDACAO DADOS CADASTRAIS DO BENEFICIARIO
+*           ROTINA CHAMADA ANTES DE GRAVACAO - ARQ 150
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+DEFINE DATA
+LOCAL
+  1 BENEFICIARIO-V VIEW OF BENEFICIARIO
+    2 CPF                (N11)
+    2 NOME               (A60)
+    2 DT-NASCIMENTO      (N8)
+    2 SEXO               (A1)
+    2 UF                 (A2)
+    2 CEP                (N8)
+    2 STATUS             (A1)
+*
+  1 #CPF                 (N11)
+  1 #NOME               (A60)
+  1 #DT-NASC            (N8)
+  1 #SEXO               (A1)
+  1 #UF                 (A2)
+  1 #CEP                (N8)
+  1 #STATUS             (A1)
+*
+  1 #RESULTADO           (A1)    /* V=VALIDO I=INVALIDO */
+  1 #MSG-ERRO            (A60/10)
+  1 #QTD-ERROS           (N2)
+  1 #CPF-VALIDO          (L)
+  1 #DT-VALIDA           (L)
+  1 #NOME-VALIDO         (L)
+*
+* VARIAVEIS VALID CPF
+  1 #CPF-STR             (A11)
+  1 #DIG                 (N1/11)
+  1 #SOMA                (N5)
+  1 #RESTO               (N3)
+  1 #DV1                 (N1)
+  1 #DV2                 (N1)
+  1 #PESO                (N2)
+  1 #I                   (N2)
+  1 #TODOS-IGUAIS        (L)
+*
+* VARIAVEIS VALID DATA
+  1 #ANO                 (N4)
+  1 #MES                 (N2)
+  1 #DIA                 (N2)
+  1 #DIAS-MES            (N2/12)
+  1 #ANO-ATUAL           (N4)
+*
+* VARIAVEIS VALID NOME
+  1 #NOME-TEMP           (A60)
+  1 #POS                 (N2)
+  1 #TEM-ESPACO          (L)
+  1 #CHAR                (A1)
+*
+* UFS VALIDAS
+  1 #UF-TAB              (A2/27)
+END-DEFINE
+*
+* CARGA TABELA UF
+MOVE 'AC' TO #UF-TAB(1)
+MOVE 'AL' TO #UF-TAB(2)
+MOVE 'AM' TO #UF-TAB(3)
+MOVE 'AP' TO #UF-TAB(4)
+MOVE 'BA' TO #UF-TAB(5)
+MOVE 'CE' TO #UF-TAB(6)
+MOVE 'DF' TO #UF-TAB(7)
+MOVE 'ES' TO #UF-TAB(8)
+MOVE 'GO' TO #UF-TAB(9)
+MOVE 'MA' TO #UF-TAB(10)
+MOVE 'MG' TO #UF-TAB(11)
+MOVE 'MS' TO #UF-TAB(12)
+MOVE 'MT' TO #UF-TAB(13)
+MOVE 'PA' TO #UF-TAB(14)
+MOVE 'PB' TO #UF-TAB(15)
+MOVE 'PE' TO #UF-TAB(16)
+MOVE 'PI' TO #UF-TAB(17)
+MOVE 'PR' TO #UF-TAB(18)
+MOVE 'RJ' TO #UF-TAB(19)
+MOVE 'RN' TO #UF-TAB(20)
+MOVE 'RO' TO #UF-TAB(21)
+MOVE 'RR' TO #UF-TAB(22)
+MOVE 'RS' TO #UF-TAB(23)
+MOVE 'SC' TO #UF-TAB(24)
+MOVE 'SE' TO #UF-TAB(25)
+MOVE 'SP' TO #UF-TAB(26)
+MOVE 'TO' TO #UF-TAB(27)
+*
+* CARGA DIAS POR MES
+MOVE 31 TO #DIAS-MES(1)
+MOVE 29 TO #DIAS-MES(2)   /* CONSIDERA BISSEXTO */
+MOVE 31 TO #DIAS-MES(3)
+MOVE 30 TO #DIAS-MES(4)
+MOVE 31 TO #DIAS-MES(5)
+MOVE 30 TO #DIAS-MES(6)
+MOVE 31 TO #DIAS-MES(7)
+MOVE 31 TO #DIAS-MES(8)
+MOVE 30 TO #DIAS-MES(9)
+MOVE 31 TO #DIAS-MES(10)
+MOVE 30 TO #DIAS-MES(11)
+MOVE 31 TO #DIAS-MES(12)
+*
+MOVE 0 TO #QTD-ERROS
+MOVE 'V' TO #RESULTADO
+COMPUTE #ANO-ATUAL = *DATN / 10000
+*
+* ============================================
+* VALIDACAO CPF - MODULO 11
+* ============================================
+PERFORM VALIDA-CPF-COMPLETO
+IF NOT #CPF-VALIDO
+  ADD 1 TO #QTD-ERROS
+  MOVE 'CPF INVALIDO - DIGITO VERIFICADOR' TO #MSG-ERRO(#QTD-ERROS)
+  MOVE 'I' TO #RESULTADO
+END-IF
+*
+* ============================================
+* VALIDACAO DATA NASCIMENTO
+* ============================================
+PERFORM VALIDA-DATA
+IF NOT #DT-VALIDA
+  ADD 1 TO #QTD-ERROS
+  MOVE 'DATA NASCIMENTO INVALIDA' TO #MSG-ERRO(#QTD-ERROS)
+  MOVE 'I' TO #RESULTADO
+END-IF
+*
+* ============================================
+* VALIDACAO NOME
+* ============================================
+PERFORM VALIDA-NOME
+IF NOT #NOME-VALIDO
+  ADD 1 TO #QTD-ERROS
+  MOVE 'NOME INVALIDO - DEVE TER NOME E SOBRENOME' TO #MSG-ERRO(#QTD-ERROS)
+  MOVE 'I' TO #RESULTADO
+END-IF
+*
+* ============================================
+* VALIDACAO UF
+* ============================================
+IF #UF NE ' '
+  1 #UF-OK (L)
+  MOVE FALSE TO #UF-OK
+  FOR #I = 1 TO 27
+    IF #UF = #UF-TAB(#I)
+      MOVE TRUE TO #UF-OK
+      ESCAPE BOTTOM
+    END-IF
+  END-FOR
+  IF NOT #UF-OK
+    ADD 1 TO #QTD-ERROS
+    MOVE 'UF INVALIDA' TO #MSG-ERRO(#QTD-ERROS)
+    MOVE 'I' TO #RESULTADO
+  END-IF
+END-IF
+*
+* ============================================
+* VALIDACAO STATUS
+* ============================================
+IF #STATUS NE 'A' AND #STATUS NE 'S' AND #STATUS NE 'C'
+    AND #STATUS NE 'I' AND #STATUS NE 'D'
+  ADD 1 TO #QTD-ERROS
+  MOVE 'STATUS INVALIDO' TO #MSG-ERRO(#QTD-ERROS)
+  MOVE 'I' TO #RESULTADO
+END-IF
+*
+* EXIBIR RESULTADO
+WRITE 'RESULTADO VALIDACAO:' #RESULTADO
+FOR #I = 1 TO #QTD-ERROS
+  WRITE #I ':' #MSG-ERRO(#I)
+END-FOR
+*
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+DEFINE SUBROUTINE VALIDA-CPF-COMPLETO
+  MOVE TRUE TO #CPF-VALIDO
+  MOVE #CPF TO #CPF-STR
+*
+* EXTRAIR DIGITOS
+  FOR #I = 1 TO 11
+    MOVE SUBSTR(#CPF-STR,#I,1) TO #DIG(#I)
+  END-FOR
+*
+* CPF COM TODOS DIGITOS IGUAIS
+  MOVE TRUE TO #TODOS-IGUAIS
+  FOR #I = 2 TO 11
+    IF #DIG(#I) NE #DIG(1)
+      MOVE FALSE TO #TODOS-IGUAIS
+      ESCAPE BOTTOM
+    END-IF
+  END-FOR
+  IF #TODOS-IGUAIS
+* EXCECAO: CPFs INICIADOS COM 000 SAO VALIDOS (TESTE GOVERNO)
+    IF #DIG(1) = 0 AND #DIG(2) = 0 AND #DIG(3) = 0
+      MOVE TRUE TO #CPF-VALIDO
+      ESCAPE ROUTINE
+    END-IF
+    MOVE FALSE TO #CPF-VALIDO
+    ESCAPE ROUTINE
+  END-IF
+*
+* PRIMEIRO DV
+  MOVE 0 TO #SOMA
+  MOVE 10 TO #PESO
+  FOR #I = 1 TO 9
+    COMPUTE #SOMA = #SOMA + (#DIG(#I) * #PESO)
+    SUBTRACT 1 FROM #PESO
+  END-FOR
+  COMPUTE #RESTO = #SOMA - ((#SOMA / 11) * 11)
+  IF #RESTO < 2
+    MOVE 0 TO #DV1
+  ELSE
+    COMPUTE #DV1 = 11 - #RESTO
+  END-IF
+  IF #DV1 NE #DIG(10)
+    MOVE FALSE TO #CPF-VALIDO
+    ESCAPE ROUTINE
+  END-IF
+*
+* SEGUNDO DV
+  MOVE 0 TO #SOMA
+  MOVE 11 TO #PESO
+  FOR #I = 1 TO 10
+    COMPUTE #SOMA = #SOMA + (#DIG(#I) * #PESO)
+    SUBTRACT 1 FROM #PESO
+  END-FOR
+  COMPUTE #RESTO = #SOMA - ((#SOMA / 11) * 11)
+  IF #RESTO < 2
+    MOVE 0 TO #DV2
+  ELSE
+    COMPUTE #DV2 = 11 - #RESTO
+  END-IF
+  IF #DV2 NE #DIG(11)
+    MOVE FALSE TO #CPF-VALIDO
+  END-IF
+END-SUBROUTINE
+*
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+DEFINE SUBROUTINE VALIDA-DATA
+  MOVE TRUE TO #DT-VALIDA
+  COMPUTE #ANO = #DT-NASC / 10000
+  COMPUTE #MES = (#DT-NASC - (#ANO * 10000)) / 100
+  COMPUTE #DIA = #DT-NASC - (#ANO * 10000) - (#MES * 100)
+*
+  IF #ANO < 1900 OR #ANO > #ANO-ATUAL
+    MOVE FALSE TO #DT-VALIDA
+    ESCAPE ROUTINE
+  END-IF
+  IF #MES < 1 OR #MES > 12
+    MOVE FALSE TO #DT-VALIDA
+    ESCAPE ROUTINE
+  END-IF
+  IF #DIA < 1 OR #DIA > #DIAS-MES(#MES)
+    MOVE FALSE TO #DT-VALIDA
+  END-IF
+END-SUBROUTINE
+*
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+DEFINE SUBROUTINE VALIDA-NOME
+  MOVE TRUE TO #NOME-VALIDO
+  IF #NOME = ' '
+    MOVE FALSE TO #NOME-VALIDO
+    ESCAPE ROUTINE
+  END-IF
+* VERIF SE TEM PELO MENOS UM ESPACO (NOME + SOBRENOME)
+  MOVE FALSE TO #TEM-ESPACO
+  EXAMINE #NOME FOR ' ' GIVING POSITION #POS
+  IF #POS > 1
+    MOVE TRUE TO #TEM-ESPACO
+  END-IF
+  IF NOT #TEM-ESPACO
+    MOVE FALSE TO #NOME-VALIDO
+  END-IF
+END-SUBROUTINE
+*
+END

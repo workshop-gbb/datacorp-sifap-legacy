@@ -1,0 +1,29 @@
+# Reference materials cloned by scripts/setup.sh — never commit these.
+# Note: legado-natural/ is bundled with the kit (real folder) and IS committed.
+reference/
+prototype
+infra
+
+# OS files
+.DS_Store
+**/.DS_Store
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Java
+**/target/
+
+# Node
+**/node_modules/
+**/.next/
+**/.pnpm-store/
+
+# Coverage
+**/coverage/
+**/.nyc_output/
+
+# Logs
+*.log
