@@ -1,0 +1,17 @@
+# Local Terraform state and provider plugins
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Real inputs carry participant IP addresses; only the example is tracked.
+terraform.tfvars
+*.auto.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Plan files can embed secret values in cleartext
+*.tfplan

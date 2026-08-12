@@ -1,0 +1,25 @@
+# Copy to terraform.tfvars and adjust before running terraform apply.
+#
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# terraform.tfvars is gitignored because allowed_source_cidrs contains real
+# participant IP addresses.
+
+owner = "your-github-handle"
+
+# Every address that needs to reach the lab, in CIDR form.
+# Discover your own with: curl -s https://api.ipify.org
+# 0.0.0.0/0 is rejected by a validation rule on purpose.
+allowed_source_cidrs = [
+  "203.0.113.10/32",
+]
+
+# Optional overrides
+# project                          = "sifap"
+# environment                      = "lab"
+# location                         = "brazilsouth"
+# location_short                   = "brs"
+# vm_size                          = "Standard_D2s_v3"
+# ssh_public_key_path              = "~/.ssh/id_rsa.pub"
+# auto_shutdown_time               = "2000"
+# auto_shutdown_notification_email = "you@example.com"

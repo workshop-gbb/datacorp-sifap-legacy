@@ -1,0 +1,168 @@
+#cloud-config
+# ---------------------------------------------------------------------------
+# SIFAP legacy lab: Adabas Community Edition + Natural Community Edition
+#
+# Rendered by Terraform (templatefile). Only $${...} is escaped Terraform syntax;
+# shell code below deliberately uses $VAR and $(...) so it stays readable.
+# ---------------------------------------------------------------------------
+
+package_update: true
+package_upgrade: false
+
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - jq
+  - lsb-release
+
+write_files:
+  # Adabas allocates System V shared memory segments. The container inherits the
+  # host kernel limits, so they are raised here rather than per container.
+  - path: /etc/sysctl.d/99-adabas.conf
+    owner: root:root
+    permissions: '0644'
+    content: |
+      kernel.shmmax = 1073741824
+      kernel.shmall = 262144
+
+  - path: /opt/sifap/docker-compose.yml
+    owner: root:root
+    permissions: '0644'
+    content: |
+      networks:
+        sifap-lab:
+          driver: bridge
+
+      services:
+        adabas-db:
+          image: ${adabas_image}
+          container_name: adabas-db
+          restart: unless-stopped
+          shm_size: 1gb
+          environment:
+            ACCEPT_EULA: "Y"
+            ADABAS_DBID: "${adabas_dbid}"
+            ADABAS_DB_CREATION: "demodb"
+            ADABAS_ADMIN_USER: "admin"
+            ADABAS_ADMIN_PWD: "ADABAS_ADMIN_PWD_PLACEHOLDER"
+          ports:
+            - "60001:60001"
+            - "8190:8190"
+          volumes:
+            - /mnt/adabas-data:/data
+          networks:
+            - sifap-lab
+
+        natural-ce:
+          image: ${natural_image}
+          container_name: natural-ce
+          restart: unless-stopped
+          environment:
+            ACCEPT_EULA: "Y"
+            # Both containers share one bridge network, so Docker's embedded DNS
+            # resolves "adabas-db" directly. No extra_hosts entry is required.
+            ADABAS_DB_MAPPING: "${adabas_dbid}=adatcp://adabas-db:60001"
+          ports:
+            - "2700:2700"
+          volumes:
+            - /mnt/natural-fuser:/opt/softwareag/Natural/fuser
+            - /opt/sifap/corpus:/corpus:ro
+          depends_on:
+            - adabas-db
+          networks:
+            - sifap-lab
+
+  - path: /opt/sifap/bootstrap.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      exec > >(tee -a /var/log/sifap-bootstrap.log) 2>&1
+      echo "=== SIFAP lab bootstrap started at $(date -Is) ==="
+
+      # --- data disk -------------------------------------------------------
+      # Azure exposes data disks under a stable by-path alias, which avoids the
+      # /dev/sdc guesswork that breaks whenever device ordering shifts.
+      DISK=/dev/disk/azure/scsi1/lun0
+      for _ in $(seq 1 30); do
+        [ -e "$DISK" ] && break
+        echo "waiting for data disk..."; sleep 5
+      done
+
+      if [ -e "$DISK" ]; then
+        if ! blkid "$DISK" >/dev/null 2>&1; then
+          echo "formatting data disk"
+          mkfs.ext4 -F -L adabasdata "$DISK"
+        fi
+        mkdir -p /mnt/adabas-data
+        grep -q 'LABEL=adabasdata' /etc/fstab || \
+          echo 'LABEL=adabasdata /mnt/adabas-data ext4 defaults,nofail 0 2' >> /etc/fstab
+        mount -a
+      else
+        echo "WARNING: data disk never appeared; falling back to OS disk"
+        mkdir -p /mnt/adabas-data
+      fi
+
+      mkdir -p /mnt/natural-fuser /opt/sifap/corpus
+
+      # The Adabas image runs as a non-root service account and must own its data.
+      chmod 777 /mnt/adabas-data /mnt/natural-fuser
+
+      sysctl --system
+
+      # --- adabas admin password from key vault ----------------------------
+      # Pulled at boot through the VM managed identity so the secret never
+      # travels through Terraform variables or state inputs.
+      # The VM often boots before Terraform has attached its Key Vault access
+      # policy, so this retries for a few minutes instead of failing on the
+      # first 403.
+      ADMIN_PWD=""
+      for attempt in $(seq 1 30); do
+        TOKEN=$(curl -s -H "Metadata:true" \
+          "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net" \
+          | jq -r '.access_token // empty')
+
+        if [ -n "$TOKEN" ]; then
+          ADMIN_PWD=$(curl -s -H "Authorization: Bearer $TOKEN" \
+            "${key_vault_uri}secrets/${secret_name}?api-version=7.4" | jq -r '.value // empty')
+        fi
+
+        [ -n "$ADMIN_PWD" ] && { echo "secret retrieved on attempt $attempt"; break; }
+        echo "key vault not ready yet (attempt $attempt/30); retrying"
+        sleep 10
+      done
+
+      if [ -z "$ADMIN_PWD" ]; then
+        echo "WARNING: could not read the Key Vault secret; generating a local password"
+        ADMIN_PWD=$(head -c 18 /dev/urandom | base64 | tr -d '/+=')
+      fi
+
+      # Adabas expects the administration password as a SHA-512 hex digest.
+      ADMIN_HASH=$(printf '%s' "$ADMIN_PWD" | sha512sum | cut -d' ' -f1)
+      sed -i "s|ADABAS_ADMIN_PWD_PLACEHOLDER|$ADMIN_HASH|" /opt/sifap/docker-compose.yml
+      unset ADMIN_PWD ADMIN_HASH TOKEN
+
+      # --- containers ------------------------------------------------------
+      cd /opt/sifap
+      echo "pulling images (several GB, this is the slow step)"
+      docker compose pull
+      docker compose up -d
+
+      echo "=== SIFAP lab bootstrap finished at $(date -Is) ==="
+      touch /opt/sifap/READY
+
+runcmd:
+  # Docker from the official repository; the Ubuntu archive build lags behind.
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu jammy stable" > /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - systemctl enable --now docker
+  - usermod -aG docker sifapadmin || true
+  - /opt/sifap/bootstrap.sh
+
+final_message: "SIFAP legacy lab ready after $UPTIME seconds"
