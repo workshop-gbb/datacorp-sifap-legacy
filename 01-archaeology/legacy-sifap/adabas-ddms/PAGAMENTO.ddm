@@ -5,8 +5,14 @@
 * AUTOR:     ROBERTO CARLOS FERREIRA - DBA ADABAS
 * DATA:      15/05/1997
 * ALTERADO:  10/01/1999 - MARCIA A. SOUZA - CAMPOS BATCH
+*            10/01/1999 - MARCIA A. SOUZA - FF/FG LOTE DE REMESSA
+*            10/01/1999 - MARCIA A. SOUZA - EF DT-CREDITO/GF DT-DEVOL
+*            12/12/2001 - MARCIA A. SOUZA - BD VLR-ABONO/EG TIPO-PAGTO
 *            05/09/2002 - ROBERTO C. FERREIRA - INTEGRACAO SIAFI
+*            05/09/2002 - ROBERTO C. FERREIRA - SUBDESC SA ANO-REF
+*            14/07/2003 - ADILSON BATISTA - GG-GK ESTORNO E CORRECAO
 *            22/04/2005 - ADILSON BATISTA - CAMPOS AUDITORIA CRUZADA
+*            22/04/2005 - ADILSON BATISTA - MU HC COD-OCORRENCIA
 *            17/11/2015 - CARLOS E. MENDES - CAMPO HASH ARQUIVO
 * DESCRICAO: HISTORICO DE PAGAMENTOS PROCESSADOS PELO SIFAP
 *            TABELA TRANSACIONAL - APROX 180 MILHOES REGISTROS
@@ -15,95 +21,145 @@
 *            CRESCIMENTO MEDIO: 3.8 MILHOES REGISTROS/MES
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 *
-* DBID: 57    FNR: 152    DEFAULT SEQUENCE: AA
+* LISTDDM   PAGAMENTO      LIB SIFAPPRD   NAT 4.2.6   14/03/2018 14:23
 *
-* LEVEL  NAME                 FORMAT  LENGTH  OCC   REMARK
-* -----  -------------------  ------  ------  ----  ---------------------------
+DDM NAME: PAGAMENTO                       DEFAULT SEQUENCE: AA
+DBID: 057   FNR: 152
 *
-  1  AA  NUM-PAGAMENTO          N       15     -     SEQUENCIAL UNICO (DE)
-  1  AB  NUM-CPF                A       11     -     CPF BENEFICIARIO (DE)
-  1  AC  NUM-INSCRICAO          N       11     -     MATRICULA BENEF
-  1  AD  COD-PROGRAMA           A        4     -     PROG SOCIAL (DE)
-  1  AE  ANO-MES-REF            N        6     -     AAAAMM - COMPETENCIA (DE)
-  1  AF  NUM-CICLO              N        6     -     CICLO PROCESSAMENTO
+ T L DB Name                     F Leng  S D Remark
+ - - -- ------------------------ - ----  - - ---------------------------
+*
+* --- CHAVES ---
+*
+   1 AA NUM-PAGAMENTO            N   15    U SEQUENCIAL UNICO
+   1 AB NUM-CPF                  A   11    D CPF BENEFICIARIO
+   1 AC NUM-INSCRICAO            N   11  N   MATRICULA BENEF
+   1 AD COD-PROGRAMA             A    4    D PROG SOCIAL
+   1 AE ANO-MES-REF              N    6    D AAAAMM - COMPETENCIA
+   1 AF NUM-CICLO                N    6    D CICLO PROCESSAMENTO
 *
 * --- VALORES ---
 *
-  1  BA  VLR-BRUTO              N        9.2   -     VALOR BRUTO CALCULADO
-  1  BB  VLR-LIQUIDO            N        9.2   -     VALOR LIQUIDO (BRUTO - DESCONTOS)
-  1  BC  VLR-DESCONTO-TOTAL     N        7.2   -     SOMA DESCONTOS
+   1 BA VLR-BRUTO                P  9,2      VALOR BRUTO CALCULADO
+   1 BB VLR-LIQUIDO              P  9,2      VLR LIQUIDO (BRUTO-DSCT)
+   1 BC VLR-DESCONTO-TOTAL       P  7,2  N   SOMA DESCONTOS
+   1 BD VLR-ABONO                P  9,2  N   ABONO (ADIC 2001)
 *
 * --- DESCONTOS DETALHADOS (GRUPO PERIODICO - MAX 8 TIPOS) ---
 *
-  1  CA  GRP-DESCONTO          PE        -     8     DESCONTOS APLICADOS
-  2  CB  TIPO-DESCONTO          A        3     -     IR/JD/CS/PA/EM/TX/OU/EX
-  2  CC  VLR-DESCONTO           N        7.2   -     VALOR DESCONTO
-  2  CD  PCT-DESCONTO           N        3.2   -     PERCENTUAL APLICADO
-  2  CE  NUM-PROCESSO           A       20     -     NUM PROC JUDICIAL (SE JD)
-  2  CF  DT-INICIO-DSCT         N        8     -     AAAAMMDD
-  2  CG  DT-FIM-DSCT            N        8     -     AAAAMMDD (0=INDEFINIDO)
+ P 1 CA GRP-DESCONTO                         (1:8) DESCONTOS APLICADOS
+   2 CB TIPO-DESCONTO            A    3  N   IR/JD/CS/PA/EM/TX/OU/EX
+   2 CC VLR-DESCONTO             P  7,2  N   VALOR DESCONTO
+   2 CD PCT-DESCONTO             P  3,2  N   PERCENTUAL APLICADO
+   2 CE NUM-PROCESSO             A   20  N   NUM PROC JUDIC (SE JD)
+   2 CF DT-INICIO-DSCT           N    8  N   AAAAMMDD
+   2 CG DT-FIM-DSCT              N    8  N   AAAAMMDD (0=INDEFINIDO)
 *
 * --- STATUS E PROCESSAMENTO ---
 *
-  1  DA  SIT-PAGAMENTO          A        1     -     P=PEND G=GERADO E=EMITIDO
-*                                                     C=CONFIRMADO D=DEVOLVIDO
-*                                                     X=CANCELADO R=REPROCESSADO
-  1  DB  DT-GERACAO             N        8     -     AAAAMMDD - GERACAO BATCH (DE)
-  1  DC  HR-GERACAO             N        6     -     HHMMSS
-  1  DD  DT-EMISSAO             N        8     -     AAAAMMDD - ENVIO AO BANCO
-  1  DE  DT-CONFIRMACAO         N        8     -     AAAAMMDD - RETORNO BANCO
-  1  DF  DT-CANCELAMENTO        N        8     -     AAAAMMDD (SE APLIC)
-  1  DG  MOT-CANCELAMENTO       A        3     -     COD MOTIVO (TAB INTERNA)
+   1 DA SIT-PAGAMENTO            A    1  F D P=PEND G=GERADO E=EMITIDO
+*                                             C=CONFIRMADO D=DEVOLVIDO
+*                                             X=CANCELADO R=REPROCESSADO
+   1 DB DT-GERACAO               N    8    D AAAAMMDD - GERACAO BATCH
+   1 DC HR-GERACAO               N    6      HHMMSS
+   1 DD DT-EMISSAO               N    8  N   AAAAMMDD - ENVIO AO BANCO
+   1 DE DT-CONFIRMACAO           N    8  N   AAAAMMDD - RETORNO BANCO
+   1 DF DT-CANCELAMENTO          N    8  N   AAAAMMDD (SE APLIC)
+   1 DG MOT-CANCELAMENTO         A    3  N   COD MOTIVO (TAB INTERNA)
 *
 * --- DADOS BANCARIOS ---
 *
-  1  EA  COD-BANCO              A        3     -     COD FEBRABAN
-  1  EB  COD-AGENCIA            A        6     -     NUM AGENCIA
-  1  EC  NUM-CONTA              A       13     -     NUM CONTA
-  1  ED  TIPO-CONTA             A        1     -     C=CORRENTE P=POUPANCA
-  1  EE  COD-OPERACAO           A        3     -     OP CAIXA (SE APLIC)
+   1 EA COD-BANCO                A    3  N D COD FEBRABAN
+   1 EB COD-AGENCIA              A    6  N   NUM AGENCIA
+   1 EC NUM-CONTA                A   13  N   NUM CONTA
+   1 ED TIPO-CONTA               A    1  F   C=CORRENTE P=POUPANCA
+   1 EE COD-OPERACAO             A    3  N   OP CAIXA (SE APLIC)
+   1 EF DT-CREDITO               N    8  N D AAAAMMDD - CRED EM CONTA
+*                                             (ADIC 1999 - NAO E DB)
+   1 EG TIPO-PAGAMENTO           A    1  F D N=NORMAL R=RETROATIVO
+*                                             A=ABONO C=CORRECAO
 *
 * --- INTEGRACAO SIAFI (ADICIONADO 2002) ---
 *
-  1  FA  NUM-OB-SIAFI           A       12     -     ORDEM BANCARIA SIAFI
-  1  FB  NUM-NE-SIAFI           A       12     -     NOTA EMPENHO SIAFI
-  1  FC  COD-UG-EMITENTE        A        6     -     UNIDADE GESTORA
-  1  FD  COD-GESTAO             A        5     -     COD GESTAO SIAFI
-  1  FE  SIT-INTEG-SIAFI        A        1     -     I=INTEGRADO P=PEND E=ERRO
+   1 FA NUM-OB-SIAFI             A   12  N   ORDEM BANCARIA SIAFI
+   1 FB NUM-NE-SIAFI             A   12  N   NOTA EMPENHO SIAFI
+   1 FC COD-UG-EMITENTE          A    6  N   UNIDADE GESTORA
+   1 FD COD-GESTAO               A    5  N   COD GESTAO SIAFI
+   1 FE SIT-INTEG-SIAFI          A    1  F   I=INTEGRADO P=PEND E=ERRO
+   1 FF NUM-LOTE                 N    8    D LOTE DE REMESSA (1999)
+   1 FG SEQ-LOTE                 N    6      SEQ DENTRO DO LOTE
 *
 * --- CONCILIACAO BANCARIA ---
 *
-  1  GA  DT-CONCILIACAO         N        8     -     AAAAMMDD
-  1  GB  SIT-CONCILIACAO        A        1     -     C=CONCIL D=DIVERG P=PEND N=NA
-  1  GC  VLR-CONCILIADO         N        9.2   -     VALOR CONFIRMADO BANCO
-  1  GD  COD-RETORNO-BANCO      A        2     -     COD RETORNO CNAB 240
-  1  GE  DES-RETORNO-BANCO      A       40     -     DESCRICAO RETORNO
+   1 GA DT-CONCILIACAO           N    8  N   AAAAMMDD
+   1 GB SIT-CONCILIACAO          A    1  F   C=CONCIL D=DIVERG
+*                                             P=PEND N=NA
+   1 GC VLR-CONCILIADO           P  9,2  N   VALOR CONFIRMADO BANCO
+   1 GD COD-RETORNO-BANCO        A    2  N D COD RETORNO CNAB 240
+   1 GE DES-RETORNO-BANCO        A   40  N   DESCRICAO RETORNO
+   1 GF DT-DEVOLUCAO             N    8  N   AAAAMMDD (ADIC 1999)
+   1 GG IND-ESTORNO              A    1  F   S/N (ADIC 2003)
+   1 GH NUM-PAGTO-ORIGEM         N   15  N D PAGTO ORIGINAL (2003)
+   1 GI VLR-CORRECAO             P  9,2  N   VALOR DA CORRECAO
+   1 GJ DT-CORRECAO              N    8  N   AAAAMMDD
+   1 GK IND-CORRIGIDO            A    1  F   S/N
 *
 * --- HASH ARQUIVO (ADICIONADO 2015) ---
 *
-  1  HA  HASH-ARQ-REMESSA       A       64     -     SHA-256 ARQ REMESSA
-  1  HB  HASH-ARQ-RETORNO       A       64     -     SHA-256 ARQ RETORNO
+   1 HA HASH-ARQ-REMESSA         A   64  N   SHA-256 ARQ REMESSA
+   1 HB HASH-ARQ-RETORNO         A   64  N   SHA-256 ARQ RETORNO
+ M 1 HC COD-OCORRENCIA           A    3  N   (1:10) OCORR BANCARIAS
+*                                             (ADIC 2005)
 *
 * --- CONTROLE ---
 *
-  1  IA  DT-INCLUSAO            N        8     -     AAAAMMDD
-  1  IB  HR-INCLUSAO            N        6     -     HHMMSS
-  1  IC  USR-INCLUSAO           A        8     -     LOGIN - GERALMENTE 'BATCH'
-  1  ID  DT-ULT-ALTERACAO       N        8     -     AAAAMMDD
-  1  IE  HR-ULT-ALTERACAO       N        6     -     HHMMSS
-  1  IF  USR-ULT-ALTERACAO      A        8     -
+   1 IA DT-INCLUSAO              N    8      AAAAMMDD
+   1 IB HR-INCLUSAO              N    6      HHMMSS
+   1 IC USR-INCLUSAO             A    8  N   LOGIN - GERALM 'BATCH'
+   1 ID DT-ULT-ALTERACAO         N    8  N   AAAAMMDD
+   1 IE HR-ULT-ALTERACAO         N    6  N   HHMMSS
+   1 IF USR-ULT-ALTERACAO        A    8  N
 *
-* SUPERDESCRIPTORS:
-*   S1 = AB(1-11) + AE(1-6) -- CPF + COMPETENCIA
-*   S2 = AD(1-4) + AE(1-6) + DA(1-1) -- PROGRAMA + COMPET + SITUACAO
-*   S3 = AF(1-6) + DA(1-1) -- CICLO + SITUACAO
+* --- DESCRITORES DERIVADOS ---
 *
-* TOTAL CAMPOS: 50
-* TAMANHO MEDIO REGISTRO: ~720 BYTES
-* ESTIMATIVA REGISTROS: 180.000.000 (ABR/2018)
+ S   SA ANO-REF                  N    4    D SUBDESCRIPTOR (2002)
+        /* AE(1-4)
+ S   S1 SUPER-CPF-COMPET         A   17    S
+        /* AB(1-11), AE(1-6)
+ S   S2 SUPER-PROG-COMP-SIT      A   11    S
+        /* AD(1-4), AE(1-6), DA(1-1)
+ S   S3 SUPER-CICLO-SIT          A    7    S
+        /* AF(1-6), DA(1-1)
+*
+* LEGENDA DE COLUNAS
+*   T  = TIPO      (BRANCO)=ELEMENTAR  G=GRUPO  M=MULTIPLE-VALUE
+*                  P=PERIODIC GROUP    S=DESCRITOR DERIVADO
+*   L  = NIVEL     1=CAMPO RAIZ  2=CAMPO DENTRO DE GRUPO/PE
+*   DB = SHORT NAME - NOME FISICO DE 2 BYTES NO FDT
+*   F  = FORMATO   A=ALFA  N=NUMERICO UNPACKED  P=PACKED DECIMAL
+*   LENG           BYTES OU DIGITOS,DECIMAIS (EX 9,2)
+*   S  = STORAGE   N=NULL SUPPRESSION  F=FIXED STORAGE
+*   D  = DESCRITOR D=DESCRIPTOR U=UNIQUE S=SUPER H=HYPER P=PHONETIC
+*   LINHA /* SOB UM DESCRITOR DERIVADO = CAMPOS QUE O COMPOEM
+*
+* TOTAL CAMPOS: 57 ELEMENTARES + 1 GRUPO PE + 4 DESCRIT DERIVADOS
+* TAM. REGISTRO: DESCOMPRIMIDO 855 BYTES (PE 1:8 TOTALMENTE OCUPADO)
+*                COMPRIMIDO      ~420 BYTES (TAXA ADACMP 51%)
+* ESTIMATIVA REGISTROS: 611.902.774 (ADAREP 14/03/2018)
+* TOP-ISN 612.443.901   MAXISN 700.000.000   ISN REUSE: OFF
+* OCUPACAO DATA: 611.902.774 X 420 BYTES = 257 GB
+*
+* ARITMETICA DO VOLUME (BASE FNR 150 = 4.201.884 BENEFICIARIOS):
+*   PERIODO 01/1998 A 03/2018 ................ 243 MESES
+*   MEDIA HISTORICA .......................... 2,52 M PAGTOS/MES
+*   TAXA ATUAL (2018) ........................ 3,80 M PAGTOS/MES
+*   243 X 2,52 M = 612 M REGISTROS ACUMULADOS
 *
 * NOTA: ARQUIVO NAO POSSUI POLITICA DE PURGE
 *       TODOS OS REGISTROS DESDE 1998 ESTAO PRESENTES
 *       REORGANIZACAO TRIMESTRAL OBRIGATORIA (ITSM-SIFAP-002)
+*
+* NOTA2: ISN REUSE DESLIGADO NESTE ARQUIVO. O ISN NAO E CHAVE
+*        ESTAVEL E NAO DEVE SER USADO COMO IDENTIFICADOR EXTERNO.
 *
 * * * FIM DO DDM PAGAMENTO * * *
