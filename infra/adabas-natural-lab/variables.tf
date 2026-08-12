@@ -66,12 +66,30 @@ variable "allowed_source_cidrs" {
     Source CIDRs allowed to reach SSH, the Natural Development Server and the Adabas ports.
     Never widen this to 0.0.0.0/0: Adabas CE offers no channel encryption and the NDV has no
     strong authentication, so an open listener is a direct compromise path.
+
+    Deliberately has NO default: a required variable cannot silently fall back to something open.
+    Only explicit IPv4 CIDRs are accepted; Azure service tags such as "Internet" or "VirtualNetwork"
+    are rejected on purpose so the allow-list stays auditable.
   EOT
   type        = list(string)
 
+  # Reject every spelling of "open to the internet", not just the literal 0.0.0.0/0.
   validation {
-    condition     = !contains(var.allowed_source_cidrs, "0.0.0.0/0")
-    error_message = "0.0.0.0/0 is not allowed. List explicit workshop IPs or CIDRs."
+    condition = length([
+      for c in var.allowed_source_cidrs : c
+      if contains(["0.0.0.0/0", "*", "::/0", "internet", "any"], lower(trimspace(c)))
+    ]) == 0
+    error_message = "Open-to-the-internet sources are rejected: 0.0.0.0/0, *, ::/0, Internet, Any. List explicit workshop IPs or CIDRs."
+  }
+
+  # Backstop for the rule above: a well-formed IPv4 CIDR no wider than /8. This also catches
+  # 0.0.0.0/0 written as 0.0.0.0/1, 10.0.0.0/4 and similar near-open ranges, plus plain typos.
+  validation {
+    condition = alltrue([
+      for c in var.allowed_source_cidrs :
+      can(cidrnetmask(trimspace(c))) && can(regex("/(8|9|1[0-9]|2[0-9]|3[0-2])$", trimspace(c)))
+    ])
+    error_message = "Each entry must be an explicit IPv4 CIDR with prefix /8../32, e.g. 203.0.113.10/32."
   }
 
   validation {

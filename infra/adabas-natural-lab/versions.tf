@@ -1,5 +1,7 @@
 terraform {
-  required_version = ">= 1.5.0"
+  # Upper bound is deliberate: a future Terraform 2.x may change language semantics,
+  # and this module is pinned by a committed .terraform.lock.hcl. CI runs 1.9.5.
+  required_version = ">= 1.5.0, < 2.0.0"
 
   required_providers {
     azurerm = {
