@@ -1,0 +1,156 @@
+1                                                              PAGE     1
+        A D A R E P   V8.3.3    F I L E   L A Y O U T   R E P O R T
+        ==========================================================
+        DATABASE 057 (SIFAP-PROD)          FILE 150 (BENEFICIARIO)
+        RUN DATE 2018-03-14  14:22:07      REPORT BY DBA/SIFAP
+        ADACMP FDT AS LOADED 1997-05-12, LAST FDT CHANGE 2015-11-19
+
+        FIELD DEFINITION TABLE (FDT)
+        ----------------------------------------------------------
+
+  LEVEL  NAME  LENGTH  FORMAT  OPTIONS              PARENT / REMARK
+  -----  ----  ------  ------  -------------------  --------------------
+    1     AA      11      U     DE,UQ,FI
+    1     AB      11      A     DE,UQ
+    1     AC      60      A     NU
+    1     AD      60      A     NU
+    1     AE      60      A     NU
+    1     AF       8      U     DE,NU
+    1     AG       1      A     FI
+    1     AH       1      A     FI
+    1     AI      15      A     NU
+    1     AJ      10      A     NU
+    1     AK       2      A     NU
+    1     AL       8      U     NU
+    1     AM      11      U     DE,UQ,NU
+    1     AN      13      U     DE,UQ,NU
+    1     BA                    GR                   GRP-ENDERECO
+    2     BB      60      A     NU
+    2     BC      10      A     NU
+    2     BD      30      A     NU
+    2     BE      40      A     NU
+    2     BF      40      A     NU
+    2     BG       2      A     DE
+    2     BH       8      U     NU
+    2     BI       7      U     NU
+    2     BJ       2      A     DE
+    1     CA       4      A     DE
+    1     CB       8      U     DE
+    1     CC       8      U
+    1     CD       8      U
+    1     CE       1      A     DE,FI
+    1     CF       3      A     NU
+    1     CG       8      U     NU
+    1     CH       5      P     NU                   9,2 PACKED
+    1     CI       2      U
+    1     CJ       4      P     NU                   7,2 PACKED
+    1     CK       2      U     NU
+    1     CL       1      A     FI
+1                                                              PAGE     2
+        A D A R E P   V8.3.3    F I L E   L A Y O U T   R E P O R T
+        DATABASE 057 (SIFAP-PROD)          FILE 150 (BENEFICIARIO)
+
+  LEVEL  NAME  LENGTH  FORMAT  OPTIONS              PARENT / REMARK
+  -----  ----  ------  ------  -------------------  --------------------
+    1     DA                    PE                   GRP-DEPENDENTE
+    2     DB      11      A     NU
+    2     DC      60      A     NU
+    2     DD       8      U     NU
+    2     DE       2      A     FI
+    2     DF       1      A     FI
+    2     DG       1      A     FI
+    1     EA      14      A     NU
+    1     EB      15      A     NU
+    1     EC      80      A     NU
+    1     ED      15      A     MU,NU
+    1     FA       1      A     FI
+    1     FB       8      U     NU
+    1     FC       6      A     NU
+    1     FD      64      A     NU
+    1     GA       8      U     DE
+    1     GB       6      U
+    1     GC       8      A     NU
+    1     GD       8      U     NU
+    1     GE       6      U     NU
+    1     GF       8      A     NU
+    1     GG       5      U
+    1     HA       3      A     DE,NU
+    1     HB       6      A     NU
+    1     HC      13      A     NU
+    1     HD       1      A     FI
+    1     HE       1      A     FI
+    1     IA       1      A     DE,FI
+    1     IB       8      U     NU
+    1     IC       2      A     DE,NU
+    1     ID       1      A     FI
+    1     IE      20      A     NU
+    1     IG       5      U     DE,NU
+
+        DERIVED DESCRIPTORS
+        ----------------------------------------------------------
+  PHONETIC        PN = AC
+  SUBDESCRIPTOR   SA = AF(1-4)                       FORMAT U LEN 4
+  SUPERDESCRIPTOR S2 = BG(1-2), CE(1-1)              FORMAT A LEN 3
+  SUPERDESCRIPTOR S3 = CA(1-4), CE(1-1)              FORMAT A LEN 5
+  HYPERDESCRIPTOR H1 = AF, CJ    HYPEREXIT 03        FORMAT A LEN 6
+
+        OPTION CODES
+        ----------------------------------------------------------
+  DE  DESCRIPTOR                 MU  MULTIPLE-VALUE FIELD
+  UQ  UNIQUE DESCRIPTOR          PE  PERIODIC GROUP
+  NU  NULL SUPPRESSION           GR  GROUP
+  FI  FIXED STORAGE              NC  SQL NULL NOT COUNTED (N/A)
+
+        FORMAT CODES
+        ----------------------------------------------------------
+  A   ALPHANUMERIC               P   PACKED DECIMAL
+  U   UNPACKED DECIMAL           B   BINARY (NAO USADO NESTE ARQ)
+
+1                                                              PAGE     3
+        A D A R E P   V8.3.3    F I L E   L A Y O U T   R E P O R T
+        DATABASE 057 (SIFAP-PROD)          FILE 150 (BENEFICIARIO)
+
+        FILE STATISTICS
+        ----------------------------------------------------------
+  NUMBER OF RECORDS LOADED ..................       4.201.884
+  TOP ISN ...................................       4.238.117
+  MAXISN (ISN LIMIT) ........................       6.000.000
+  ISN REUSE .................................       ON
+  MAX PE OCCURRENCES (DA) ...................              10
+  MAX MU OCCURRENCES (ED) ...................               5
+  ADABAS MU/PE HARD LIMIT ...................             191
+  MAX COMPRESSED RECORD LENGTH ..............           1.290
+  AVG COMPRESSED RECORD LENGTH ..............             850
+  UNCOMPRESSED RECORD LENGTH (FULL PE/MU) ...           1.739
+  COMPRESSION RATE ..........................             51%
+  PADDING FACTOR DATA / ASSO ................        10% / 5%
+  ADAM FILE .................................       NO
+  CIPHERED ..................................       NO
+
+        SPACE ALLOCATION
+        ----------------------------------------------------------
+  DATA STORAGE ..... 4.201.884 X 850 BYTES ..       3,4 GB
+  ASSOCIATOR (NI+UI) ........................       1,1 GB
+  DESCRIPTORS DEFINED .......................              21
+                                              (16 ELEM + 5 DERIV)
+  TOTAL EXTENTS DATA / ASSO .................         3  /  4
+
+        UNLOAD / DECOMPRESS ESTIMATE (ADAULD + ADADCU)
+        ----------------------------------------------------------
+  SEQUENTIAL READ OF DATA STORAGE ...........       ~ 42 MIN
+  DECOMPRESS TO FLAT FILE (1.739 B/REC) .....       7,3 GB
+  ESTIMATED JANELA NECESSARIA ...............       ~ 90 MIN
+
+        AVISOS
+        ----------------------------------------------------------
+  *  TOP ISN 4.238.117 SOBRE MAXISN 6.000.000 = 70% CONSUMIDO.
+     ACOMPANHAR - ADADBM INCREASE ISN NECESSARIO ANTES DE 2022.
+  *  CAMPOS COM NU (NULL SUPPRESSION) NAO OCUPAM ESPACO QUANDO
+     VAZIOS, MAS TAMBEM NAO ENTRAM NO INDICE. UM 'FIND' POR VALOR
+     VAZIO NAO RETORNA REGISTRO ALGUM NESSES CAMPOS.
+  *  ESTE FDT DESCREVE O ARQUIVO FISICO. O DDM (BENEFICIARIO.DDM)
+     DESCREVE A VISAO LOGICA USADA PELO NATURAL. OS NOMES LONGOS
+     DE CAMPO EXISTEM SOMENTE NO DDM - O ARQUIVO FISICO CONHECE
+     APENAS OS SHORT NAMES DE 2 BYTES DESTA LISTAGEM.
+
+        FIM DO RELATORIO - FILE 150

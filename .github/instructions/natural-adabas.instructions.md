@@ -1,6 +1,6 @@
 ---
 description: "Guia de leitura para código legado Natural/Adabas — padrões da linguagem, estrutura FDT, convenções de nomes, fluxos batch"
-applyTo: "01-arqueologia/legado-sifap/**,**/*.NSN,**/*.nsn,**/*.NAT,**/*.nat,**/*.CPY,**/*.cpy,**/*.DDM,**/*.ddm"
+applyTo: "01-arqueologia/legado-sifap/**,**/*.NSN,**/*.nsn,**/*.NSA,**/*.nsa,**/*.NSL,**/*.nsl,**/*.NSC,**/*.nsc,**/*.NSM,**/*.nsm,**/*.NAT,**/*.nat,**/*.CPY,**/*.cpy,**/*.DDM,**/*.ddm,**/*.jcl,**/*.JCL"
 ---
 
 # Código Legado Natural/Adabas — Guia de Leitura
@@ -16,13 +16,19 @@ DEFINE DATA
   LOCAL
     01 #MY-VARIABLE  (A20)    /* A = alphanumeric, 20 chars */
     01 #COUNTER      (N5)     /* N = numeric, 5 digits */
-    01 #AMOUNT        (P9.2)   /* P = packed decimal, 9 digits + 2 decimal */
+    01 #AMOUNT       (P9,2)   /* P = packed decimal, 9 inteiros + 2 decimais */
+    01 #RATES        (N3,4/1:27)  /* array: 27 ocorrencias de N3,4 */
   END-DEFINE
 
   /* Main logic here */
 
 END
 ```
+
+> **Separador decimal na especificação de formato é VÍRGULA, nunca ponto.**
+> `(P9,2)` e `(N3,4)` são válidos; `(P9.2)` e `(N3.4)` **não compilam**.
+> A regra vale só para a *declaração* — **literais continuam com ponto**: `MOVE 1.3500 TO #FATOR`.
+> Em arrays, a faixa faz parte da notação: `(A60/1:10)`, `(N3,4/1:27)`, `(N3,6/1:10,1:12)`.
 
 Blocos-chave a reconhecer:
 
@@ -44,13 +50,28 @@ Ao mapear cadeias de chamada, `CALLNAT` é o importante — ele cruza fronteiras
 
 ## INCLUDE Copycodes
 
-`INCLUDE copycode-name` insere um fragmento de código compartilhado em tempo de compilação, como um `#include` em C. Copycodes (arquivos `.cpy`) normalmente contêm:
+`INCLUDE copycode-name` insere um fragmento de código compartilhado em tempo de compilação, como um `#include` em C. Copycodes normalmente contêm:
 
 - Definições de shared data area (a "struct" do Natural)
 - Rotinas comuns de validação
 - Blocos padrão de tratamento de erros
 
-Quando vir `INCLUDE`, encontre o arquivo `.cpy` correspondente para entender o layout completo de dados.
+Quando vir `INCLUDE`, encontre o copycode correspondente para entender o layout completo de dados.
+
+### Extensões de membro
+
+Uma biblioteca Natural é **plana**: não há subdiretórios, e cada membro é resolvido pelo nome, não pelo caminho. A extensão indica o tipo:
+
+| Extensão | Tipo | Chamado por |
+|----------|------|-------------|
+| `.NSN` | Programa ou subprograma | executado por JCL, ou `CALLNAT` |
+| `.NSA` | Parameter Data Area (PDA) | `PARAMETER USING` |
+| `.NSL` | Local Data Area (LDA) | `LOCAL USING` |
+| `.NSC` | Copycode | `INCLUDE` |
+| `.NSM` | Map (layout de tela 3270) | `INPUT USING MAP` |
+| `.jcl` | Job Control Language | agendador batch |
+
+`CALLNAT`, `INCLUDE`, `PARAMETER USING` e `LOCAL USING` **não são ignoráveis**: cada um puxa código ou declarações de outro arquivo. Um programa lido isoladamente está incompleto.
 
 ## Adabas FDT (Field Definition Table)
 
@@ -126,7 +147,9 @@ END-READ
 
 Packed decimal (formato `P`) armazena dígitos de forma eficiente: cada byte mantém dois dígitos, o último nibble é o sinal (C=positivo, D=negativo). Comum em cálculos financeiros.
 
-Ao mapear para Java: sempre use `BigDecimal`, nunca `double` ou `float`. Campos packed com formato `P9.2` significam 9 dígitos totais com 2 casas decimais → `BigDecimal` com `scale(2)`.
+Ao mapear para Java: sempre use `BigDecimal`, nunca `double` ou `float`. Campos packed com formato `P9,2` significam 9 dígitos inteiros mais 2 casas decimais → `BigDecimal` com `scale(2)`.
+
+**Em mainframe, dinheiro é packed (`P`), não `N`.** Ao ler o corpus, um valor monetário declarado como `N` é sinal de alerta — pode ser descuido do autor original ou uma divergência deliberada entre programa e DDM. Compare sempre o formato no programa com o formato do mesmo campo no `.ddm`: divergências de tipo e de tamanho são fonte clássica de truncamento e overflow silencioso.
 
 ## Estratégia de Leitura
 
@@ -138,3 +161,5 @@ Ao abordar um programa legado pela primeira vez:
 4. **Procure INCLUDE copycodes** — eles expandem as definições de dados
 5. **Verifique AT BREAK / AT END OF DATA** — eles revelam a lógica de relatório ou processamento
 6. **Anote qualquer ESCAPE ou ON ERROR** — estes são caminhos de tratamento de erro
+7. **Confira `IF NO RECORDS FOUND`** — o bloco `FIND ... IF NO RECORDS FOUND ... END-NOREC` define o que acontece quando a busca não retorna nada; é onde se escondem defaults silenciosos. Lembre que campos de view só têm valor **dentro** do bloco `FIND`/`READ`.
+8. **Verifique `FIND ... WITH` contra o DDM** — só é possível buscar por campo marcado como descritor (`D`, `S` ou `H`) na listagem do DDM. Uma busca por campo não-descritor não compila.

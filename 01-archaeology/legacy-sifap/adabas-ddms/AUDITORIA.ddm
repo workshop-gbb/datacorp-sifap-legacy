@@ -4,8 +4,12 @@
 * SISTEMA:   SIFAP - SIST. FISC. ADM. PAGAMENTOS
 * AUTOR:     ROBERTO CARLOS FERREIRA - DBA ADABAS
 * DATA:      20/05/1997
-* ALTERADO:  15/04/2005 - ADILSON BATISTA - CAMPOS DETALHAMENTO
+* ALTERADO:  03/06/1998 - ROBERTO C. FERREIRA - EG/EH TERMINAL E LU
+*            11/08/2003 - ROBERTO C. FERREIRA - AE NUM-TRANSACAO CICS
+*            15/04/2005 - ADILSON BATISTA - CAMPOS DETALHAMENTO
+*            22/06/2010 - ADILSON BATISTA - SUBDESC SA ANO-MES-EVENTO
 *            09/02/2012 - FERNANDA OLIVEIRA - CAMPO IP ORIGEM
+*            20/03/2014 - FERNANDA OLIVEIRA - DG/DH VLR ANT/NOVO ESCAL
 * DESCRICAO: LOG DE AUDITORIA - TRILHA DE ALTERACOES DO SIFAP
 *            REGISTRO IMUTAVEL - NAO PERMITE UPDATE/DELETE
 *            OBRIGATORIEDADE LEGAL: IN-TCU 63/2010
@@ -14,77 +18,118 @@
 *            CONSULTAS PESADAS DEVEM USAR SUPERDESCRIPTOR S2
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 *
-* DBID: 57    FNR: 153    DEFAULT SEQUENCE: AA
+* LISTDDM   AUDITORIA      LIB SIFAPPRD   NAT 4.2.6   14/03/2018 14:25
 *
-* LEVEL  NAME                 FORMAT  LENGTH  OCC   REMARK
-* -----  -------------------  ------  ------  ----  ---------------------------
+DDM NAME: AUDITORIA                       DEFAULT SEQUENCE: AA
+DBID: 057   FNR: 153
 *
-  1  AA  NUM-AUDITORIA          N       15     -     SEQUENCIAL UNICO (DE)
-  1  AB  DT-EVENTO              N        8     -     AAAAMMDD (DE)
-  1  AC  HR-EVENTO              N        6     -     HHMMSS
-  1  AD  TS-EVENTO              N       14     -     AAAAMMDDHHMMSS (PRECISAO)
+ T L DB Name                     F Leng  S D Remark
+ - - -- ------------------------ - ----  - - ---------------------------
+*
+* --- IDENTIFICACAO DO EVENTO ---
+*
+   1 AA NUM-AUDITORIA            N   15    U SEQUENCIAL UNICO
+   1 AB DT-EVENTO                N    8    D AAAAMMDD
+   1 AC HR-EVENTO                N    6      HHMMSS
+   1 AD TS-EVENTO                N   14  N   AAAAMMDDHHMMSS (PRECISAO)
+   1 AE NUM-TRANSACAO            A    8  N D TRANSACAO CICS (2003)
 *
 * --- ACAO ---
 *
-  1  BA  COD-ACAO               A        2     -     TIPO ACAO (DE)
-*                                                     IN=INCLUSAO
-*                                                     AL=ALTERACAO
-*                                                     EX=EXCLUSAO
-*                                                     CO=CONSULTA
-*                                                     LG=LOGIN
-*                                                     LO=LOGOUT
-*                                                     BT=BATCH
-*                                                     ER=ERRO
-*                                                     AU=AUTORIZACAO
-*                                                     RE=REJEICAO
-  1  BB  COD-MODULO             A        8     -     NOME PROGRAMA NATURAL
-  1  BC  DES-ACAO               A       80     -     DESCRICAO LIVRE DA ACAO
+   1 BA COD-ACAO                 A    2  F D TIPO ACAO
+*                                             IN=INCLUSAO
+*                                             AL=ALTERACAO
+*                                             EX=EXCLUSAO
+*                                             CO=CONSULTA
+*                                             LG=LOGIN
+*                                             LO=LOGOUT
+*                                             BT=BATCH
+*                                             ER=ERRO
+*                                             AU=AUTORIZACAO
+*                                             RE=REJEICAO
+   1 BB COD-MODULO               A    8  N   NOME PROGRAMA NATURAL
+   1 BC DES-ACAO                 A   80  N   DESCRICAO LIVRE DA ACAO
 *
 * --- ENTIDADE AFETADA ---
 *
-  1  CA  TIPO-ENTIDADE          A        4     -     BENF/PGTO/PROG/ADMN/SIST
-  1  CB  ID-ENTIDADE            A       15     -     CHAVE DA ENTIDADE (DE)
-  1  CC  NUM-CPF-AFETADO        A       11     -     CPF (SE APLIC) (DE)
+   1 CA TIPO-ENTIDADE            A    4    D BENF/PGTO/PROG/ADMN/SIST
+   1 CB ID-ENTIDADE              A   15    D CHAVE DA ENTIDADE
+   1 CC NUM-CPF-AFETADO          A   11  N D CPF (SE APLIC)
 *
 * --- DADOS ANTES/DEPOIS (ADICIONADO 2005) ---
 *
-  1  DA  GRP-ANTES              -        -     -     GRUPO ESTADO ANTERIOR
-  2  DB  CAMPO-ALTERADO-ANT    MU   A   30    20     NOME CAMPO (MU MAX 20)
-  2  DC  VALOR-ANTERIOR        MU   A   80    20     VALOR ANTERIOR (MU MAX 20)
-  1  DD  GRP-DEPOIS             -        -     -     GRUPO ESTADO POSTERIOR
-  2  DE  CAMPO-ALTERADO-DEP    MU   A   30    20     NOME CAMPO (MU MAX 20)
-  2  DF  VALOR-POSTERIOR       MU   A   80    20     VALOR POSTERIOR (MU MAX 20)
+ G 1 DA GRP-ANTES                            GRUPO ESTADO ANTERIOR
+ M 2 DB CAMPO-ALTERADO-ANT       A   30  N   (1:20) NOME CAMPO
+ M 2 DC VALOR-ANTERIOR           A   80  N   (1:20) VALOR ANTERIOR
+ G 1 DD GRP-DEPOIS                           GRUPO ESTADO POSTERIOR
+ M 2 DE CAMPO-ALTERADO-DEP       A   30  N   (1:20) NOME CAMPO
+ M 2 DF VALOR-POSTERIOR          A   80  N   (1:20) VALOR POSTERIOR
+   1 DG VLR-ANTERIOR             A   60  N   ESCALAR - COEXISTE C/ DC
+*                                             (ADIC 2014)
+   1 DH VLR-NOVO                 A   60  N   ESCALAR - COEXISTE C/ DF
+*                                             (ADIC 2014)
 *
 * --- USUARIO E ORIGEM ---
 *
-  1  EA  USR-EVENTO             A        8     -     LOGIN NATURAL (DE)
-  1  EB  NOME-USUARIO           A       40     -     NOME COMPLETO
-  1  EC  COD-PERFIL             A        3     -     ADM/OPR/CON/AUD/SUP
-  1  ED  COD-LOTACAO            A       10     -     COD UNIDADE ORGANIZACIONAL
-  1  EE  IP-ORIGEM              A       15     -     IP TERMINAL (ADIC 2012)
-  1  EF  ID-SESSAO              A       20     -     IDENTIFICADOR SESSAO
+   1 EA USR-EVENTO               A    8    D LOGIN NATURAL
+   1 EB NOME-USUARIO             A   40  N   NOME COMPLETO
+   1 EC COD-PERFIL               A    3  N   ADM/OPR/CON/AUD/SUP
+   1 ED COD-LOTACAO              A   10  N   COD UNIDADE ORGANIZAC
+   1 EE IP-ORIGEM                A   15  N   IP TERMINAL (ADIC 2012)
+   1 EF ID-SESSAO                A   20  N   IDENTIFICADOR SESSAO
+   1 EG COD-TERMINAL             A    8  N D TERMINAL 3270 (1998)
+   1 EH COD-LU                   A    8  N   NOME LU VTAM (1998)
 *
 * --- CONTEXTO BATCH (SE BT) ---
 *
-  1  FA  NUM-CICLO-BATCH        N        6     -     CICLO PROCESSAMENTO
-  1  FB  NUM-SEQ-BATCH          N       10     -     SEQUENCIAL DENTRO CICLO
-  1  FC  NOM-JOB-BATCH          A       16     -     NOME JOB JES2/JCL
-  1  FD  SIT-BATCH              A        1     -     S=SUCESSO E=ERRO W=WARNING
-  1  FE  DES-ERRO-BATCH         A      120     -     MSG ERRO (SE APLIC)
+   1 FA NUM-CICLO-BATCH          N    6  N   CICLO PROCESSAMENTO
+   1 FB NUM-SEQ-BATCH            N   10  N   SEQUENCIAL DENTRO CICLO
+   1 FC NOM-JOB-BATCH            A   16  N   NOME JOB JES2/JCL
+   1 FD SIT-BATCH                A    1  F   S=SUCESSO E=ERRO W=WARN
+   1 FE DES-ERRO-BATCH           A  120  N   MSG ERRO (SE APLIC)
 *
 * --- CORRELACAO (PARA RASTREAR OPERACOES COMPOSTAS) ---
 *
-  1  GA  ID-CORRELACAO          A       36     -     UUID OPERACAO COMPOSTA
-  1  GB  NUM-SEQ-CORRELACAO     N        3     -     SEQUENCIAL DENTRO OPER
+   1 GA ID-CORRELACAO            A   36  N   UUID OPERACAO COMPOSTA
+   1 GB NUM-SEQ-CORRELACAO       N    3  N   SEQUENCIAL DENTRO OPER
 *
-* SUPERDESCRIPTORS:
-*   S1 = AB(1-8) + BA(1-2) -- DATA + ACAO
-*   S2 = CA(1-4) + CB(1-15) + AB(1-8) -- ENTIDADE + DATA
-*   S3 = EA(1-8) + AB(1-8) -- USUARIO + DATA
+* --- DESCRITORES DERIVADOS ---
 *
-* TOTAL CAMPOS: 34
-* TAMANHO MEDIO REGISTRO: ~1.2 KB (VARIAVEL - MU FIELDS)
-* ESTIMATIVA REGISTROS: 25.000.000 (ABR/2018)
+ S   SA ANO-MES-EVENTO           N    6    D SUBDESCRIPTOR (2010)
+        /* AB(1-6)
+ S   S1 SUPER-DATA-ACAO          A   10    S
+        /* AB(1-8), BA(1-2)
+ S   S2 SUPER-ENTID-DATA         A   27    S
+        /* CA(1-4), CB(1-15), AB(1-8)
+ S   S3 SUPER-USR-DATA           A   16    S
+        /* EA(1-8), AB(1-8)
+*
+* LEGENDA DE COLUNAS
+*   T  = TIPO      (BRANCO)=ELEMENTAR  G=GRUPO  M=MULTIPLE-VALUE
+*                  P=PERIODIC GROUP    S=DESCRITOR DERIVADO
+*   L  = NIVEL     1=CAMPO RAIZ  2=CAMPO DENTRO DE GRUPO/PE
+*   DB = SHORT NAME - NOME FISICO DE 2 BYTES NO FDT
+*   F  = FORMATO   A=ALFA  N=NUMERICO UNPACKED  P=PACKED DECIMAL
+*   LENG           BYTES OU DIGITOS,DECIMAIS (EX 9,2)
+*   S  = STORAGE   N=NULL SUPPRESSION  F=FIXED STORAGE
+*   D  = DESCRITOR D=DESCRIPTOR U=UNIQUE S=SUPER H=HYPER P=PHONETIC
+*   LINHA /* SOB UM DESCRITOR DERIVADO = CAMPOS QUE O COMPOEM
+*
+* TOTAL CAMPOS: 32 ELEMENTARES + 2 GRUPOS + 4 DESCRITORES DERIVADOS
+* TAM. REGISTRO: TIPICO       ~1,2 KB (VARIAVEL - CAMPOS MU)
+*                MAXIMO      4.995 BYTES (MU 1:20 OCUPADOS)
+*                COMPRIMIDO   ~745 BYTES (TAXA ADACMP 38%)
+* ESTIMATIVA REGISTROS: 417.884.120 (ADAREP 14/03/2018)
+* TOP-ISN 418.220.045   MAXISN 500.000.000   ISN REUSE: OFF
+* OCUPACAO DATA: 417.884.120 X 745 BYTES = 311 GB
+*
+* COMPOSICAO DO VOLUME (BASE FNR 150 E FNR 152):
+*   'CO' 1998-2010 (ATE PORT 213/2010) ......... 178.000.000
+*   'CO'/'DV' CONCILIACAO 01/2014-03/2018 ...... 193.800.000
+*   'LG'/'LO' LOGIN/LOGOUT 1998-2018 ...........  25.000.000
+*   'IN'/'AL' CADASTRO (4,2 M BENEF X ~5) ......  21.000.000
+*   DEMAIS ACOES ('BT','ER','AU','RE','EX') ....      84.120
+*   TOTAL ...................................... 417.884.120
 *
 * NOTA: ACOES 'CO' (CONSULTA) NAO SAO GRAVADAS DESDE 2010
 *       POR QUESTAO DE VOLUME (DECISAO CGTI - PORT. 213/2010)
@@ -93,5 +138,10 @@
 * NOTA2: CUIDADO - PROGRAMA RELAUDIT.NSN FILTRA ACOES 'EX'
 *        NA EXIBICAO. PARA VER EXCLUSOES, CONSULTAR
 *        DIRETAMENTE VIA ADABAS ONLINE (SYSAOS)
+*
+* NOTA3: PARTICIONAMENTO POR PERIODO. ESTE DDM DESCREVE APENAS
+*        O ARQUIVO CORRENTE (FNR 153). OS FNR 154 (2010-2014),
+*        155 (2005-2009) E 156 (1997-2004) USAM O MESMO LAYOUT
+*        E NAO POSSUEM DDM PUBLICADO NA LIB SIFAPPRD.
 *
 * * * FIM DO DDM AUDITORIA * * *

@@ -21,3 +21,10 @@
 
 # Logs
 *.log
+
+# Material de facilitador — gabaritos e respostas NUNCA entram neste repo (é público).
+# Mantenha sua cópia local; distribua aos facilitadores por canal privado.
+docs/FACILITADOR-GABARITO-MISTERIOS.md
+**/*GABARITO*.md
+**/*-RESPOSTAS.md
+**/*-ANSWER-KEY.md

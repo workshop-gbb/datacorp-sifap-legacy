@@ -1,0 +1,96 @@
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+* SUBPGM:   SUBVALCP
+* SISTEMA:  SIFAP - SIST. FISC. ADM. PAGAMENTOS
+* AUTOR:    MARCIA HELENA OLIVEIRA
+* DATA:     12/03/1998
+* ALTERADO: 17/05/2005 - MARCIA HELENA  - AJUSTE VALID CPF
+* ALTERADO: 07/06/2011 - ROBERTO MENDES - USO DO CCVALCPF
+* OBJETIVO: SUBPROGRAMA DE VALIDACAO DE CPF - MODULO 11.
+*           FONTE UNICA DE VERDADE DO SIFAP P/ CPF.
+*           NAO FAZ INPUT NEM WRITE - DEVOLVE TUDO PELA PDA.
+*
+* INVOCACAO:
+*   CALLNAT 'SUBVALCP' #PV-TIPO-DOC #PV-CPF #PV-NIS
+*                      #PV-COD-RETORNO #PV-MSG
+*                      #PV-IND-ESPECIAL
+*
+* PRE-CONDICAO:
+*   #PV-TIPO-DOC = 'C'
+*   #PV-CPF      = CPF COM 11 POSICOES, ZEROS A ESQUERDA
+*
+* POS-CONDICAO:
+*   #PV-COD-RETORNO = 0 QUANDO O CPF E VALIDO
+*
+* NOTA:     O PARAMETRO #PV-NIS NAO E USADO AQUI. A PDA E
+*           COMPARTILHADA COM SUBVALNI POR NORMA INTERNA
+*           (NT-SUPDE-011/1998). NAO REMOVER DA LISTA.
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+DEFINE DATA
+PARAMETER USING PDAVALID
+LOCAL
+  1 #CPF-STR             (A11)
+  1 #CPF-OK              (L)
+  1 #CPF-DIG             (N1/1:11)
+  1 #CPF-SOMA            (N5)
+  1 #CPF-QUOC            (N5)
+  1 #CPF-RESTO           (N2)
+  1 #CPF-DV1             (N1)
+  1 #CPF-DV2             (N1)
+  1 #CPF-PESO            (N2)
+  1 #CPF-IDX             (N2)
+  1 #CPF-IGUAIS          (L)
+END-DEFINE
+*
+RESET #PV-COD-RETORNO #PV-MSG
+MOVE 'N' TO #PV-IND-ESPECIAL
+*
+* ============================================
+* CONSISTENCIA DOS PARAMETROS DE ENTRADA
+* ============================================
+IF #PV-TIPO-DOC NE 'C'
+  MOVE 1004 TO #PV-COD-RETORNO
+  MOVE 'TIPO DE DOCUMENTO INVALIDO P/ SUBVALCP' TO #PV-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+IF #PV-CPF = ' ' OR #PV-CPF = '00000000000'
+  MOVE 1002 TO #PV-COD-RETORNO
+  MOVE 'CPF NAO INFORMADO' TO #PV-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+IF #PV-CPF NE MASK(NNNNNNNNNNN)
+  MOVE 1005 TO #PV-COD-RETORNO
+  MOVE 'CPF COM CARACTERE NAO NUMERICO' TO #PV-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+* ============================================
+* VALIDACAO MODULO 11 - ROTINA NORMATIVA
+* ============================================
+MOVE #PV-CPF TO #CPF-STR
+PERFORM VALIDA-CPF-PADRAO
+*
+IF NOT #CPF-OK
+  MOVE 1001 TO #PV-COD-RETORNO
+  MOVE 'CPF INVALIDO - DIGITO VERIFICADOR' TO #PV-MSG
+  ESCAPE ROUTINE
+END-IF
+*
+* CPF VALIDO
+MOVE 0 TO #PV-COD-RETORNO
+RESET #PV-MSG
+*
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ON ERROR
+  MOVE 9999 TO #PV-COD-RETORNO
+  COMPRESS 'ERRO NATURAL' *ERROR-NR
+           'LINHA' *ERROR-LINE
+           'PGM' *PROGRAM INTO #PV-MSG
+  ESCAPE ROUTINE
+END-ERROR
+*
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+INCLUDE CCVALCPF
+*
+END

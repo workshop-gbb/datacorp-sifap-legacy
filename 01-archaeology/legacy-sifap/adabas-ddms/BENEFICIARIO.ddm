@@ -4,102 +4,176 @@
 * SISTEMA:   SIFAP - SIST. FISC. ADM. PAGAMENTOS
 * AUTOR:     ROBERTO CARLOS FERREIRA - DBA ADABAS
 * DATA:      12/05/1997
-* ALTERADO:  18/07/2005 - ADILSON BATISTA - CAMPOS BIOMETRIA
+* ALTERADO:  14/09/1999 - MARCIA A. SOUZA - DADOS BANCARIOS HA-HD
+*            14/09/1999 - MARCIA A. SOUZA - SUBDESC SA ANO-NASCIMENTO
+*            07/02/2000 - ROBERTO C. FERREIRA - PHONETIC PN SOBRE AC
+*            08/03/2001 - MARCIA A. SOUZA - AM NUM-NIS / IA-IB SISOBI
+*            19/06/2003 - ROBERTO C. FERREIRA - AN NUM-BENEFICIO
+*            19/06/2003 - ROBERTO C. FERREIRA - IG COD-ORGAO-PAGADOR
+*            16/08/2004 - ADILSON BATISTA - IC COD-MOTIVO-BLOQUEIO
+*            18/07/2005 - ADILSON BATISTA - CAMPOS BIOMETRIA
+*            22/11/2006 - ADILSON BATISTA - ID/IE BLOQUEIO JUDICIAL
+*            30/07/2007 - ADILSON BATISTA - HYPERDESC H1 FAIXA-ELEG
+*            11/05/2009 - FERNANDA OLIVEIRA - JA/JB REPRESENT LEGAL
+*            27/02/2012 - FERNANDA OLIVEIRA - HE IND-PORTABILIDADE
+*            18/09/2012 - FERNANDA OLIVEIRA - CL IND-DOCUMENTOS-OK
+*            05/04/2013 - ANDERSON LIMA - CK QTD-DEPENDENTES
 *            03/11/2015 - CARLOS E. MENDES - CAMPO EMAIL/CELULAR
+*            19/11/2015 - CARLOS E. MENDES - MU ED NUM-TELEFONE
 * DESCRICAO: CADASTRO DE BENEFICIARIOS DE PROGRAMAS SOCIAIS
 *            BASE PRINCIPAL DO SIFAP - APROX 4.2 MILHOES REGISTROS
 * OBS:       ATENCAO - NAO ALTERAR ORDEM DOS CAMPOS SEM AUTORIZACAO
 *            DO COMITE TECNICO CGTI/MDAS (PORT. 847/2003)
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 *
-* DBID: 57    FNR: 150    DEFAULT SEQUENCE: AA
+* LISTDDM   BENEFICIARIO   LIB SIFAPPRD   NAT 4.2.6   14/03/2018 14:22
 *
-* LEVEL  NAME                 FORMAT  LENGTH  OCC   REMARK
-* -----  -------------------  ------  ------  ----  ---------------------------
+DDM NAME: BENEFICIARIO                    DEFAULT SEQUENCE: AA
+DBID: 057   FNR: 150
 *
-  1  AA  NUM-INSCRICAO          N       11     -     ISN ALTERNATIVO / MATRICULA
-  1  AB  NUM-CPF                A       11     -     CPF SEM FORMATACAO (DE)
-  1  AC  NOME-COMPLETO          A       60     -     NOME CIVIL OFICIAL
-  1  AD  NOME-MAE               A       60     -     NOME DA MAE (OBRIGAT)
-  1  AE  NOME-PAI               A       60     -     NOME DO PAI (OPCNAL)
-  1  AF  DT-NASCIMENTO          N        8     -     AAAAMMDD
-  1  AG  SEXO                   A        1     -     M/F/I (I=INDEFINIDO)
-  1  AH  EST-CIVIL              A        1     -     S=SOLT C=CAS D=DIV V=VIUV U=UN.EST
-  1  AI  RG-NUMERO              A       15     -     NUMERO RG
-  1  AJ  RG-ORGAO               A       10     -     ORGAO EXPEDIDOR
-  1  AK  RG-UF                  A        2     -     UF EXPEDICAO
-  1  AL  RG-DT-EXPEDICAO        N        8     -     AAAAMMDD
+ T L DB Name                     F Leng  S D Remark
+ - - -- ------------------------ - ----  - - ---------------------------
+*
+* --- IDENTIFICACAO ---
+*
+   1 AA NUM-INSCRICAO            N   11    U ISN ALTERNATIVO/MATRICULA
+   1 AB NUM-CPF                  A   11    U CPF SEM FORMATACAO
+   1 AC NOME-COMPLETO            A   60  N   NOME CIVIL OFICIAL
+   1 AD NOME-MAE                 A   60  N   NOME DA MAE (OBRIGAT)
+   1 AE NOME-PAI                 A   60  N   NOME DO PAI (OPCNAL)
+   1 AF DT-NASCIMENTO            N    8    D AAAAMMDD
+   1 AG SEXO                     A    1  F   M/F/I (I=INDEFINIDO)
+   1 AH EST-CIVIL                A    1  F   S=SOLT C=CAS D=DIV
+*                                             V=VIUV U=UN.EST
+   1 AI RG-NUMERO                A   15  N   NUMERO RG
+   1 AJ RG-ORGAO                 A   10  N   ORGAO EXPEDIDOR
+   1 AK RG-UF                    A    2  N   UF EXPEDICAO
+   1 AL RG-DT-EXPEDICAO          N    8  N   AAAAMMDD
+   1 AM NUM-NIS                  N   11  N U NIS/PIS-PASEP (ADIC 2001)
+   1 AN NUM-BENEFICIO            N   13  N U NUM CONCESSAO (ADIC 2003)
 *
 * --- GRUPO ENDERECO ---
 *
-  1  BA  GRP-ENDERECO           -        -     -     GRUPO ENDERECO
-  2  BB  LOGRADOURO             A       60     -     RUA/AV/TRAV ETC
-  2  BC  NUMERO                 A       10     -     NUM (ALFANUM P/ S/N ETC)
-  2  BD  COMPLEMENTO            A       30     -     APTO/BLOCO/SALA
-  2  BE  BAIRRO                 A       40     -
-  2  BF  MUNICIPIO              A       40     -
-  2  BG  UF                     A        2     -     SIGLA UF (DE)
-  2  BH  CEP                    N        8     -     CEP SEM HIFEN
-  2  BI  COD-IBGE               N        7     -     COD MUNICIPIO IBGE
-  2  BJ  COD-REGIAO             A        2     -     01-05 OU 99 (ESPECIAL)
+ G 1 BA GRP-ENDERECO                          GRUPO ENDERECO
+   2 BB LOGRADOURO               A   60  N   RUA/AV/TRAV ETC
+   2 BC NUMERO                   A   10  N   NUM (ALFANUM P/ S/N ETC)
+   2 BD COMPLEMENTO              A   30  N   APTO/BLOCO/SALA
+   2 BE BAIRRO                   A   40  N
+   2 BF MUNICIPIO                A   40  N
+   2 BG UF                       A    2    D SIGLA UF
+   2 BH CEP                      N    8  N   CEP SEM HIFEN
+   2 BI COD-IBGE                 N    7  N   COD MUNICIPIO IBGE
+   2 BJ COD-REGIAO               A    2    D 01-05 OU 99 (ESPECIAL)
 *
 * --- DADOS DO BENEFICIO ---
 *
-  1  CA  COD-PROGRAMA           A        4     -     COD DO PROG SOCIAL (PE)
-  1  CB  DT-CADASTRO            N        8     -     AAAAMMDD (DE)
-  1  CC  DT-INICIO-BENEF        N        8     -     AAAAMMDD
-  1  CD  DT-FIM-BENEF           N        8     -     AAAAMMDD (0 = SEM PRAZO)
-  1  CE  SIT-BENEFICIARIO       A        1     -     A=ATV S=SUSP C=CANC I=INAT D=DESL
-  1  CF  MOT-SITUACAO           A        3     -     COD MOTIVO (TAB INTERNA)
-  1  CG  DT-ULT-SITUACAO        N        8     -     AAAAMMDD
-  1  CH  VLR-RENDA-FAMILIAR     N        9.2   -     RENDA DECLARADA
-  1  CI  QTD-MEMBROS-FAMILIA    N        2     -     MEMBROS NO DOMICILIO
-  1  CJ  IND-RENDA-PERCAP       N        7.2   -     RENDA PER CAPITA CALC
+   1 CA COD-PROGRAMA             A    4    D COD DO PROG SOCIAL
+   1 CB DT-CADASTRO              N    8    D AAAAMMDD
+   1 CC DT-INICIO-BENEF          N    8      AAAAMMDD
+   1 CD DT-FIM-BENEF             N    8      AAAAMMDD (0 = SEM PRAZO)
+   1 CE SIT-BENEFICIARIO         A    1  F D A=ATV S=SUSP C=CANC
+*                                             I=INAT D=DESL
+   1 CF MOT-SITUACAO             A    3  N   COD MOTIVO (TAB INTERNA)
+   1 CG DT-ULT-SITUACAO          N    8  N   AAAAMMDD
+   1 CH VLR-RENDA-FAMILIAR       P  9,2  N   RENDA DECLARADA
+   1 CI QTD-MEMBROS-FAMILIA      N    2      MEMBROS NO DOMICILIO
+   1 CJ IND-RENDA-PERCAP         P  7,2  N   RENDA PER CAPITA CALC
+   1 CK QTD-DEPENDENTES          N    2  N   CONTADOR DEP ATIVOS
+*                                             (ADIC 2013 - A. LIMA)
+   1 CL IND-DOCUMENTOS-OK        A    1  F   S/N (ADIC 2012)
 *
 * --- DEPENDENTES (GRUPO PERIODICO - MAX 10 OCORRENCIAS) ---
 *
-  1  DA  GRP-DEPENDENTE        PE        -    10     GRUPO PERIODICO
-  2  DB  CPF-DEPENDENTE         A       11     -     CPF OU 00000000000
-  2  DC  NOME-DEPENDENTE        A       60     -
-  2  DD  DT-NASC-DEPEND         N        8     -     AAAAMMDD
-  2  DE  PARENTESCO             A        2     -     FI=FILHO CJ=CONJ NT=NETO TU=TUTEL
-  2  DF  SIT-DEPENDENTE         A        1     -     A=ATV I=INAT D=DESL
-  2  DG  IND-DEFICIENCIA        A        1     -     S/N
+ P 1 DA GRP-DEPENDENTE                        (1:10) GRUPO PERIODICO
+   2 DB CPF-DEPENDENTE           A   11  N   CPF OU 00000000000
+   2 DC NOME-DEPENDENTE          A   60  N
+   2 DD DT-NASC-DEPEND           N    8  N   AAAAMMDD
+   2 DE PARENTESCO               A    2  F   FI=FILHO CJ=CONJ
+*                                             NT=NETO TU=TUTEL
+   2 DF SIT-DEPENDENTE           A    1  F   A=ATV I=INAT D=DESL
+   2 DG IND-DEFICIENCIA          A    1  F   S/N
 *
 * --- CONTATO (ADICIONADO 2015 - CARLOS E. MENDES) ---
 *
-  1  EA  TEL-FIXO               A       14     -     (DD) NNNN-NNNN
-  1  EB  TEL-CELULAR            A       15     -     (DD) NNNNN-NNNN
-  1  EC  EMAIL                  A       80     -     EMAIL P/ NOTIFICACAO
+   1 EA TEL-FIXO                 A   14  N   (DD) NNNN-NNNN
+   1 EB TEL-CELULAR              A   15  N   (DD) NNNNN-NNNN
+   1 EC EMAIL                    A   80  N   EMAIL P/ NOTIFICACAO
+ M 1 ED NUM-TELEFONE             A   15  N   (1:5) TELS ADICIONAIS
 *
 * --- BIOMETRIA (ADICIONADO 2005 - ADILSON BATISTA) ---
 *
-  1  FA  IND-BIOMETRIA          A        1     -     S=SIM N=NAO P=PENDENTE
-  1  FB  DT-COLETA-BIO          N        8     -     AAAAMMDD
-  1  FC  COD-POSTO-BIO          A        6     -     COD POSTO COLETA
-  1  FD  HASH-DIGITAL           A       64     -     SHA-256 TEMPLATE (NAO IMPL)
+   1 FA IND-BIOMETRIA            A    1  F   S=SIM N=NAO P=PENDENTE
+   1 FB DT-COLETA-BIO            N    8  N   AAAAMMDD
+   1 FC COD-POSTO-BIO            A    6  N   COD POSTO COLETA
+   1 FD HASH-DIGITAL             A   64  N   SHA-256 TEMPLATE (NAO IMPL)
 *
 * --- CONTROLE INTERNO ---
 *
-  1  GA  DT-INCLUSAO            N        8     -     AAAAMMDD (DE)
-  1  GB  HR-INCLUSAO            N        6     -     HHMMSS
-  1  GC  USR-INCLUSAO           A        8     -     LOGIN NATURAL
-  1  GD  DT-ULT-ALTERACAO       N        8     -     AAAAMMDD
-  1  GE  HR-ULT-ALTERACAO       N        6     -     HHMMSS
-  1  GF  USR-ULT-ALTERACAO      A        8     -     LOGIN NATURAL
-  1  GG  NUM-VERSAO             N        5     -     CONTROLE CONCORRENCIA
+   1 GA DT-INCLUSAO              N    8    D AAAAMMDD
+   1 GB HR-INCLUSAO              N    6      HHMMSS
+   1 GC USR-INCLUSAO             A    8  N   LOGIN NATURAL
+   1 GD DT-ULT-ALTERACAO         N    8  N   AAAAMMDD
+   1 GE HR-ULT-ALTERACAO         N    6  N   HHMMSS
+   1 GF USR-ULT-ALTERACAO        A    8  N   LOGIN NATURAL
+   1 GG NUM-VERSAO               N    5      CONTROLE CONCORRENCIA
 *
-* (DE) = DESCRIPTOR (CAMPO INDEXADO PARA BUSCA)
-* (PE) = PERIODIC GROUP
-* (MU) = MULTIPLE VALUE FIELD
+* --- DADOS BANCARIOS (ADICIONADO 1999 - MARCIA A. SOUZA) ---
 *
-* SUPERDESCRIPTORS:
-*   S1 = AB(1-11) -- CPF COMPLETO
-*   S2 = BG(1-2) + CE(1-1) -- UF + SITUACAO
-*   S3 = CA(1-4) + CE(1-1) -- PROGRAMA + SITUACAO
+   1 HA COD-BANCO                A    3  N D COD FEBRABAN
+   1 HB COD-AGENCIA              A    6  N   NUM AGENCIA
+   1 HC NUM-CONTA                A   13  N   NUM CONTA C/ DIGITO
+   1 HD TIPO-CONTA               A    1  F   C=CORR P=POUP S=SOCIAL
+   1 HE IND-PORTABILIDADE        A    1  F   S/N (ADIC 2012)
 *
-* TOTAL CAMPOS: 52
-* TAMANHO MEDIO REGISTRO: ~850 BYTES
-* ESTIMATIVA REGISTROS: 4.200.000 (ABR/2018)
+* --- OBITO / BLOQUEIO ---
+*
+   1 IA IND-OBITO                A    1  F D S/N - CRUZAM SISOBI 2001
+   1 IB DT-OBITO                 N    8  N   AAAAMMDD (0=NAO INFORM)
+   1 IC COD-MOTIVO-BLOQUEIO      A    2  N D COD BLOQ (TAB INTERNA)
+   1 ID IND-JUDICIAL             A    1  F   S/N - DECISAO JUDICIAL
+   1 IE NUM-PROCESSO             A   20  N   NUM PROC JUDICIAL
+   1 IG COD-ORGAO-PAGADOR        N    5  N D ORGAO PAGADOR DESCENTR
+*
+* --- REPRESENTANTE LEGAL (ADICIONADO 2009 - FERNANDA OLIVEIRA) ---
+*
+   1 JA IND-REPRESENTANTE-LEGAL  A    1  F   S/N - CURATELA/TUTELA
+   1 JB CPF-REPRESENTANTE        A   11  N D CPF DO REPRESENTANTE
+*
+* --- DESCRITORES DERIVADOS ---
+*
+ S   PN FON-NOME                 A   20    P BUSCA FONETICA BALCAO
+        /* AC
+ S   SA ANO-NASCIMENTO           N    4    D SUBDESCRIPTOR
+        /* AF(1-4)
+ S   S2 SUPER-UF-SIT             A    3    S
+        /* BG(1-2), CE(1-1)
+ S   S3 SUPER-PROG-SIT           A    5    S
+        /* CA(1-4), CE(1-1)
+ S   H1 HIPER-FAIXA-ELEG         A    6    H HYPEREXIT 03
+        /* AF, CJ
+*
+* LEGENDA DE COLUNAS
+*   T  = TIPO      (BRANCO)=ELEMENTAR  G=GRUPO  M=MULTIPLE-VALUE
+*                  P=PERIODIC GROUP    S=DESCRITOR DERIVADO
+*   L  = NIVEL     1=CAMPO RAIZ  2=CAMPO DENTRO DE GRUPO/PE
+*   DB = SHORT NAME - NOME FISICO DE 2 BYTES NO FDT
+*   F  = FORMATO   A=ALFA  N=NUMERICO UNPACKED  P=PACKED DECIMAL
+*   LENG           BYTES OU DIGITOS,DECIMAIS (EX 9,2)
+*   S  = STORAGE   N=NULL SUPPRESSION  F=FIXED STORAGE
+*   D  = DESCRITOR D=DESCRIPTOR U=UNIQUE S=SUPER H=HYPER P=PHONETIC
+*   LINHA /* SOB UM DESCRITOR DERIVADO = CAMPOS QUE O COMPOEM
+*
+* TOTAL CAMPOS: 69 ELEMENTARES + 2 GRUPOS + 5 DESCRITORES DERIVADOS
+* TAM. REGISTRO: DESCOMPRIMIDO 1.739 BYTES
+*                COMPRIMIDO      ~850 BYTES (TAXA ADACMP 51%)
+* ESTIMATIVA REGISTROS: 4.201.884 (ADAREP 14/03/2018)
+* TOP-ISN 4.238.117   MAXISN 6.000.000   ISN REUSE: ON
+* OCUPACAO DATA: 4.201.884 X 850 BYTES = 3,4 GB
+*
+* NOTA: ESTE ARQUIVO E O DENOMINADOR DE TODO O SISTEMA.
+*       O VOLUME DE PAGAMENTO (FNR 152) E DE AUDITORIA (FNR 153)
+*       DERIVA DESTA POPULACAO - VER TRAILER DAQUELES DDMS.
+*
+* NOTA2: FDT FISICO DESTE ARQUIVO EM FDT-150-BENEFICIARIO.TXT
 *
 * * * FIM DO DDM BENEFICIARIO * * *
