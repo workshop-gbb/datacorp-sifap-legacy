@@ -1,56 +1,57 @@
-<!-- markdownlint-disable MD012 MD013 MD022 MD025 MD026 MD028 MD029 MD031 MD033 MD034 MD038 MD040 MD051 MD060 -->
+<!-- markdownlint-disable MD013 MD033 MD041 -->
 
 # Arquivos DDM Adabas
 
-![LEGADO DDMs Adabas](https://img.shields.io/badge/LEGADO-DDMs%20Adabas-F25022?style=for-the-badge) ![ARQUIVOS 4 DDMs](https://img.shields.io/badge/ARQUIVOS-4%20DDMs-1A1A1A?style=for-the-badge)
+> **Trilha:** [Kit do Time](../../../README.md) › [Estágio 1](../../README.md) › [Legado SIFAP](../README.md) › **Adabas DDMs**
 
-> 🗺 **Você está aqui:** [Kit PT-BR](../../../README.md) → [Estágio 1](../../README.md) → [Legado](../README.md) → **Adabas DDMs**
+**DDMs (Data Definition Modules) do sistema SIFAP.** Descrevem a estrutura física e lógica do banco Adabas usado pelo legado. Material de referência para o Par 4 (DBA + QA) durante o Estágio 1.
 
-> **Para quem é isto?** Para o time durante o Estágio 1, especialmente o Par 4 (DBA + QA) que lidera o mapeamento de DDMs → PostgreSQL.
->
-> **O que você terá ao final desta leitura:** lista de DDMs disponíveis e como ler a estrutura FDT.
+| Campo | Valor |
+|---|---|
+| **Público-alvo** | Par 4 (DBA + QA) lidera; todos os pares consultam |
+| **Pré-requisitos** | Leitura de [`COMO-LER-NATURAL.md`](../COMO-LER-NATURAL.md), seção 6 (tipos de campo) |
+| **Estágio** | Estágio 1 — Arqueologia |
+| **Resultado esperado** | Mapeamento dos campos relevantes ao recorte escolhido |
 
+---
 
-> Data Definition Modules que descrevem a estrutura física e lógica do banco Adabas usado pelo sistema SIFAP legado.
+## O que é um DDM
+
+Um **DDM (Data Definition Module)** é o arquivo que descreve o schema de uma base de dados Adabas — equivalente a um `CREATE TABLE` do SQL. Cada DDM lista os campos (com tipo, tamanho e atributos como descritor ou multi-valor) de um arquivo Adabas (FNR).
+
+**Por que importa:** sem ler o DDM você não sabe quais campos existem, quais tipos eles têm e quais estruturas (`MU`, `PE`) precisarão virar tabelas filhas no PostgreSQL. Os nomes de campo nos programas `.NSN` são abreviações que só fazem sentido quando cruzadas com o DDM.
+
+**Como se aplica ao SIFAP:** o programa `CALCBENF.NSN` referencia campos como `BN-VL-RENDA-PC` e `PS-VL-MAX`. Para entender o que cada campo representa, consulte os DDMs `BENEFICIARIO` e `PROGRAMA-SOCIAL`.
+
+---
 
 ## Conteúdo
 
-| Arquivo               | Descrição                                                        |
-| --------------------- | ---------------------------------------------------------------- |
-| `BENEFICIARIO.ddm`    | Registro mestre de beneficiário - dados pessoais, documentos, inscrição |
-| `PAGAMENTO.ddm`       | Registro de transação de pagamento - valores, datas, status      |
-| `PROGRAMA-SOCIAL.ddm` | Definições de programa social - regras, limites, elegibilidade   |
-| `AUDITORIA.ddm`       | Trilha de auditoria - quem alterou o quê e quando                |
+| Arquivo | Arquivo Adabas | Descrição |
+|---|---|---|
+| `BENEFICIARIO.ddm` | FNR 150 | Cadastro de beneficiários — dados pessoais, documentos, situação cadastral, histórico de status |
+| `PAGAMENTO.ddm` | FNR 152 | Registros de pagamento — valores, datas, status, banco pagador |
+| `PROGRAMA-SOCIAL.ddm` | FNR 151 | Programas sociais — regras de elegibilidade, faixas de valores, parâmetros de cálculo |
+| `AUDITORIA.ddm` | FNR 153 | Trilha de auditoria — ações de usuários, alterações cadastrais, ocorrências de fiscalização |
 
-## Uso
+---
 
-Estes arquivos são **material de referência somente leitura** para os times do workshop durante o estágio de Arqueologia (Estágio 1). Mapeie cada campo DDM para um campo de entidade JPA no sistema modernizado.
+## Como usar durante o Estágio 1
 
-## Navegação
+- [ ] **Abrir os DDMs relevantes à feature escolhida.** Nem sempre todos os 4 são necessários.
+- [ ] **Identificar campos do tipo `MU` e `PE`.** São os que viram tabelas filhas no PostgreSQL.
+- [ ] **Registrar o mapeamento** no [`dependency-map.md`](../../dependency-map.md) (seção de arestas Programa → DDM).
+- [ ] **Contribuir com termos** para o [`glossary.md`](../../glossary.md) — nomes de campos frequentemente revelam abreviações de domínio.
 
-| Pai                                  | Início                            |
-| ------------------------------------ | --------------------------------- |
-| [02 - Cenário Legado](../README.md)  | [Raiz do Workspace](../../README.md) |
-
+> [!WARNING]
+> Estes arquivos são material de referência somente leitura. Não edite os DDMs.
 
 ---
 
 ### Continuar a leitura
 
-<table width="100%">
-<tr>
-<td width="50%" valign="top" align="left">
-<sub><strong>← ANTERIOR</strong></sub><br/>
-<a href="../README.md"><strong>Legado SIFAP</strong></a><br/>
-<sub>Visão geral do legado.</sub>
-</td>
-<td width="50%" valign="top" align="right">
-<sub><strong>PRÓXIMO →</strong></sub><br/>
-<a href="../natural-programs/"><strong>Natural Programs</strong></a><br/>
-<sub>Programas .NSN.</sub>
-</td>
-</tr>
-</table>
+| Anterior | Próximo |
+|---|---|
+| [Legado SIFAP — visão geral](../README.md)<br/><sub>Contexto do sistema e inventário completo.</sub> | [Programas Natural](../natural-programs/README.md)<br/><sub>Os 15 arquivos `.NSN` com lógica de negócio.</sub> |
 
-<sub>↑ <a href="../../../README.md">Voltar ao Kit PT-BR</a></sub>
-
+<sub>[Voltar ao índice do kit](../../../README.md)</sub>

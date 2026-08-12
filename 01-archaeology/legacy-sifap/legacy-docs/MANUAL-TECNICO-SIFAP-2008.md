@@ -1,4 +1,4 @@
-<!-- markdownlint-disable MD012 MD013 MD022 MD025 MD026 MD028 MD029 MD031 MD033 MD034 MD038 MD040 MD051 MD060 -->
+<!-- markdownlint-disable MD013 MD033 MD041 -->
 
 ---
 title: "Manual Técnico do SIFAP - Sistema de Fiscalização e Administração de Pagamentos"
@@ -33,7 +33,8 @@ approval:
  date: "2008-12-02"
 ---
 
-<!-- markdownlint-disable MD013 MD025 MD026 MD028 MD029 MD034 MD040 MD051 MD060 -->
+> [!NOTE]
+> Este é um documento histórico reconstituído para fins do exercício de arqueologia do workshop SIFAP 2.0. O documento simula o Manual Técnico versão 2.3.1 (2008), tal como teria sido produzido pela equipe da SUPDE/DESIF. A linguagem de época, os nomes de pessoas, unidades e procedimentos foram preservados intencionalmente. **Este documento não deve ser usado como especificação atual do sistema.** As seções marcadas `[A COMPLETAR]` e os comentários internos sobre desatualizações fazem parte do exercício — eles representam lacunas reais de documentação que a equipe deve investigar.
 
 <!-- ====================================================================== -->
 <!-- MANUAL TÉCNICO DO SIFAP - VERSÃO 2.3 -->
@@ -161,30 +162,31 @@ O SIFAP utiliza **3 DDMs** principais no Adabas:
 
 ### 2.4. Diagrama de Componentes
 
-```
- ┌────────────────────────────────────────────────────┐
- │ AMBIENTE MAINFRAME a organização │
- │ │
- │ ┌──────────┐ ┌──────────┐ ┌──────────┐ │
- │ │ NATURAL │ │ ADABAS │ │ JES2 │ │
- │ │ 6.3.12 │◄──►│ 7.4.3 │ │ │ │
- │ │ │ │ │ │ Jobs │ │
- │ │ 8 Progs │ │ 3 DDMs │ │ Batch │ │
- │ │ Online │ │ │ │ │ │
- │ └────┬─────┘ └──────────┘ └────┬─────┘ │
- │ │ │ │
- │ ┌────▼─────┐ ┌─────▼────┐ │
- │ │ Com*plete│ │ BATCHPGT │ │
- │ │ Telas │ │ BATCHREL │ │
- │ │ 3270 │ │ BATCHCON │ │
- │ └────┬─────┘ └─────┬────┘ │
- └────────┼───────────────────────────────┼──────────┘
- │ │
- ┌────▼─────┐ ┌──────────▼──────────┐
- │Terminais │ │ Arquivos Externos │
- │3270 │ │ (CNAB 240 / TXT) │
- │Operadores│ │ → BB / SIAFI │
- └──────────┘ └─────────────────────┘
+```mermaid
+%%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
+flowchart TB
+    classDef step fill:#F5F5F5,stroke:#171717,color:#171717
+    classDef artifact fill:#FAFAFA,stroke:#A3A3A3,color:#404040
+    classDef external fill:#FFFFFF,stroke:#525252,color:#171717
+
+    subgraph MAIN["Ambiente Mainframe — a organização"]
+        NAT["Natural 6.3.12<br/>8 programas online"]:::step
+        ADA["Adabas 7.4.3<br/>3 DDMs"]:::step
+        JES["JES2 / z/OS 1.8<br/>Jobs Batch"]:::step
+        NAT <--> ADA
+        JES --> ADA
+
+        COMPLETE["Com*plete<br/>Telas 3270"]:::step
+        BATCH["BATCHPGT<br/>BATCHREL<br/>BATCHCON"]:::step
+        NAT --> COMPLETE
+        JES --> BATCH
+    end
+
+    TERM["Terminais 3270<br/>Operadores"]:::external
+    EXTFILES["Arquivos Externos<br/>CNAB 240 / TXT<br/>BB / SIAFI"]:::external
+
+    COMPLETE --> TERM
+    BATCH --> EXTFILES
 ```
 
 <!-- NOTA: Este diagrama não reflete os programas adicionados em 2005
@@ -405,40 +407,30 @@ O ciclo mensal de processamento do SIFAP segue o seguinte calendário:
 
 ### 4.2. Diagrama de Fluxo
 
-```
- ┌──────────┐ ┌──────────┐ ┌──────────┐
- │ CADPROG │ │ VALELEG │ │ BATCHREL │
- │(D-5) │────►│(D-2) │────►│(D-1) │
- │Parâmetros│ │Validação │ │Prévio │
- └──────────┘ └──────────┘ └────┬─────┘
- │
- ▼
- ┌──────────┐
- │ BATCHPGT │
- │(D=1oDU) │
- │Folha Pag.│
- └────┬─────┘
- │
- ┌─────────────┼─────────────┐
- ▼ ▼ ▼
- ┌──────────┐ ┌──────────┐ ┌──────────┐
- │Arq. CNAB │ │DDM PAGTO │ │Log Proc. │
- │(BB/CAIXA)│ │(Adabas) │ │ │
- └────┬─────┘ └──────────┘ └──────────┘
- │
- ▼
- ┌──────────┐ ┌──────────┐
- │Retorno │────►│ BATCHCON │
- │Bancário │ │(D+4) │
- │(D+3) │ │Conciliaç.│
- └──────────┘ └────┬─────┘
- │
- ▼
- ┌──────────┐
- │ BATCHREL │
- │(D+5) │
- │Relatórios│
- └──────────┘
+```mermaid
+%%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
+flowchart TB
+    classDef step fill:#F5F5F5,stroke:#171717,color:#171717
+    classDef artifact fill:#FAFAFA,stroke:#A3A3A3,color:#404040
+
+    CADPROG["CADPROG<br/>(D-5)<br/>Atualização de parâmetros"]:::step
+    VALELEG_PRE["VALELEG<br/>(D-2)<br/>Validação de elegibilidade"]:::step
+    BATCHREL_PRE["BATCHREL<br/>(D-1)<br/>Relatório prévio"]:::step
+    BATCHPGT["BATCHPGT<br/>(D = 1o DU)<br/>Folha de pagamento"]:::step
+    CNAB["Arquivo CNAB<br/>BB"]:::artifact
+    DDM_PAGTO["DDM PAGAMENTO<br/>(Adabas)"]:::artifact
+    LOG["Log de<br/>processamento"]:::artifact
+    RETORNO["Retorno bancário<br/>(D+3)"]:::artifact
+    BATCHCON["BATCHCON<br/>(D+4)<br/>Conciliação"]:::step
+    BATCHREL_POS["BATCHREL<br/>(D+5)<br/>Relatórios finais"]:::step
+
+    CADPROG --> VALELEG_PRE --> BATCHREL_PRE --> BATCHPGT
+    BATCHPGT --> CNAB
+    BATCHPGT --> DDM_PAGTO
+    BATCHPGT --> LOG
+    CNAB --> RETORNO
+    RETORNO --> BATCHCON
+    BATCHCON --> BATCHREL_POS
 ```
 
 ### 4.3. Tratamento de Exceções
