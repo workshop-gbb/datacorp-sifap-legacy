@@ -189,32 +189,17 @@ O Copilot vai traduzir. **Compare** com a sua interpretação. Se bate, escreva 
 
 ---
 
-## 5. Exemplo completo: do `.NSN` à linha do catálogo
+## 5. Do `.NSN` à linha do catálogo
 
-### O que você vê em `CALCDSCT.NSN` (linhas 142-148):
-
-```natural
-* CHECK DEDUCTION CAP
-IF #TIPO-DSCT NE 'J'
-  IF #VLR-TOTAL-DSCT > (#VLR-BRUTO * 0.30)
-    COMPUTE #VLR-TOTAL-DSCT = #VLR-BRUTO * 0.30
-  END-IF
-END-IF
-```
-
-### Tradução em linguagem natural:
-
-> Se o tipo de desconto **não** é judicial (`NE 'J'`), e se o total já passou de 30% do valor bruto, então **trunca** o desconto em 30%.
->
-> Em outras palavras: **descontos têm teto de 30%, EXCETO judiciais que não têm teto**.
-
-### Linha que vai para o `business-rules-catalog.md`:
+Para cada condicional, descreva apenas o comportamento que a equipe confirmou.
+Registre a evidência sem completar intenções que não estejam explícitas:
 
 | ID | Regra | Programa Fonte | Risco |
 |---|---|---|---|
-| BR-013 | Desconto total ≤ 30% do bruto, exceto judiciais (tipo J) | `01-arqueologia/legado-sifap/natural-programs/CALCDSCT.NSN#L142-L148` | CRÍTICO |
+| BR-XXX | <!-- comportamento confirmado --> | `arquivo.NSN#L<início>-L<fim>` | <!-- avaliar --> |
 
-Pronto. Você extraiu uma regra de negócio sem precisar saber programar em Natural.
+Uma condição ambígua deve ser registrada como pergunta em aberto, não convertida
+em regra pronta.
 
 ---
 
@@ -304,12 +289,12 @@ Esse pedido nunca atrapalha — é o trabalho do facilitador.
 <tr>
 <td width="50%" valign="top" align="left">
 <sub><strong>← ANTERIOR</strong></sub><br/>
-<a href="../07-conceitos/03-glossario-visual.md"><strong>Glossário Visual</strong></a><br/>
+<a href="../../07-conceitos/03-glossario-visual.md"><strong>Glossário Visual</strong></a><br/>
 <sub>30+ termos técnicos com analogia em 3 linhas.</sub>
 </td>
 <td width="50%" valign="top" align="right">
 <sub><strong>PRÓXIMO →</strong></sub><br/>
-<a href="../01-arqueologia/GUIDE.md"><strong>Estágio 1 — Arqueologia</strong></a><br/>
+<a href="../GUIDE.md"><strong>Estágio 1 — Arqueologia</strong></a><br/>
 <sub>11:00–12:00 + 13:30–14:00 · Ler o legado e catalogar regras de negócio.</sub>
 </td>
 </tr>
