@@ -8,29 +8,31 @@ version: "2.3.1"
 classification: "RESTRITO"
 distribution: "SUPDE/DESIF, CGTI/MDAS, SENARC/CGPB"
 revision_history:
- - version: "1.0.0"
+
+- version: "1.0.0"
  date: "2006-03-10"
  author: "Fernanda Lucia de Oliveira"
  description: "Versão inicial - módulo de cadastro"
- - version: "2.0.0"
+- version: "2.0.0"
  date: "2007-08-22"
  author: "Fernanda Lucia de Oliveira"
  description: "Inclusão dos módulos de cálculo e batch"
- - version: "2.3.0"
+- version: "2.3.0"
  date: "2008-09-15"
  author: "Fernanda Lucia de Oliveira"
  description: "Revisão geral, inclusão do módulo de auditoria"
- - version: "2.3.1"
+- version: "2.3.1"
  date: "2008-11-20"
  author: "Fernanda Lucia de Oliveira"
  description: "Correções textuais e inclusão de contatos atualizados"
 approval:
- - name: "Roberto Carlos Meirelles"
+- name: "Roberto Carlos Meirelles"
  role: "Analista de Sistemas Sênior - SUPDE/DESIF"
  date: "2008-11-25"
- - name: "Maria Helena Costa"
+- name: "Maria Helena Costa"
  role: "Coordenadora DESIF"
  date: "2008-12-02"
+
 ---
 
 > [!NOTE]
@@ -502,20 +504,20 @@ Em caso de ABEND durante a execução do BATCHPGT, seguir os passos abaixo:
 
 | Nome                       | Função                           | Ramal | E-mail                          | Observação                                |
 | -------------------------- | -------------------------------- | ----- | ------------------------------- | ----------------------------------------- |
-| Roberto Carlos Meirelles   | Analista Sênior / Coord. Técnico | 3411  | roberto.meirelles@client.gov.br | Arquitetura e decisões técnicas           |
-| Fernanda Lucia de Oliveira | Analista de Negócios             | 3415  | fernanda.oliveira@client.gov.br | Documentação e regras de negócio          |
-| Marcos Antônio Ferreira    | Programador Natural Sênior       | 3418  | marcos.ferreira@client.gov.br   | Manutenção de código - módulos de cálculo |
-| Cláudia Regina dos Santos  | DBA Adabas                       | 3422  | claudia.santos@client.gov.br    | Administração de banco de dados           |
+| Roberto Carlos Meirelles   | Analista Sênior / Coord. Técnico | 3411  | <roberto.meirelles@client.gov.br> | Arquitetura e decisões técnicas           |
+| Fernanda Lucia de Oliveira | Analista de Negócios             | 3415  | <fernanda.oliveira@client.gov.br> | Documentação e regras de negócio          |
+| Marcos Antônio Ferreira    | Programador Natural Sênior       | 3418  | <marcos.ferreira@client.gov.br>   | Manutenção de código - módulos de cálculo |
+| Cláudia Regina dos Santos  | DBA Adabas                       | 3422  | <claudia.santos@client.gov.br>    | Administração de banco de dados           |
 | José Aparecido Lima        | Programador Natural              | -     | -                               | Aposentado desde 2005                     |
-| Patrícia Helena Moura      | Analista de Sistemas             | 3419  | patricia.moura@client.gov.br    | Integração SIAFI e auditoria              |
-| Antônio Carlos Ribeiro     | Analista de Suporte / Operação   | 3430  | antonio.ribeiro@client.gov.br   | Operação batch e monitoração              |
+| Patrícia Helena Moura      | Analista de Sistemas             | 3419  | <patricia.moura@client.gov.br>    | Integração SIAFI e auditoria              |
+| Antônio Carlos Ribeiro     | Analista de Suporte / Operação   | 3430  | <antonio.ribeiro@client.gov.br>   | Operação batch e monitoração              |
 
 ### 6.2. Equipe SENARC / CGPB
 
 | Nome                  | Função                      | Telefone       | E-mail                   |
 | --------------------- | --------------------------- | -------------- | ------------------------ |
-| Ana Cristina Barros   | Analista de Negócios SENARC | (61) 2030-XXXX | ana.barros@mds.gov.br    |
-| Carlos Eduardo Mendes | Coord. CGPB                 | (61) 2030-XXXX | carlos.mendes@mds.gov.br |
+| Ana Cristina Barros   | Analista de Negócios SENARC | (61) 2030-XXXX | <ana.barros@mds.gov.br>    |
+| Carlos Eduardo Mendes | Coord. CGPB                 | (61) 2030-XXXX | <carlos.mendes@mds.gov.br> |
 
 ### 6.3. Suporte de Infraestrutura
 
@@ -525,7 +527,7 @@ Em caso de ABEND durante a execução do BATCHPGT, seguir os passos abaixo:
 | DBA Adabas - Equipe Central   | Coordenação DBA      | 3510  | Suporte a incidentes Adabas             |
 | Rede / Comunicação            | NOC a organização | 3600  | Conectividade e transmissão de arquivos |
 
-> **Nota:** Os ramais e e-mails acima referem-se à estrutura organizacional vigente em novembro de 2008. Em caso de alteração, consultar o catálogo telefônico interno do a organização (intranet: http://intranet.client.gov.br/catalogo).
+> **Nota:** Os ramais e e-mails acima referem-se à estrutura organizacional vigente em novembro de 2008. Em caso de alteração, consultar o catálogo telefônico interno do a organização (intranet: <http://intranet.client.gov.br/catalogo>).
 
 ---
 

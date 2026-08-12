@@ -1,6 +1,7 @@
 <!-- markdownlint-disable MD013 MD033 MD041 -->
 
 ---
+
 title: "Documentação Legada - SIFAP"
 description: "Documentos técnicos históricos do sistema SIFAP original (1997–2012)"
 author: "Paula Silva, Americas Software GBB, Microsoft"

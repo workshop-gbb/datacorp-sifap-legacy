@@ -1,6 +1,7 @@
 <!-- markdownlint-disable MD013 MD033 MD041 -->
 
 ---
+
 title: "Projeto SIFAP - Documento de Arquitetura Técnica"
 author: "Roberto Carlos Ferreira - Analista de Sistemas Sênior"
 date: "1997-05-20"
@@ -367,7 +368,7 @@ O controle de acesso ao SIFAP será implementado em dois níveis:
 - SUPERVISOR: acesso completo, incluindo exclusão e parametrização;
 - AUDITOR: acesso somente leitura a todos os módulos + relatórios de auditoria.
 
-2. **Nível Aplicação:** Verificação adicional via GDA (Global Data Area) de sessão, contendo código do usuário, perfil e regional de origem.
+1. **Nível Aplicação:** Verificação adicional via GDA (Global Data Area) de sessão, contendo código do usuário, perfil e regional de origem.
 
 ### 6.2. Trilha de Auditoria
 

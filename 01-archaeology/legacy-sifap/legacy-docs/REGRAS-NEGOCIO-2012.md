@@ -9,18 +9,20 @@ classification: "RESTRITO"
 status: "INCOMPLETO - Levantamento interrompido"
 distribution: "SENARC/CGPB, SUPDE/DESIF, CGTI/MDAS"
 revision_history:
- - version: "0.1.0"
+
+- version: "0.1.0"
  date: "2012-06-04"
  author: "Ana Cristina Barros"
  description: "Início do levantamento - módulo de cadastro"
- - version: "0.5.0"
+- version: "0.5.0"
  date: "2012-07-10"
  author: "Ana Cristina Barros"
  description: "Inclusão parcial dos módulos de cálculo e descontos"
- - version: "1.0.0-DRAFT"
+- version: "1.0.0-DRAFT"
  date: "2012-08-14"
  author: "Ana Cristina Barros"
  description: "Última versão - levantamento interrompido"
+
 ---
 
 > [!NOTE]
