@@ -22,7 +22,7 @@
 
 | Grupo | Quantos | Extensões | O que fazer com eles |
 |---|---|---|---|
-| **Programas** | 15 | `.NSN` | **Leitura atribuída.** 3 por par |
+| **Membros atribuídos** | 15 | `.NSP` (12 programas), `.NSN` (3 subprogramas) | **Leitura atribuída.** 3 por par |
 | **Membros de apoio** | 9 | `.NSA`, `.NSL`, `.NSC`, `.NSN`, `.jcl` | **Consulta sob demanda.** Infraestrutura compartilhada |
 
 > [!IMPORTANT]
@@ -37,21 +37,21 @@ Tudo fica num diretório só porque uma biblioteca Natural é **plana**: `CALLNA
 
 | Par | Programa | Autor | Ano | Descrição |
 |---|---|---|---|---|
-| **1 · Visão** (PO + RE) — cadastro | `CADBENEF.NSN` | Roberto Meirelles | 1997 | Cadastro de beneficiário — inclusão, alteração, exclusão |
-| | `CADDEPEND.NSN` | José A. Lima | 1998 | Cadastro de dependente vinculado ao beneficiário titular |
-| | `CADPROG.NSN` | Fernanda C. Oliveira | 1997 | Cadastro de programa social — parâmetros e faixas de valores |
-| **2 · Arquitetura** (EA + SA) — batch | `BATCHPGT.NSN` | José A. Lima | 1999 | Pagamento batch — gera os ciclos mensais de pagamento |
-| | `BATCHREL.NSN` | José A. Lima | 1999 | Relatório batch — produz os relatórios gerenciais |
-| | `BATCHCON.NSN` | Patrícia H. Moura | 2002 | Conciliação batch — reconcilia pagamentos com o SIAFI |
+| **1 · Visão** (PO + RE) — cadastro | `CADBENEF.NSP` | Roberto Meirelles | 1997 | Cadastro de beneficiário — inclusão, alteração, exclusão |
+| | `CADDEPEND.NSP` | José A. Lima | 1998 | Cadastro de dependente vinculado ao beneficiário titular |
+| | `CADPROG.NSP` | Fernanda C. Oliveira | 1997 | Cadastro de programa social — parâmetros e faixas de valores |
+| **2 · Arquitetura** (EA + SA) — batch | `BATCHPGT.NSP` | José A. Lima | 1999 | Pagamento batch — gera os ciclos mensais de pagamento |
+| | `BATCHREL.NSP` | José A. Lima | 1999 | Relatório batch — produz os relatórios gerenciais |
+| | `BATCHCON.NSP` | Patrícia H. Moura | 2002 | Conciliação batch — reconcilia pagamentos com o SIAFI |
 | **3 · Implementação** (TL + Dev) — cálculo | `CALCBENF.NSN` | Roberto Meirelles | 1998 | Cálculo do valor do benefício por programa e faixa |
-| | `CALCCORR.NSN` | Marcos A. Ferreira | 2005 | Cálculo de correções e reajustes por índices anuais |
-| | `CALCDSCT.NSN` | Marcos A. Ferreira | 2015 | Cálculo de descontos e deduções legais (consignações, IR) |
+| | `CALCCORR.NSP` | Marcos A. Ferreira | 2005 | Cálculo de correções e reajustes por índices anuais |
+| | `CALCDSCT.NSP` | Marcos A. Ferreira | 2015 | Cálculo de descontos e deduções legais (consignações, IR) |
 | **4 · Qualidade** (DBA + QA) — validação | `VALBENEF.NSN` | Roberto Meirelles | 1997 | Validação de dados cadastrais (CPF, NIS) |
-| | `VALDOCS.NSN` | Patrícia H. Moura | 2003 | Validação de documentação comprobatória |
+| | `VALDOCS.NSP` | Patrícia H. Moura | 2003 | Validação de documentação comprobatória |
 | | `VALELEG.NSN` | Fernanda C. Oliveira | 1999 | Validação de elegibilidade — cruzamento com regras do programa |
-| **5 · Operações** (DevOps + TW) — consulta e relatório | `CONSBENF.NSN` | Roberto Meirelles | 1997 | Consulta de beneficiário por múltiplos critérios (tela 3270) |
-| | `RELPGT.NSN` | Patrícia H. Moura | 2003 | Relatório de pagamentos por período, programa e UF |
-| | `RELAUDIT.NSN` | Marcos A. Ferreira | 2005 | Relatório de auditoria — ocorrências e divergências |
+| **5 · Operações** (DevOps + TW) — consulta e relatório | `CONSBENF.NSP` | Roberto Meirelles | 1997 | Consulta de beneficiário por múltiplos critérios (tela 3270) |
+| | `RELPGT.NSP` | Patrícia H. Moura | 2003 | Relatório de pagamentos por período, programa e UF |
+| | `RELAUDIT.NSP` | Marcos A. Ferreira | 2005 | Relatório de auditoria — ocorrências e divergências |
 
 ---
 
@@ -98,13 +98,13 @@ Os membros desta pasta se referenciam entre si. Descobrir **quem chama quem** é
 ```bash
 cd 01-arqueologia/legado-sifap/natural-programs
 
-grep -n "CALLNAT" *.NSN          # chamada de subprograma  (aresta entre módulos)
-grep -n "INCLUDE" *.NSN          # copycode colado         (aresta para .NSC)
-grep -n "USING"   *.NSN          # PDA e LDA utilizadas    (aresta para .NSA/.NSL)
+grep -n "CALLNAT" *.NSP *.NSN   # chamada de subprograma  (aresta entre módulos)
+grep -n "INCLUDE" *.NSP *.NSN   # copycode colado         (aresta para .NSC)
+grep -n "USING"   *.NSP *.NSN   # PDA e LDA utilizadas    (aresta para .NSA/.NSL)
 grep -n -A 8 "CMSYNIN" *.jcl     # que programa cada job executa
 ```
 
-No VS Code, o equivalente é Ctrl+Shift+F com a expressão regular `CALLNAT|INCLUDE|USING` e o filtro de arquivos `*.NSN`.
+No VS Code, o equivalente é Ctrl+Shift+F com a expressão regular `CALLNAT|INCLUDE|USING` e o filtro de arquivos `*.NSP,*.NSN`.
 
 **O que registrar para cada aresta encontrada:**
 

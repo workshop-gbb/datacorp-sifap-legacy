@@ -25,7 +25,7 @@ LOCAL
     2 COD-PROGRAMA       (A4)
     2 VLR-RENDA-FAMILIAR (P9,2)
     2 QTD-DEPENDENTES    (N2)
-    2 COD-REGIAO         (N2)
+    2 COD-REGIAO         (A2)
     2 UF                 (A2)
     2 NUM-NIS            (N11)
 *

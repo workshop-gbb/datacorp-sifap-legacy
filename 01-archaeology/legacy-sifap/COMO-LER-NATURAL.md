@@ -60,7 +60,7 @@ END
 3. **Corpo** (depois de `END-DEFINE`): **aqui está a lógica de negócio**. É o que você quer extrair.
 
 > [!NOTE]
-> Nos fontes (`.NSN`, `.NSA`, `.NSL`, `.NSC`, `.ddm`) os comentários estão em português **maiúsculo e sem acentos**. Não é descuido: o terminal 3270 do mainframe usa EBCDIC e não representa acentuação de forma confiável. Nesta documentação em Markdown, acentos são normais.
+> Nos fontes (`.NSP`, `.NSN`, `.NSA`, `.NSL`, `.NSC`, `.NSD`) os comentários estão em português **maiúsculo e sem acentos**. Não é descuido: o terminal 3270 do mainframe usa EBCDIC e não representa acentuação de forma confiável. Nesta documentação em Markdown, acentos são normais.
 
 ---
 
@@ -70,13 +70,18 @@ Um programa Natural quase nunca está sozinho. O SIFAP tem programas, mas també
 
 | Extensão | Tipo de membro | Para que serve | Como entra no programa |
 |---|---|---|---|
-| `.NSN` | Programa ou subprograma | Lógica executável | executado direto, ou chamado por `CALLNAT '<nome>'` |
+| `.NSP` | Programa | Ponto de entrada executável — batch ou online | executado direto (`EXEC PGM=NATBATCH`, ou digitado no terminal) |
+| `.NSN` | Subprograma | Lógica reutilizável com contrato de parâmetros | `CALLNAT '<nome>'` |
+| `.NSS` | Subrotina externa | Rotina compartilhada, chamada pelo nome | `PERFORM <subrotina>` |
 | `.NSA` | PDA — *Parameter Data Area* | Contrato de parâmetros entre chamador e chamado | `PARAMETER USING <pda>` no chamado; `LOCAL USING <pda>` no chamador |
 | `.NSL` | LDA — *Local Data Area* | Campos e tabelas compartilhados por vários módulos | `LOCAL USING <lda>` |
 | `.NSC` | Copycode | Trecho de código colado em tempo de compilação | `INCLUDE <copycode>` |
 | `.NSM` | MAP | Layout de tela 3270 | `INPUT USING MAP '<map>'` |
-| `.NSS` | Subrotina externa | Rotina compartilhada, chamada pelo nome | `PERFORM <subrotina>` |
+| `.NSD` | DDM — *Data Definition Module* | Como o Natural enxerga um arquivo Adabas | `VIEW OF <ddm>` no `DEFINE DATA` |
 | `.jcl` | JCL z/OS | Como o batch roda em produção: jobs, arquivos, agendamento | fora do Natural — `EXEC PGM=NATBATCH` |
+
+> [!IMPORTANT]
+> **A extensão diz o tipo do membro, e o tipo determina como o módulo é acionado.** Confundir `.NSP` com `.NSN` é o erro mais comum de quem chega ao Natural: um programa não pode ser alvo de `CALLNAT`, e um subprograma não pode ser executado direto. No SIFAP são **12 programas** (`.NSP`) e **5 subprogramas** (`.NSN`).
 
 ### 2.1. As quatro linhas que criam dependência
 
@@ -227,7 +232,7 @@ Três coisas para levar:
 
 ## 5. Extraindo uma regra em 5 passos
 
-Use `CALCDSCT.NSN` como exemplo.
+Use `CALCDSCT.NSP` como exemplo.
 
 ### Passo 1 — Ler o cabeçalho (1 min)
 
