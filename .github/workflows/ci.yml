@@ -134,5 +134,18 @@ jobs:
       - name: Validate
         run: |
           set -euo pipefail
-          terraform init -backend=false -input=false
-          terraform validate
+          # `terraform validate` only ever looks at the CURRENT directory. Running it in infra/,
+          # which holds no root .tf files, returned a vacuous "Success!" and validated nothing.
+          # Walk every directory that actually declares Terraform and validate each one.
+          shopt -s nullglob
+          modules=$(find . -type f -name '*.tf' -not -path '*/.terraform/*' -exec dirname {} \; | sort -u)
+          if [ -z "$modules" ]; then
+            echo "No Terraform modules found under infra/" >&2
+            exit 1
+          fi
+          for dir in $modules; do
+            echo "::group::validate $dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done

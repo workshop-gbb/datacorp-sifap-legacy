@@ -34,6 +34,8 @@ resource "azurerm_virtual_network" "lab" {
   tags                = local.tags
 }
 
+# azurerm_subnet carries no tags argument in azurerm 3.x (removed in 2.0), so the
+# repo tagging rule is satisfied at the vnet level. Do not add `tags` here: it fails validate.
 resource "azurerm_subnet" "lab" {
   name                 = "${local.name_prefix}-snet-runtime"
   resource_group_name  = azurerm_resource_group.lab.name
@@ -98,6 +100,10 @@ resource "azurerm_network_security_group" "lab" {
     destination_address_prefix = "*"
   }
 
+  # Explicit deny backstop. 4096 is the last usable priority, so it sits after every rule
+  # above and before Azure's defaults (AllowVnetInBound 65000, AllowAzureLoadBalancerInBound
+  # 65001, DenyAllInBound 65500). It therefore also shadows intra-vnet inbound traffic, which
+  # is intended: this lab is a single VM with no peer that needs to reach it.
   security_rule {
     name                       = "DenyAllOtherInbound"
     priority                   = 4096
@@ -134,6 +140,7 @@ resource "azurerm_network_interface" "lab" {
   }
 }
 
+# Association resources expose no tags argument; the tagged objects are the NIC and the NSG.
 resource "azurerm_network_interface_security_group_association" "lab" {
   network_interface_id      = azurerm_network_interface.lab.id
   network_security_group_id = azurerm_network_security_group.lab.id
@@ -164,6 +171,25 @@ resource "random_string" "kv_suffix" {
   numeric = true
 }
 
+# Key Vault posture — deliberate choices for a DISPOSABLE workshop lab, not a template for prod:
+#
+#   soft_delete_retention_days = 7   Azure minimum. The vault holds one generated lab password
+#                                    with no recovery value; a long window only blocks name reuse.
+#   purge_protection_enabled   = false  Purge protection is IRREVERSIBLE once enabled and would
+#                                    keep the vault name (and its charges) alive for the full
+#                                    retention window after `terraform destroy`. The documented
+#                                    teardown for this lab is destroy-and-forget, so it stays off.
+#                                    In any non-lab environment this MUST be true.
+#   enable_rbac_authorization  = false  Access-policy model keeps the grant to the VM's managed
+#                                    identity inside this state, with no dependency on the
+#                                    deployer holding "User Access Administrator" to create
+#                                    role assignments — a common blocker on workshop tenants.
+#
+# Network exposure: the vault is left on its public endpoint (no network_acls) because the VM
+# reads its secret over the public endpoint via its own egress IP, and the workshop operator
+# writes the secret from a laptop. Locking this down properly needs a private endpoint or an
+# IP allow-list covering both; see the residual risk noted in the module review before reusing
+# this pattern outside a throwaway lab.
 resource "azurerm_key_vault" "lab" {
   name                       = "${var.project}${var.environment}kv${random_string.kv_suffix.result}"
   location                   = azurerm_resource_group.lab.location
@@ -176,6 +202,8 @@ resource "azurerm_key_vault" "lab" {
   tags                       = local.tags
 }
 
+# Access policies carry no tags argument; the vault they attach to is tagged.
+# Deployer policy is what lets the secret below be written; the VM policy is Get-only.
 resource "azurerm_key_vault_access_policy" "deployer" {
   key_vault_id = azurerm_key_vault.lab.id
   tenant_id    = data.azurerm_client_config.current.tenant_id
@@ -265,6 +293,7 @@ resource "azurerm_linux_virtual_machine" "lab" {
   }
 }
 
+# Data disk attachment is a link, not a taggable object; the disk itself carries local.tags.
 resource "azurerm_virtual_machine_data_disk_attachment" "adabas_data" {
   managed_disk_id    = azurerm_managed_disk.adabas_data.id
   virtual_machine_id = azurerm_linux_virtual_machine.lab.id

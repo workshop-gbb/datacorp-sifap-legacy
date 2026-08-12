@@ -256,7 +256,7 @@ Somente duas variáveis são obrigatórias. As demais têm padrão definido em `
 | `location` | Não | `brazilsouth` | Região Azure |
 | `location_short` | Não | `brs` | Código curto usado no nome dos recursos |
 | `vm_size` | Não | `Standard_D2s_v3` | 2 vCPU / 8 GB, piso prático para Adabas CE e Natural CE juntos |
-| `admin_username` | Não | `sifapadmin` | Usuário administrador da VM |
+| `admin_username` | Não | `sifapadmin` | Usuário administrador da VM. O `cloud-init.yaml` adiciona `sifapadmin` ao grupo `docker` de forma fixa, então trocar este valor obriga a usar `sudo` para os comandos Docker |
 | `ssh_public_key_path` | Não | `~/.ssh/id_rsa.pub` | Caminho da chave pública autorizada |
 | `data_disk_size_gb` | Não | `32` | Tamanho do disco gerenciado que guarda os containers de banco |
 | `adabas_image` | Não | `softwareag/adabas-ce:7.4.0` | Imagem do Adabas Community Edition |
@@ -270,7 +270,7 @@ Somente duas variáveis são obrigatórias. As demais têm padrão definido em `
 
 ## Custo e controle de gasto
 
-O output `estimated_cost_note` traz a estimativa do próprio módulo: cerca de **USD 0,10 por hora** com a VM ligada, considerando `Standard_D2s_v3`, discos Premium SSD e IP estático. Confirme os valores da sua região e do seu contrato antes de assumir esse número.
+O output `estimated_cost_note` traz a estimativa do próprio módulo: cerca de **USD 0,20 por hora** com a VM ligada e cerca de **USD 0,04 por hora** (≈ USD 1/dia) com a VM desligada, considerando `Standard_D2s_v3`, discos Premium SSD e IP estático. Os valores vêm de preços de varejo (pay-as-you-go) da região `brazilsouth` consultados na Azure Retail Prices API. Confirme os valores da sua região e do seu contrato antes de assumir esse número.
 
 Três mecanismos protegem a fatura, do mais fraco ao mais forte:
 
@@ -307,7 +307,7 @@ O IP público é estático, então ele não muda quando você desliga e liga a V
 | SSH dá timeout | Seu IP público mudou e não está mais em `allowed_source_cidrs` | Atualize `terraform.tfvars` e rode `terraform apply` de novo |
 | `Permission denied (publickey)` | A chave privada usada não corresponde à pública enviada | Conecte com `ssh -i ~/.ssh/id_rsa sifapadmin@<IP-PUBLICO>` |
 | Portas 2700, 8190 ou 60001 sem resposta | Bootstrap ainda em andamento ou container parado | Acompanhe o log do bootstrap e verifique os containers |
-| A senha do Key Vault é rejeitada pelo Adabas | O bootstrap não conseguiu ler o segredo e gerou uma senha local | Procure `could not read the Key Vault secret` no log; recrie a VM se confirmado |
+| A senha do Key Vault é rejeitada pelo Adabas | O bootstrap não conseguiu ler o segredo e gerou uma senha local | Procure `could not read the Key Vault secret` no log; se confirmado, recrie a VM com `terraform apply -replace=azurerm_linux_virtual_machine.lab` |
 | `docker` responde `permission denied` | A adesão ao grupo `docker` só vale em nova sessão | Reconecte o SSH ou use `sudo docker ...` |
 | `apply` falha com erro de SKU ou de cota | Região sem `Standard_D2s_v3` ou sem cota de vCPU | Troque a região ou o tamanho da VM |
 

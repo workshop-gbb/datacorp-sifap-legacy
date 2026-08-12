@@ -9,7 +9,10 @@ owner = "your-github-handle"
 
 # Every address that needs to reach the lab, in CIDR form.
 # Discover your own with: curl -s https://api.ipify.org
-# 0.0.0.0/0 is rejected by a validation rule on purpose.
+# Validation rejects 0.0.0.0/0, *, ::/0, "Internet"/"Any" and any prefix wider than /8,
+# on purpose: Adabas CE has no channel encryption and the Natural Development Server has
+# no strong authentication, so an internet-facing listener is a direct compromise path.
+# Entries must be explicit IPv4 CIDRs with a /8../32 prefix (Azure service tags are refused).
 allowed_source_cidrs = [
   "203.0.113.10/32",
 ]
