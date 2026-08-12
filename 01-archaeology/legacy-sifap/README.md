@@ -1,24 +1,23 @@
-<!-- markdownlint-disable MD012 MD013 MD022 MD025 MD026 MD028 MD029 MD031 MD033 MD034 MD038 MD040 MD051 MD060 -->
+<!-- markdownlint-disable MD013 MD033 MD041 -->
 
-# SIFAP - Sistema de Fiscalização e Administração de Pagamentos
+# SIFAP — Sistema de Fiscalização e Administração de Pagamentos
 
-![LEGADO SIFAP 1.0](https://img.shields.io/badge/LEGADO-SIFAP%201.0-F25022?style=for-the-badge) ![ANOS 29](https://img.shields.io/badge/ANOS-29-1A1A1A?style=for-the-badge) ![LINGUAGEM Natural+Adabas](https://img.shields.io/badge/LINGUAGEM-Natural%2BAdabas-737373?style=for-the-badge)
+> **Trilha:** [Kit do Time](../../README.md) › [Estágio 1](../README.md) › **Legado SIFAP**
 
-> 🗺 **Você está aqui:** [Kit PT-BR](../../README.md) → [Estágio 1](../README.md) → **Legado SIFAP**
+**Documentação técnica do sistema legado SIFAP.** Contém histórico, arquitetura, inventário de programas e orientações para leitura durante o Estágio 1 de Arqueologia.
 
+| Campo | Valor |
+|---|---|
+| **Público-alvo** | Todos os pares durante o Estágio 1 |
+| **Pré-requisitos** | Nenhum — ponto de entrada para o legado |
+| **Estágio** | Estágio 1 — Arqueologia |
+| **Resultado esperado** | Compreensão do contexto do sistema antes de abrir os arquivos `.NSN` |
 
-> **Para quem é isto?** Quem vai abrir o legado SIFAP no Estágio 1.
->
-> **O que você terá ao final desta leitura:**
->
-> 1. Histórico do sistema SIFAP (1997–2024)
-> 2. Quais 15 programas Natural e 4 DDMs existem
-> 3. Por que o relatório do TCU exige formato específico
-> 4. Link para o guia de leitura de Natural sem saber a sintaxe
+![Legado](https://img.shields.io/badge/Legado-SIFAP%201.0-171717?style=flat-square) ![Anos de operação](https://img.shields.io/badge/Opera%C3%A7%C3%A3o-29%20anos-404040?style=flat-square) ![Linguagem](https://img.shields.io/badge/Linguagem-Natural%2BAdabas-737373?style=flat-square)
 
-> **Classificação:** Documento Interno - a organização / SUPDE / DESIF
+> **Classificação:** Documento Interno — a organização / SUPDE / DESIF
 > **Versão do sistema:** 4.1.2
-> **Ambiente:** Produção - Mainframe a organização / Regional Brasília
+> **Ambiente:** Produção — Mainframe a organização / Regional Brasília
 > **Linguagem:** Natural 6.3.12 | Base de dados: Adabas 7.4.3
 
 ---
@@ -95,34 +94,26 @@ A equipe que desenvolveu e manteve o SIFAP ao longo dos anos é listada abaixo. 
 
 ### 4.1. Visão Geral
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ MAINFRAME a organização │
-│ │
-│ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ │
-│ │ NATURAL 6.3 │ │ ADABAS 7.4 │ │ JOB SCHED. │ │
-│ │ │ │ │ │ (JES2/CICS) │ │
-│ │ Programas │◄──►│ DDMs (4) │ │ │ │
-│ │ Online (8) │ │ FDTs │ │ Jobs Batch │ │
-│ │ Batch (7) │ │ │ │ (7 procs) │ │
-│ └──────┬───────┘ └──────────────┘ └──────┬───────┘ │
-│ │ │ │
-│ ▼ ▼ │
-│ ┌──────────────┐ ┌──────────────┐ │
-│ │ TELAS 3270 │ │ ARQUIVOS │ │
-│ │ (Com*plete) │ │ CNAB / TXT │ │
-│ └──────┬───────┘ └──────┬───────┘ │
-│ │ │ │
-└─────────┼───────────────────────────────────────┼───────────┘
- │ │
- ▼ ▼
- ┌──────────────┐ ┌──────────────────────────────┐
- │ TERMINAIS │ │ SISTEMAS EXTERNOS │
- │ EMULAÇÃO │ │ - SIAFI (STN) │
- │ 3270 │ │ - Receita Federal (CPF) │
- │ (Operadores │ │ - Banco do Brasil (CNAB) │
- │ CGPB) │ │ - CAIXA (arquivo retorno) │
- └──────────────┘ └──────────────────────────────┘
+```mermaid
+%%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
+flowchart TB
+    classDef step fill:#F5F5F5,stroke:#171717,color:#171717
+    classDef alt fill:#FFFFFF,stroke:#525252,color:#171717
+    classDef muted fill:#FAFAFA,stroke:#A3A3A3,color:#404040
+    classDef result fill:#FFFFFF,stroke:#171717,color:#171717,stroke-width:2px
+
+    subgraph MF["Mainframe — a organização"]
+        NAT["Natural 6.3<br/>Programas Online (8)<br/>Programas Batch (7)"]:::step
+        ADA["Adabas 7.4<br/>DDMs (4)<br/>FDTs"]:::step
+        JES["Job Scheduler<br/>JES2/CICS<br/>Jobs Batch (7)"]:::muted
+        NAT <-->|"leitura/escrita"| ADA
+        NAT -->|"agendamento"| JES
+        NAT --> T3270["Telas 3270<br/>(Com*plete)"]:::alt
+        JES --> ARQ["Arquivos<br/>CNAB / TXT"]:::alt
+    end
+
+    T3270 --> OP["Terminais<br/>Emulacao 3270<br/>(Operadores CGPB)"]:::muted
+    ARQ --> EXT["Sistemas Externos<br/>SIAFI (STN)<br/>Receita Federal (CPF)<br/>Banco do Brasil (CNAB)<br/>CAIXA (retorno)"]:::result
 ```
 
 ### 4.2. Camada de Programas Natural
@@ -355,52 +346,18 @@ Nomes de campos são limitados a **20 caracteres** e utilizam abreviações padr
 
 ---
 
-## 11. Referências Internas
+## Documentos relacionados
 
-- **Nota Técnica SUPDE/DESIF no 012/2016** - "Riscos de continuidade operacional do SIFAP" (documento reservado)
-- **RN-SIFAP-2012-parcial.doc** - Regras de negócio parcialmente documentadas (Fernanda C. de Oliveira, 2012)
-- **Manual de Operação Batch - SIFAP v3.0** (2005) - Desatualizado, não reflete alterações pós-2015
-- **Plano de Contingência SIFAP** (2014) - Revisão pendente desde 2016
-
----
-
-**Última Atualização:** Documento atualizado em 15/03/2018 por Carlos Eduardo Mendes - SUPDE/DESIF
-
----
-
-## Navegação
-
-> Esta pasta `01-arqueologia/legado-sifap/` está incluída dentro do kit do time. Quando você trabalha no repositório do time, os vizinhos são os guias de estágio, não o catálogo do workshop.
-
-| Anterior                                                  | Início                   | Próximo                                              |
-| --------------------------------------------------------- | ------------------------ | ---------------------------------------------------- |
-| [Estágio 1 — Guia de Arqueologia](../GUIDE.md) | [Kit do Time](../README.md) | [Estágio 2 — Spec Moderna](../../02-spec-moderna/GUIDE.md) |
-
-## Documentos Relacionados
-
-- [`01-arqueologia/LEGACY-EXPLORATION-CHECKLIST.md`](../LEGACY-EXPLORATION-CHECKLIST.md) — PORTÃO DURO: o que você precisa entregar antes de abrir o Estágio 2
-- [`01-arqueologia/GUIDE.md`](../GUIDE.md) — passo a passo para ler este legado
-- [`02-spec-moderna/GUIDE.md`](../../02-spec-moderna/GUIDE.md) — próximo passo: especificação moderna (EARS) com `source_legacy:` apontando para arquivos desta pasta
-
+- [`01-arqueologia/LEGACY-EXPLORATION-CHECKLIST.md`](../LEGACY-EXPLORATION-CHECKLIST.md) — portão obrigatório antes de abrir o Estágio 2.
+- [`01-arqueologia/GUIDE.md`](../GUIDE.md) — roteiro cronometrado para ler este legado.
+- [`02-spec-moderna/GUIDE.md`](../../02-spec-moderna/GUIDE.md) — próximo passo: especificação moderna (EARS) com `source_legacy:` apontando para arquivos desta pasta.
 
 ---
 
 ### Continuar a leitura
 
-<table width="100%">
-<tr>
-<td width="50%" valign="top" align="left">
-<sub><strong>← ANTERIOR</strong></sub><br/>
-<a href="../GUIDE.md"><strong>GUIDE do Estágio 1</strong></a><br/>
-<sub>Passo a passo do estágio.</sub>
-</td>
-<td width="50%" valign="top" align="right">
-<sub><strong>PRÓXIMO →</strong></sub><br/>
-<a href="COMO-LER-NATURAL.md"><strong>Como ler Natural</strong></a><br/>
-<sub>Sintaxe explicada para não-devs.</sub>
-</td>
-</tr>
-</table>
+| Anterior | Próximo |
+|---|---|
+| [GUIDE do Estágio 1](../GUIDE.md)<br/><sub>Roteiro cronometrado de 90 min.</sub> | [Como ler Natural](COMO-LER-NATURAL.md)<br/><sub>Tutorial de sintaxe para não-desenvolvedores.</sub> |
 
-<sub>↑ <a href="../../README.md">Voltar ao Kit PT-BR</a></sub>
-
+<sub>[Voltar ao índice do kit](../../README.md)</sub>

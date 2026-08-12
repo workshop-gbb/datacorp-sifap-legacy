@@ -1,6 +1,7 @@
-<!-- markdownlint-disable MD012 MD013 MD022 MD025 MD026 MD028 MD029 MD031 MD033 MD034 MD038 MD040 MD051 MD060 -->
+<!-- markdownlint-disable MD013 MD033 MD041 -->
 
 ---
+
 title: "Projeto SIFAP - Documento de Arquitetura Técnica"
 author: "Roberto Carlos Ferreira - Analista de Sistemas Sênior"
 date: "1997-05-20"
@@ -11,7 +12,8 @@ sponsor: "SUPDE/DESIF - a organização"
 client: "SAS/MPAS - Secretaria de Assistência Social"
 ---
 
-<!-- markdownlint-disable MD013 MD025 MD026 MD028 MD029 MD034 MD040 MD051 MD060 -->
+> [!NOTE]
+> Este é um documento histórico reconstituído para fins do exercício de arqueologia do workshop SIFAP 2.0. O documento simula a documentação técnica original de 1997 tal como teria sido produzida pela equipe da SUPDE/DESIF. A linguagem de época, os nomes de pessoas e de unidades organizacionais foram preservados intencionalmente. **Este documento não deve ser usado como especificação atual do sistema.** As lacunas e inconsistências registradas nos comentários fazem parte do exercício — elas representam os desafios reais de arqueologia que a equipe deve investigar.
 
 <!-- ====================================================================== -->
 <!-- PROJETO SIFAP - DOCUMENTO DE ARQUITETURA TÉCNICA -->
@@ -96,21 +98,18 @@ Após avaliação das alternativas disponíveis na infraestrutura a organizaçã
 
 O SIFAP será organizado em **4 módulos** funcionais:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ S I F A P │
-│ Sistema de Fiscalização e Administração │
-│ de Pagamentos │
-├─────────────┬─────────────┬─────────────┬───────────────────┤
-│ │ │ │ │
-│ MÓDULO 1 │ MÓDULO 2 │ MÓDULO 3 │ MÓDULO 4 │
-│ CADASTRO │ PROCESSAM. │ CONSULTA │ AUDITORIA │
-│ │ │ │ │
-│ ○ CADBENEF │ ○ BATCHPGT │ ○ CONSBENF │ ○ AUDCONSUL │
-│ ○ CADPROG │ ○ BATCHREL │ ○ CONSPGT │ ○ AUDRELAT │
-│ ○ CADDEPEND │ ○ BATCHCON │ │ │
-│ │ │ │ │
-└─────────────┴─────────────┴─────────────┴───────────────────┘
+```mermaid
+%%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
+flowchart LR
+    classDef step fill:#F5F5F5,stroke:#171717,color:#171717
+    classDef muted fill:#FAFAFA,stroke:#A3A3A3,color:#404040
+
+    subgraph SIFAP["SIFAP — Sistema de Fiscalização e Administração de Pagamentos"]
+        M1["Módulo 1<br/>Cadastro<br/>CADBENEF / CADPROG / CADDEPEND"]:::step
+        M2["Módulo 2<br/>Processamento<br/>BATCHPGT / BATCHREL / BATCHCON"]:::step
+        M3["Módulo 3<br/>Consulta<br/>CONSBENF / CONSPGT"]:::step
+        M4["Módulo 4<br/>Auditoria<br/>AUDCONSUL / AUDRELAT"]:::step
+    end
 ```
 
 #### Módulo 1 - CADASTRO
@@ -161,48 +160,53 @@ Responsável pelo registro e consulta de trilhas de auditoria e ocorrências de 
 
 O SIFAP utilizará **3 DDMs** (Data Definition Modules) no Adabas:
 
+```mermaid
+%%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
+erDiagram
+    BENEFICIARIO {
+        string BN-NR-CPF PK
+        string BN-NM-BENEF DE
+        date   BN-DT-NASC
+        string BN-CD-SIT DE
+        string BN-CD-PROG DE
+        string BN-NR-NIS
+        string BN-CD-REGIAO DE
+        int    BN-QT-DEPEND
+        decimal BN-VL-RENDA-PC
+        date   BN-DT-ULT-ATUAL
+        string BN-CD-BANCO
+        string BN-CD-AGENCIA
+        string BN-NR-CONTA
+    }
+
+    PROGRAMA-SOCIAL {
+        string PS-CD-PROG PK
+        string PS-NM-PROG
+        decimal PS-VL-MIN
+        decimal PS-VL-MAX
+        string PS-IN-ATIVO
+        date   PS-DT-INICIO
+        date   PS-DT-FIM
+        string PS-VL-FAIXAS PE
+    }
+
+    PAGAMENTO {
+        int    PG-NR-SEQ PK
+        string PG-NR-CPF DE
+        string PG-CD-PROG DE
+        string PG-AA-MM-REF DE
+        decimal PG-VL-BRUTO
+        decimal PG-VL-LIQ
+        date   PG-DT-CRED
+        string PG-CD-STATUS DE
+        string PG-CD-BANCO
+    }
+
+    BENEFICIARIO ||--o{ PAGAMENTO : "gera"
+    BENEFICIARIO }o--|| PROGRAMA-SOCIAL : "vinculado a"
 ```
-┌───────────────────────────────────────────────────────────────────┐
-│ MODELO DE DADOS - SIFAP │
-│ │
-│ ┌─────────────────────┐ ┌─────────────────────┐ │
-│ │ BENEFICIARIO │ │ PROGRAMA-SOCIAL │ │
-│ │ (FNR 150) │ │ (FNR 151) │ │
-│ │ │ │ │ │
-│ │ BN-NR-CPF (PK)│──────►│ PS-CD-PROG (PK)│ │
-│ │ BN-NM-BENEF (DE) │ │ PS-NM-PROG │ │
-│ │ BN-DT-NASC │ │ PS-VL-MIN │ │
-│ │ BN-CD-SIT (DE)│ │ PS-VL-MAX │ │
-│ │ BN-CD-PROG (DE)│ │ PS-IN-ATIVO │ │
-│ │ BN-NR-NIS │ │ PS-DT-INICIO │ │
-│ │ BN-CD-REGIAO (DE)│ │ PS-DT-FIM │ │
-│ │ BN-QT-DEPEND │ │ PS-VL-FAIXAS (PE) │ │
-│ │ BN-VL-RENDA-PC │ │ │ │
-│ │ BN-DT-ULT-ATUAL │ └──────────────────────┘ │
-│ │ BN-CD-BANCO │ │
-│ │ BN-CD-AGENCIA │ │
-│ │ BN-NR-CONTA │ ┌─────────────────────┐ │
-│ │ │ │ PAGAMENTO │ │
-│ └─────────────────────┘ │ (FNR 152) │ │
-│ │ │ │ │
-│ │ │ PG-NR-SEQ (PK) │ │
-│ └───────────────────►│ PG-NR-CPF (DE) │ │
-│ │ PG-CD-PROG (DE) │ │
-│ │ PG-AA-MM-REF (DE) │ │
-│ │ PG-VL-BRUTO │ │
-│ │ PG-VL-LIQ │ │
-│ │ PG-DT-CRED │ │
-│ │ PG-CD-STATUS (DE)│ │
-│ │ PG-CD-BANCO │ │
-│ │ │ │
-│ └──────────────────────┘ │
-│ │
-│ Legenda: PK = chave primária (super descriptor) │
-│ DE = descritor (índice Adabas) │
-│ PE = grupo periódico │
-│ MU = campo multivalorado │
-└───────────────────────────────────────────────────────────────────┘
-```
+
+Legenda: PK = chave primária (super descriptor) · DE = descritor (índice Adabas) · PE = grupo periódico · MU = campo multivalorado
 
 <!-- O DDM AUDITORIA (FNR 153) não constava no projeto original.
  Foi adicionado em 2005, durante a migração para Natural 6.3/Adabas 7.4,
@@ -251,45 +255,25 @@ Os sufixos indicam o tipo de dado:
 
 ### 4.1. Diagrama de Fluxo Planejado
 
-```
- ┌─────────────────────┐
- │ INÍCIO DO CICLO │
- │ (1o dia útil) │
- └──────────┬──────────┘
- │
- ▼
- ┌─────────────────────┐
- │ BATCHPGT │
- │ │
- │ 1. Ler BENEFICIARIO│
- │ 2. Calcular valor │
- │ 3. Gravar PAGAMENTO│
- │ 4. Gerar CNAB │
- └──────────┬──────────┘
- │
- ┌──────────┴──────────┐
- │ │
- ▼ ▼
- ┌──────────────────┐ ┌──────────────────┐
- │ Arquivo CNAB │ │ BATCHREL │
- │ (remessa BB) │ │ │
- │ │ │ Relatórios │
- │ Envio D+1 │ │ totalizadores │
- └────────┬─────────┘ └──────────────────┘
- │
- ▼
- ┌──────────────────┐
- │ Retorno BB │
- │ (D+3) │
- └────────┬─────────┘
- │
- ▼
- ┌──────────────────┐
- │ BATCHCON │
- │ │
- │ Conciliação │
- │ CNAB x SIAFI │
- └──────────────────┘
+```mermaid
+%%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
+flowchart TB
+    classDef step fill:#F5F5F5,stroke:#171717,color:#171717
+    classDef artifact fill:#FAFAFA,stroke:#A3A3A3,color:#404040
+    classDef result fill:#FFFFFF,stroke:#171717,color:#171717,stroke-width:2px
+
+    START["Início do ciclo<br/>(1o dia útil)"]:::step
+    PGT["BATCHPGT<br/>1. Ler BENEFICIARIO<br/>2. Calcular valor<br/>3. Gravar PAGAMENTO<br/>4. Gerar CNAB"]:::step
+    CNAB["Arquivo CNAB<br/>(remessa BB)<br/>Envio D+1"]:::artifact
+    REL["BATCHREL<br/>Relatórios<br/>totalizadores"]:::step
+    RET["Retorno BB<br/>(D+3)"]:::artifact
+    CON["BATCHCON<br/>Conciliação<br/>CNAB x SIAFI"]:::result
+
+    START --> PGT
+    PGT --> CNAB
+    PGT --> REL
+    CNAB --> RET
+    RET --> CON
 ```
 
 ### 4.2. Agendamento Batch Previsto
@@ -331,17 +315,14 @@ Com base em benchmarks realizados no ambiente de homologação do a organizaçã
 
 A integração com o SIAFI - Sistema Integrado de Administração Financeira do Governo Federal será realizada conforme o seguinte modelo:
 
-```
-┌──────────────┐ ┌──────────────┐
-│ SIFAP │ │ SIAFI │
-│ │ Arquivo TXT │ │
-│ BATCHPGT ─┼──────────────────────────►│ Recepção │
-│ │ (Ordens Bancárias) │ │
-│ │ │ │
-│ BATCHCON ◄┼───────────────────────────┼─ Confirmação │
-│ │ Arquivo TXT │ │
-│ │ (Retorno) │ │
-└──────────────┘ └──────────────┘
+```mermaid
+%%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
+sequenceDiagram
+    participant SIFAP
+    participant SIAFI
+
+    SIFAP->>SIAFI: Arquivo TXT — Ordens Bancárias (BATCHPGT, D+1)
+    SIAFI-->>SIFAP: Arquivo TXT — Confirmação/Retorno (BATCHCON)
 ```
 
 **Formato previsto:** Arquivo texto posicional, layout definido pela STN (Secretaria do Tesouro Nacional), conforme Instrução Normativa STN no 04/1996.
@@ -387,7 +368,7 @@ O controle de acesso ao SIFAP será implementado em dois níveis:
 - SUPERVISOR: acesso completo, incluindo exclusão e parametrização;
 - AUDITOR: acesso somente leitura a todos os módulos + relatórios de auditoria.
 
-2. **Nível Aplicação:** Verificação adicional via GDA (Global Data Area) de sessão, contendo código do usuário, perfil e regional de origem.
+1. **Nível Aplicação:** Verificação adicional via GDA (Global Data Area) de sessão, contendo código do usuário, perfil e regional de origem.
 
 ### 6.2. Trilha de Auditoria
 
@@ -497,27 +478,47 @@ A interface web do SIFAP permitirá:
 
 ### 8.1. Fase 1 - Cadastro e Consulta
 
-```
-Jun/97 Jul/97 Ago/97 Set/97 Out/97 Nov/97 Dez/97
- │ │ │ │ │ │ │
- ├───────┤ Especificação detalhada
- │ ├───────┼───────┤ Modelagem Adabas + DDMs
- │ │ ├───────┼───────┤ Codificação CADBENEF/CADPROG
- │ │ │ ├───────┤ Codificação CONSBENF/CADDEPEND
- │ │ │ │ ├───────┤ Testes integrados
- │ │ │ │ │ ├───────┤ Homologação + Implantação
+```mermaid
+%%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
+gantt
+    title Fase 1 — Cadastro e Consulta (jun/1997 – dez/1997)
+    dateFormat YYYY-MM
+    axisFormat %b/%y
+
+    section Análise
+    Especificação detalhada          :a1, 1997-06, 1M
+
+    section Modelagem
+    Modelagem Adabas e DDMs          :a2, 1997-07, 2M
+
+    section Codificação
+    Codificação CADBENEF e CADPROG   :a3, 1997-08, 2M
+    Codificação CONSBENF e CADDEPEND :a4, 1997-09, 1M
+
+    section Qualidade
+    Testes integrados                :a5, 1997-10, 1M
+    Homologação e Implantação        :a6, 1997-11, 1M
 ```
 
 ### 8.2. Fase 2 - Processamento Batch
 
-```
-Jan/98 Fev/98 Mar/98 Abr/98 Mai/98 Jun/98 Jul/98
- │ │ │ │ │ │ │
- ├───────┤ Especificação BATCHPGT
- │ ├───────┼───────┤ Codificação BATCHPGT
- │ │ │ ├───────┤ Layout CNAB + testes BB
- │ │ │ │ ├───────┤ BATCHREL + testes
- │ │ │ │ │ ├───────┤ Homologação + Produção
+```mermaid
+%%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
+gantt
+    title Fase 2 — Processamento Batch (jan/1998 – jul/1998)
+    dateFormat YYYY-MM
+    axisFormat %b/%y
+
+    section Análise
+    Especificação BATCHPGT           :b1, 1998-01, 1M
+
+    section Codificação
+    Codificação BATCHPGT             :b2, 1998-02, 2M
+    Layout CNAB e testes BB          :b3, 1998-04, 1M
+    BATCHREL e testes                :b4, 1998-05, 1M
+
+    section Qualidade
+    Homologação e entrada em produção :b5, 1998-06, 1M
 ```
 
 ---

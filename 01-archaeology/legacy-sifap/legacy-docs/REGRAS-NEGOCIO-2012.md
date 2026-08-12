@@ -1,4 +1,4 @@
-<!-- markdownlint-disable MD012 MD013 MD022 MD025 MD026 MD028 MD029 MD031 MD033 MD034 MD038 MD040 MD051 MD060 -->
+<!-- markdownlint-disable MD013 MD033 MD041 -->
 
 ---
 title: "Regras de Negócio do SIFAP - Levantamento Parcial"
@@ -9,21 +9,24 @@ classification: "RESTRITO"
 status: "INCOMPLETO - Levantamento interrompido"
 distribution: "SENARC/CGPB, SUPDE/DESIF, CGTI/MDAS"
 revision_history:
- - version: "0.1.0"
+
+- version: "0.1.0"
  date: "2012-06-04"
  author: "Ana Cristina Barros"
  description: "Início do levantamento - módulo de cadastro"
- - version: "0.5.0"
+- version: "0.5.0"
  date: "2012-07-10"
  author: "Ana Cristina Barros"
  description: "Inclusão parcial dos módulos de cálculo e descontos"
- - version: "1.0.0-DRAFT"
+- version: "1.0.0-DRAFT"
  date: "2012-08-14"
  author: "Ana Cristina Barros"
  description: "Última versão - levantamento interrompido"
+
 ---
 
-<!-- markdownlint-disable MD013 MD025 MD026 MD028 MD029 MD034 MD040 MD051 MD060 -->
+> [!NOTE]
+> Este é um documento histórico reconstituído para fins do exercício de arqueologia do workshop SIFAP 2.0. O documento simula o levantamento parcial de regras de negócio realizado em 2012 pela equipe da SENARC/CGPB. A linguagem de época, os nomes de pessoas, as incertezas e as lacunas documentadas foram preservados intencionalmente. **Este documento não deve ser usado como especificação atual do sistema.** As regras marcadas como `[PENDENTE]`, os comentários sobre inconsistências e os itens não verificados fazem parte do exercício — eles representam o desafio real de extração de conhecimento que a equipe deve enfrentar durante a arqueologia.
 
 <!-- ====================================================================== -->
 <!-- REGRAS DE NEGÓCIO DO SIFAP - LEVANTAMENTO PARCIAL -->

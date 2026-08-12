@@ -8,6 +8,9 @@ applyTo: "infra/**,**/*.tf,**/*.bicep,compose*.yml,compose*.yaml,docker-compose*
 # Convenções de Infraestrutura
 
 ## IaC: Bicep/Terraform, sem mudanças manuais
+
 ## Secrets: somente Azure Key Vault
+
 ## Naming: {project}-{env}-{resource}-{region}
+
 ## Tags: environment, project, owner, cost-center

@@ -1,94 +1,88 @@
-<!-- markdownlint-disable MD012 MD013 MD022 MD025 MD026 MD028 MD029 MD031 MD033 MD034 MD038 MD040 MD051 MD060 -->
+<!-- markdownlint-disable MD013 MD033 MD041 -->
 
 # Programas Natural
 
-![LEGADO Programas .NSN](https://img.shields.io/badge/LEGADO-Programas%20.NSN-F25022?style=for-the-badge) ![ARQUIVOS 15 programas](https://img.shields.io/badge/ARQUIVOS-15%20programas-1A1A1A?style=for-the-badge)
+> **Trilha:** [Kit do Time](../../../README.md) › [Estágio 1](../../README.md) › [Legado SIFAP](../README.md) › **Programas Natural**
 
-> 🗺 **Você está aqui:** [Kit PT-BR](../../../README.md) → [Estágio 1](../../README.md) → [Legado](../README.md) → **Natural Programs**
+**Os 15 arquivos-fonte Natural do SIFAP.** Implementam toda a lógica de negócio do sistema legado. Cada par lê 3 programas durante o Estágio 1.
 
-> **Para quem é isto?** Para o time durante o Estágio 1, lendo os 15 programas Natural.
->
-> **O que você terá ao final desta leitura:** lista de programas, divisão por par (3 cada), e ponto de partida para leitura.
+| Campo | Valor |
+|---|---|
+| **Público-alvo** | Todos os pares — cada par lê os 3 programas atribuídos |
+| **Pré-requisitos** | Leitura de [`COMO-LER-NATURAL.md`](../COMO-LER-NATURAL.md) |
+| **Estágio** | Estágio 1 — Arqueologia |
+| **Resultado esperado** | Regras catalogadas com evidência `arquivo.NSN#L<início>-L<fim>` |
 
+> [!NOTE]
+> Estes arquivos são material de referência somente leitura. Durante o Estágio 1, os pares analisam os programas para extrair regras de negócio e mapeá-las para o sistema moderno (Java 21 + Spring Boot).
 
-> Arquivos-fonte Natural (`.NSN`) que implementam a lógica de negócio legada do SIFAP no mainframe.
+---
 
-## Conteúdo
+## Distribuição por par
+
+| Par | Programas |
+|---|---|
+| 1 · Visão (PO + RE) | `CADBENEF.NSN`, `CADDEPEND.NSN`, `CADPROG.NSN` |
+| 2 · Arquitetura (EA + SA) | `BATCHPGT.NSN`, `BATCHREL.NSN`, `BATCHCON.NSN` |
+| 3 · Implementação (TL + Dev) | `CALCBENF.NSN`, `CALCCORR.NSN`, `CALCDSCT.NSN` |
+| 4 · Qualidade (DBA + QA) | `VALBENEF.NSN`, `VALDOCS.NSN`, `VALELEG.NSN` |
+| 5 · Operações (DevOps + TW) | `CONSBENF.NSN`, `RELPGT.NSN`, `RELAUDIT.NSN` |
+
+---
+
+## Inventário completo por categoria
 
 ### Processamento Batch
 
-| Programa       | Descrição                                           |
-| -------------- | --------------------------------------------------- |
-| `BATCHCON.NSN` | Conciliação batch - reconcilia pagamentos com o SIAFI |
-| `BATCHPGT.NSN` | Pagamento batch - gera ciclos mensais de pagamento  |
-| `BATCHREL.NSN` | Relatório batch - produz relatórios gerenciais      |
+| Programa | Autor | Ano | Descrição |
+|---|---|---|---|
+| `BATCHCON.NSN` | Patrícia H. Moura | 2002 | Conciliação batch — reconcilia pagamentos com o SIAFI |
+| `BATCHPGT.NSN` | José A. Lima | 1999 | Pagamento batch — gera ciclos mensais de pagamento |
+| `BATCHREL.NSN` | José A. Lima | 1999 | Relatório batch — produz relatórios gerenciais |
 
-### Cadastro (CRUD)
+### Cadastro
 
-| Programa        | Descrição                   |
-| --------------- | --------------------------- |
-| `CADBENEF.NSN`  | Cadastro de beneficiário    |
-| `CADDEPEND.NSN` | Cadastro de dependente      |
-| `CADPROG.NSN`   | Cadastro de programa social |
+| Programa | Autor | Ano | Descrição |
+|---|---|---|---|
+| `CADBENEF.NSN` | Roberto Meirelles | 1997 | Cadastro de beneficiário — inclusão, alteração, exclusão |
+| `CADDEPEND.NSN` | José A. Lima | 1998 | Cadastro de dependente vinculado ao beneficiário titular |
+| `CADPROG.NSN` | Fernanda C. Oliveira | 1997 | Cadastro de programa social — parâmetros e faixas de valores |
 
 ### Cálculo
 
-| Programa       | Descrição                         |
-| -------------- | --------------------------------- |
-| `CALCBENF.NSN` | Cálculo do valor do benefício     |
-| `CALCCORR.NSN` | Cálculo de correção/ajuste        |
-| `CALCDSCT.NSN` | Cálculo de desconto               |
-
-### Consulta
-
-| Programa       | Descrição                |
-| -------------- | ------------------------ |
-| `CONSBENF.NSN` | Consulta de beneficiário |
+| Programa | Autor | Ano | Descrição |
+|---|---|---|---|
+| `CALCBENF.NSN` | Roberto Meirelles | 1998 | Cálculo do valor do benefício por programa e faixa |
+| `CALCCORR.NSN` | Marcos A. Ferreira | 2005 | Cálculo de correções e reajustes por índices anuais |
+| `CALCDSCT.NSN` | Marcos A. Ferreira | 2015 | Cálculo de descontos e deduções legais (consignações, IR) |
 
 ### Validação
 
-| Programa       | Descrição                    |
-| -------------- | ---------------------------- |
-| `VALBENEF.NSN` | Regras de validação de beneficiário |
-| `VALDOCS.NSN`  | Validação de documentos      |
-| `VALELEG.NSN`  | Validação de elegibilidade   |
+| Programa | Autor | Ano | Descrição |
+|---|---|---|---|
+| `VALBENEF.NSN` | Roberto Meirelles | 1997 | Validação de dados cadastrais (CPF, NIS) |
+| `VALDOCS.NSN` | Patrícia H. Moura | 2003 | Validação de documentação comprobatória |
+| `VALELEG.NSN` | Fernanda C. Oliveira | 1999 | Validação de elegibilidade — cruzamento com regras do programa |
+
+### Consulta
+
+| Programa | Autor | Ano | Descrição |
+|---|---|---|---|
+| `CONSBENF.NSN` | Roberto Meirelles | 1997 | Consulta de beneficiário por múltiplos critérios (tela 3270) |
 
 ### Relatórios
 
-| Programa       | Descrição                 |
-| -------------- | ------------------------- |
-| `RELAUDIT.NSN` | Geração de relatório de auditoria |
-| `RELPGT.NSN`   | Geração de relatório de pagamento |
-
-## Uso
-
-Estes arquivos são **material de referência somente leitura**. Durante o Estágio 1 (Arqueologia), os times analisam estes programas para extrair regras de negócio e mapeá-las para classes de serviço Java.
-
-## Navegação
-
-| Pai                                  | Início                            |
-| ------------------------------------ | --------------------------------- |
-| [02 - Cenário Legado](../README.md)  | [Raiz do Workspace](../../README.md) |
-
+| Programa | Autor | Ano | Descrição |
+|---|---|---|---|
+| `RELAUDIT.NSN` | Marcos A. Ferreira | 2005 | Relatório de auditoria — ocorrências e divergências |
+| `RELPGT.NSN` | Patrícia H. Moura | 2003 | Relatório de pagamentos por período, programa e UF |
 
 ---
 
 ### Continuar a leitura
 
-<table width="100%">
-<tr>
-<td width="50%" valign="top" align="left">
-<sub><strong>← ANTERIOR</strong></sub><br/>
-<a href="../README.md"><strong>Legado SIFAP</strong></a><br/>
-<sub>Visão geral do legado.</sub>
-</td>
-<td width="50%" valign="top" align="right">
-<sub><strong>PRÓXIMO →</strong></sub><br/>
-<a href="../adabas-ddms/"><strong>Adabas DDMs</strong></a><br/>
-<sub>DDMs Adabas.</sub>
-</td>
-</tr>
-</table>
+| Anterior | Próximo |
+|---|---|
+| [Legado SIFAP — visão geral](../README.md)<br/><sub>Contexto do sistema e histórico.</sub> | [Adabas DDMs](../adabas-ddms/README.md)<br/><sub>Estruturas de dados Adabas.</sub> |
 
-<sub>↑ <a href="../../../README.md">Voltar ao Kit PT-BR</a></sub>
-
+<sub>[Voltar ao índice do kit](../../../README.md)</sub>
