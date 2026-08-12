@@ -5,33 +5,42 @@
 * DATA:     14/05/1998
 * ALTERADO: 22/09/2003 - ANA LUCIA    - INC VALID RG
 * ALTERADO: 07/06/2011 - ROBERTO MENDES - AJUSTE CHECK ESPEC
+* ALTERADO: 18/08/2011 - ROBERTO MENDES - INC VALID NIS/PIS
 * OBJETIVO: VALIDACAO DE DOCUMENTOS DO BENEFICIARIO
 *           CPF, RG E DOCS COMPLEMENTARES - ARQ 150
+*           CHAMADO 6621/2011 - ATE 2011 O NIS NAO ERA
+*           VALIDADO EM NENHUM MODULO DO SIFAP.
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 DEFINE DATA
+LOCAL USING PDAVALID
 LOCAL
+* VIEW DECLARADA DESDE 1998 E NUNCA LIDA - CHAMADO 4471/2003
   1 BENEFICIARIO-V VIEW OF BENEFICIARIO
-    2 CPF                (N11)
-    2 NOME               (A60)
-    2 RG                 (A15)
-    2 UF                 (A2)
-    2 DOCUMENTOS-OK      (A1)
+    2 NUM-CPF            (A11)
+    2 NOME-COMPLETO      (A60)
+    2 RG-NUMERO          (A15)
+    2 GRP-ENDERECO
+      3 UF               (A2)
+    2 IND-DOCUMENTOS-OK  (A1)
 *
   1 #CPF                 (N11)
+  1 #NIS                 (N11)
   1 #RG                  (A15)
   1 #TITULO              (A12)
   1 #CTPS                (A15)
   1 #RESULTADO           (A1)
-  1 #MSG                 (A60/5)
+  1 #MSG                 (A60/1:5)
   1 #QTD-ERROS           (N2)
   1 #CPF-OK              (L)
   1 #RG-OK               (L)
   1 #DOC-ESP-OK          (L)
   1 #I                   (N2)
+  1 #RG-LEN              (N2)
+  1 #PREF-CPF            (A3)
 *
 * VALID CPF
   1 #CPF-STR             (A11)
-  1 #DIG                 (N1/11)
+  1 #DIG                 (N1/1:11)
   1 #SOMA                (N5)
   1 #RESTO               (N3)
   1 #DV1                 (N1)
@@ -39,7 +48,7 @@ LOCAL
   1 #PESO                (N2)
 *
 * PREFIXOS ESPECIAIS
-  1 #PREF-ESP            (A3/8)
+  1 #PREF-ESP            (A3/1:8)
 END-DEFINE
 *
 MOVE 0 TO #QTD-ERROS
@@ -58,6 +67,7 @@ MOVE '999' TO #PREF-ESP(8)
 INPUT 'SIFAP - VALIDACAO DE DOCUMENTOS' /
       '================================' /
       'CPF...........:' #CPF /
+      'NIS/PIS.......:' #NIS /
       'RG............:' #RG /
       'TITULO ELEITOR:' #TITULO /
       'CTPS..........:' #CTPS
@@ -87,6 +97,24 @@ END-IF
 * ============================================
 PERFORM CHECK-DOC-ESPECIAL
 *
+* ============================================
+* VALIDACAO NIS/PIS - CHAMADO 6621/2011
+* ATE 2011 O NIS NAO ERA VALIDADO EM LUGAR NENHUM.
+* CHECAGEM POSTERIOR AO CHECK-DOC-ESPECIAL POR DECISAO
+* DA COORD. DE BENEFICIOS - VER CHAMADO 6621/2011.
+* ============================================
+MOVE 'N' TO #PV-TIPO-DOC
+RESET #PV-CPF
+MOVE EDITED #NIS (EM=99999999999) TO #PV-NIS
+CALLNAT 'SUBVALNI' #PV-TIPO-DOC #PV-CPF #PV-NIS
+                   #PV-COD-RETORNO #PV-MSG
+                   #PV-IND-ESPECIAL
+IF #PV-COD-RETORNO NE 0
+  ADD 1 TO #QTD-ERROS
+  MOVE #PV-MSG TO #MSG(#QTD-ERROS)
+  MOVE 'I' TO #RESULTADO
+END-IF
+*
 * RESULTADO
 WRITE 'RESULTADO VALIDACAO DOCS:' #RESULTADO
 FOR #I = 1 TO #QTD-ERROS
@@ -95,6 +123,15 @@ END-FOR
 IF #DOC-ESP-OK
   WRITE '** DOCUMENTO ESPECIAL VALIDADO **'
 END-IF
+*
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ON ERROR
+  WRITE 'ERRO NATURAL' *ERROR-NR
+        'LINHA' *ERROR-LINE
+        'PGM' *PROGRAM
+  MOVE 'I' TO #RESULTADO
+  TERMINATE 12
+END-ERROR
 *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 DEFINE SUBROUTINE VALIDA-CPF-DOC
@@ -150,7 +187,6 @@ DEFINE SUBROUTINE VALIDA-RG
     ESCAPE ROUTINE
   END-IF
 * RG DEVE TER PELO MENOS 5 CARACTERES
-  1 #RG-LEN (N2)
   EXAMINE #RG FOR ' ' GIVING POSITION #RG-LEN
   IF #RG-LEN > 0
     SUBTRACT 1 FROM #RG-LEN
@@ -168,7 +204,6 @@ END-SUBROUTINE
 DEFINE SUBROUTINE CHECK-DOC-ESPECIAL
   MOVE FALSE TO #DOC-ESP-OK
   MOVE #CPF TO #CPF-STR
-  1 #PREF-CPF (A3)
   MOVE SUBSTR(#CPF-STR,1,3) TO #PREF-CPF
   FOR #I = 1 TO 8
     IF #PREF-CPF = #PREF-ESP(#I)

@@ -89,7 +89,6 @@ Uma equipe real de migração recebe **os dois**. O DDM diz o que os campos sign
 
 ## Como usar durante o Estágio 1
 
-
 - [ ] **Abrir os DDMs relevantes à feature escolhida.** Nem sempre todos os 4 são necessários.
 - [ ] **Ler a seção "Como ler um DDM" acima** antes de cruzar DDM com programa — sem as colunas `T`/`S`/`D` o cruzamento não faz sentido.
 - [ ] **Identificar campos do tipo `MU` e `PE`** (coluna `T` = `M` ou `P`). São os que viram tabelas filhas no PostgreSQL.

@@ -5,38 +5,46 @@
 * DATA:     08/01/1998
 * ALTERADO: 17/05/2005 - MARCIA HELENA - AJUSTE VALID CPF
 * ALTERADO: 30/11/2010 - JOSE FERREIRA - INC VALID NOME
+* ALTERADO: 18/08/2011 - ROBERTO MENDES - CONV SUBPROGRAMA
 * OBJETIVO: VALIDACAO DADOS CADASTRAIS DO BENEFICIARIO
 *           ROTINA CHAMADA ANTES DE GRAVACAO - ARQ 150
+*           CHAMADO 6621/2011 - ATE 2011 AS VARIAVEIS DE
+*           ENTRADA NUNCA ERAM POPULADAS. PASSOU A RECEBER
+*           TUDO POR PARAMETRO - VER CALLNAT NO CADBENEF.
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 DEFINE DATA
+PARAMETER
+  1 #CPF-STR             (A11)        /* IN
+  1 #NOME                (A60)        /* IN
+  1 #DT-NASC             (N8)         /* IN
+  1 #SEXO                (A1)         /* IN
+  1 #UF                  (A2)         /* IN
+  1 #CEP                 (N8)         /* IN
+  1 #STATUS              (A1)         /* IN
+  1 #RESULTADO           (A1)         /* OUT V=VALIDO I=INVAL
+  1 #QTD-ERROS           (N2)         /* OUT
+  1 #MSG-ERRO            (A60/1:10)   /* OUT
+LOCAL USING LDASIFAP
 LOCAL
+* VIEW DECLARADA DESDE 1998 E NUNCA LIDA - CHAMADO 4471/2003
   1 BENEFICIARIO-V VIEW OF BENEFICIARIO
-    2 CPF                (N11)
-    2 NOME               (A60)
+    2 NUM-CPF            (A11)
+    2 NOME-COMPLETO      (A60)
     2 DT-NASCIMENTO      (N8)
     2 SEXO               (A1)
-    2 UF                 (A2)
-    2 CEP                (N8)
-    2 STATUS             (A1)
+    2 GRP-ENDERECO
+      3 UF               (A2)
+      3 CEP              (N8)
+    2 SIT-BENEFICIARIO   (A1)
 *
   1 #CPF                 (N11)
-  1 #NOME               (A60)
-  1 #DT-NASC            (N8)
-  1 #SEXO               (A1)
-  1 #UF                 (A2)
-  1 #CEP                (N8)
-  1 #STATUS             (A1)
-*
-  1 #RESULTADO           (A1)    /* V=VALIDO I=INVALIDO */
-  1 #MSG-ERRO            (A60/10)
-  1 #QTD-ERROS           (N2)
+  1 #UF-OK               (L)
   1 #CPF-VALIDO          (L)
   1 #DT-VALIDA           (L)
   1 #NOME-VALIDO         (L)
 *
 * VARIAVEIS VALID CPF
-  1 #CPF-STR             (A11)
-  1 #DIG                 (N1/11)
+  1 #DIG                 (N1/1:11)
   1 #SOMA                (N5)
   1 #RESTO               (N3)
   1 #DV1                 (N1)
@@ -49,7 +57,7 @@ LOCAL
   1 #ANO                 (N4)
   1 #MES                 (N2)
   1 #DIA                 (N2)
-  1 #DIAS-MES            (N2/12)
+  1 #DIAS-MES            (N2/1:12)
   1 #ANO-ATUAL           (N4)
 *
 * VARIAVEIS VALID NOME
@@ -59,7 +67,7 @@ LOCAL
   1 #CHAR                (A1)
 *
 * UFS VALIDAS
-  1 #UF-TAB              (A2/27)
+  1 #UF-TAB              (A2/1:27)
 END-DEFINE
 *
 * CARGA TABELA UF
@@ -109,6 +117,9 @@ MOVE 0 TO #QTD-ERROS
 MOVE 'V' TO #RESULTADO
 COMPUTE #ANO-ATUAL = *DATN / 10000
 *
+* CPF CHEGA PELA INTERFACE EM A11 - CHAMADO 6621/2011
+MOVE #CPF-STR TO #CPF
+*
 * ============================================
 * VALIDACAO CPF - MODULO 11
 * ============================================
@@ -143,7 +154,6 @@ END-IF
 * VALIDACAO UF
 * ============================================
 IF #UF NE ' '
-  1 #UF-OK (L)
   MOVE FALSE TO #UF-OK
   FOR #I = 1 TO 27
     IF #UF = #UF-TAB(#I)
@@ -168,11 +178,19 @@ IF #STATUS NE 'A' AND #STATUS NE 'S' AND #STATUS NE 'C'
   MOVE 'I' TO #RESULTADO
 END-IF
 *
-* EXIBIR RESULTADO
-WRITE 'RESULTADO VALIDACAO:' #RESULTADO
-FOR #I = 1 TO #QTD-ERROS
-  WRITE #I ':' #MSG-ERRO(#I)
-END-FOR
+* RESULTADO DEVOLVIDO PELA INTERFACE - CHAMADO 6621/2011
+* WRITE RETIRADO: VALIDADOR CHAMADO POR BATCH NAO ESCREVE
+* EM TELA. VER #RESULTADO / #QTD-ERROS / #MSG-ERRO.
+*
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ON ERROR
+  ADD 1 TO #QTD-ERROS
+  COMPRESS 'ERRO NATURAL' *ERROR-NR
+           'LINHA' *ERROR-LINE
+           'PGM' *PROGRAM INTO #MSG-ERRO(#QTD-ERROS)
+  MOVE 'I' TO #RESULTADO
+  ESCAPE ROUTINE
+END-ERROR
 *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 DEFINE SUBROUTINE VALIDA-CPF-COMPLETO
@@ -244,6 +262,18 @@ DEFINE SUBROUTINE VALIDA-DATA
   COMPUTE #ANO = #DT-NASC / 10000
   COMPUTE #MES = (#DT-NASC - (#ANO * 10000)) / 100
   COMPUTE #DIA = #DT-NASC - (#ANO * 10000) - (#MES * 100)
+*
+* Y2K - REMEDIACAO 08/1998 - PROJETO BUG2000 - EQUIPE R.SOUZA
+* ATE 07/1998 A DT NASCIMENTO CHEGAVA EM AAMMDD (N6) E O
+* SECULO ERA RESOLVIDO PELA JANELA #L-SEC-JANELA DA LDA.
+* BLOCO MANTIDO COMENTADO P/ ARQUIVOS HISTORICOS - CHAMADO 2118
+*    COMPUTE #L-AA-CURTO = #DT-NASC / 10000
+*    IF #L-AA-CURTO < #L-SEC-JANELA
+*      COMPUTE #L-ANO-EXPANDIDO = 2000 + #L-AA-CURTO
+*    ELSE
+*      COMPUTE #L-ANO-EXPANDIDO = 1900 + #L-AA-CURTO
+*    END-IF
+*    MOVE #L-ANO-EXPANDIDO TO #ANO
 *
   IF #ANO < 1900 OR #ANO > #ANO-ATUAL
     MOVE FALSE TO #DT-VALIDA
