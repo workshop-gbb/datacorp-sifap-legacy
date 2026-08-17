@@ -16,7 +16,6 @@ LOAD_WORK="${WORK_DIR}/adabas-load"
 FILE_NAMES=(beneficiary social-program payment audit)
 FILE_NUMBERS=(150 151 152 153)
 DDM_FILES=(BENEFICIARY.ddm SOCIAL-PROGRAM.ddm PAYMENT.ddm AUDIT.ddm)
-FDT_150_REPORT="${FDT_150_REPORT:-${DDM_DIR}/FDT-150-BENEFICIARY.txt}"
 
 seed_file() { printf '%s/%s.dat' "$SEED_DIR" "$1"; }
 layout_file() { printf '%s/layout-%s.txt' "$SEED_DIR" "$1"; }
@@ -24,13 +23,12 @@ layout_file() { printf '%s/layout-%s.txt' "$SEED_DIR" "$1"; }
 require_inputs() {
   local i name ddm fnr declared
   [ -d "$DDM_DIR" ] || fatal "DDM directory missing: ${DDM_DIR}. Copy legacy-sifap/adabas-ddms into /opt/sifap/corpus."
-  [ -r "$FDT_150_REPORT" ] || fatal "Required authoritative FDT report missing for file 150: ${FDT_150_REPORT}"
   for i in "${!FILE_NAMES[@]}"; do
     name="${FILE_NAMES[$i]}"
     ddm="${DDM_DIR}/${DDM_FILES[$i]}"
     [ -r "$ddm" ] || fatal "Required DDM missing: ${ddm}"
     [ -r "$(seed_file "$name")" ] || fatal "Required seed data missing: $(seed_file "$name")"
-    [ -r "$(layout_file "$name")" ] || fatal "Required ADACMP layout missing: $(layout_file "$name")"
+    [ -r "$(layout_file "$name")" ] || fatal "Required seed layout reference missing: $(layout_file "$name")"
     declared="$(awk '/FNR:[[:space:]]*[0-9]+/{for(i=1;i<=NF;i++) if($i=="FNR:") {print $(i+1); exit}}' "$ddm")"
     fnr="${FILE_NUMBERS[$i]}"
     [ "$declared" = "$fnr" ] || fatal "${ddm} declares FNR ${declared:-unknown}, expected ${fnr}"
@@ -42,31 +40,6 @@ packed_len() {
   digits="${spec%%,*}"
   digits="${digits%%.*}"
   printf '%d' $(((digits + 1) / 2))
-}
-
-emit_fdt_from_adarep() {
-  local report="$1" out="$2"
-  awk '
-    BEGIN { in_fdt=0; in_derived=0 }
-    /FIELD DEFINITION TABLE/ { in_fdt=1; next }
-    /DERIVED DESCRIPTORS/ { in_fdt=0; in_derived=1; next }
-    /OPTION CODES/ { exit }
-    in_fdt==1 {
-      if ($0 ~ /^[[:space:]]*[12][[:space:]]+[A-Z][A-Z]/) {
-        level=$1; db=$2; len=$3; fmt=$4; opts=$5
-        if (fmt=="GR") { printf "%s, %s ; group\n", level, db; next }
-        if (fmt=="PE") { printf "%s, %s, PE ; periodic group\n", level, db; next }
-        if (opts=="") printf "%s, %s, %s, %s\n", level, db, len, fmt
-        else printf "%s, %s, %s, %s, %s\n", level, db, len, fmt, opts
-      }
-    }
-    in_derived==1 {
-      if ($0 ~ /PHONETIC[[:space:]]+PN = AC/) print "PN=AC ; PHON-NAME"
-      if ($0 ~ /SUBDESCRIPTOR[[:space:]]+SA = AF/) print "SA=AF(1-4) ; YEAR-BIRTH"
-      if ($0 ~ /SUPERDESCRIPTOR S2 =/) print "S2=BG(1-2), CE(1-1) ; SUPER-UF-STAT"
-      if ($0 ~ /SUPERDESCRIPTOR S3 =/) print "S3=CA(1-4), CE(1-1) ; SUPER-PROG-STAT"
-    }
-  ' "$report" > "$out"
 }
 
 emit_fdt_from_ddm() {
@@ -140,20 +113,33 @@ reuse=(isn,ds)
 EOF_FDU
 }
 
+emit_cmp() {
+  # ADACMP reads the field layout from the FDT that ADAFDU already stored in the
+  # database, so its control file carries parameters only -- never a field table.
+  # Comments use ';'. The seed is reframed into E4LENGTH_PREFIX by adacmp_input.py.
+  cat > "$1" <<'EOF_CMP'
+RECORD_STRUCTURE=E4LENGTH_PREFIX
+EOF_CMP
+}
+
 prepare_control_files() {
   local i name fnr ddm lower
   rm -rf "$LOAD_WORK"
   mkdir -p "$LOAD_WORK"
   for i in "${!FILE_NAMES[@]}"; do
     name="${FILE_NAMES[$i]}"; fnr="${FILE_NUMBERS[$i]}"; ddm="${DDM_DIR}/${DDM_FILES[$i]}"; lower="$name"
-    if [ "$fnr" = "150" ]; then
-      emit_fdt_from_adarep "$FDT_150_REPORT" "$LOAD_WORK/${lower}.fdt"
-    else
-      emit_fdt_from_ddm "$ddm" "$LOAD_WORK/${lower}.fdt"
-    fi
+    # The DDM is the single source of truth: the seed generator, this FDT and
+    # adacmp_input.py all derive the layout from it, so they cannot drift apart.
+    # FDT-150-BENEFICIARY.txt is kept as a reference ADAREP listing only -- it is
+    # paginated and predates fields JA/JB, so it is not safe to generate from.
+    emit_fdt_from_ddm "$ddm" "$LOAD_WORK/${lower}.fdt"
     emit_fdu "$fnr" "$name" "$LOAD_WORK/${lower}.fdu"
-    cp "$(layout_file "$name")" "$LOAD_WORK/${lower}.cmp"
-    cp "$(seed_file "$name")" "$LOAD_WORK/${lower}.dat"
+    emit_cmp "$LOAD_WORK/${lower}.cmp"
+    python3 "${PROVISIONING_DIR}/adacmp_input.py" \
+      --ddm "$ddm" \
+      --seed "$(seed_file "$name")" \
+      --out "$LOAD_WORK/${lower}.cmpin" \
+      || fatal "Failed to build ADACMP input for file ${fnr} (${name})"
   done
 }
 
@@ -191,7 +177,7 @@ load_one_file() {
     set -eu
     cd '$ADABAS_WORK_DIR'
     export FDUFDT='$ADABAS_WORK_DIR/${name}.fdt'
-    export CMPIN='$ADABAS_WORK_DIR/${name}.dat'
+    export CMPIN='$ADABAS_WORK_DIR/${name}.cmpin'
     export CMPDTA='$ADABAS_WORK_DIR/${name}.CMPDTA'
     export CMPDVT='$ADABAS_WORK_DIR/${name}.CMPDVT'
     export MUPDTA=\"\$CMPDTA\"
@@ -210,6 +196,7 @@ load_one_file() {
 
 main() {
   require_command docker
+  require_command python3
   load_adabas_env
   wait_for_adabas_ready "${SIFAP_ADABAS_READY_TIMEOUT:-900}"
   prepare_work_dir

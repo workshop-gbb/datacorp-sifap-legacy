@@ -30,14 +30,17 @@ The Terraform in this directory creates an isolated environment with a functiona
 - A Linux VM (Ubuntu 22.04 LTS) with Docker installed on first boot;
 - The `adabas-db` container with Adabas Community Edition and a demonstration database;
 - The `natural-ce` container with Natural Community Edition, already mapped to Adabas;
-- A **Caddy reverse proxy** that terminates TLS, so the demo is reachable over `https://` at a DNS name rather than a bare IP on a plaintext port;
-- A Key Vault that stores the Adabas administration password generated during `apply`;
+- **The frozen SIFAP legacy sources, shipped automatically** — staged to a private blob container at `apply` time and pulled down by the VM's managed identity at boot, checksum-verified;
+- **A provisioning unit that loads and compiles them** — `systemd` runs the scripts that create the Adabas file, load the data, import the DDMs and compile the `SIFAPPRD` library, then smoke-test it;
+- **A `ttyd` web terminal**, so the Natural green screen is reachable in a browser over HTTPS rather than only through a telnet-era client;
+- A **Caddy reverse proxy** that terminates TLS and requires authentication, routing `/` to a landing page, `/terminal` to the green screen, `/app` to the modern application from Stage 3, and `/admin` to the Adabas console;
+- A Key Vault that stores the Adabas administration password and the demo URL password, both generated during `apply`;
 - A Network Security Group that opens the lab ports only to the IPs you declare;
-- A Log Analytics workspace, diagnostic settings, the Azure Monitor agent, and alerts for VM availability and bootstrap failure;
+- A Log Analytics workspace, diagnostic settings, the Azure Monitor agent, and alerts for VM availability, bootstrap failure and provisioning failure;
 - A resource-group budget with notifications at 50%, 80%, and 100%;
 - A daily VM shutdown schedule and an optional data-disk snapshot to contain costs and protect work.
 
-The goal is to let you load the SIFAP Natural sources, compile them (CATALL/STOW), and run the programs in a real runtime. The module provides the ready-to-use runtime and the source mount point; loading and compiling the programs happens inside the container and is not automated here.
+The goal is a legacy system that actually runs: sources on the VM, data in Adabas, programs compiled, and a URL you can hand to an audience. Loading and compiling are automated by the scripts in [`provisioning/`](provisioning/); if that directory is empty the module still deploys, and says so loudly rather than quietly presenting an empty database.
 
 > [!NOTE]
 > **Software AG licence.** `cloud-init.yaml` sets `ACCEPT_EULA: "Y"` on the `adabas-db` and `natural-ce` containers, which accepts the Software AG Community Edition licence terms on your behalf when the lab boots. If you have not read those terms, read them before applying: the acceptance is recorded against whoever owns the subscription, not against this repository.
@@ -73,19 +76,31 @@ flowchart LR
     DEV["Browser or laptop<br/>IP declared in allowed_source_cidrs"]:::step
     DNS["Public IP sifap-lab-pip-eus2<br/>label.eastus2.cloudapp.azure.com"]:::alt
     NSG["NSG sifap-lab-nsg-eus2<br/>443 · 80 · 22 · 2700 · 60001"]:::alt
-    CAD["caddy container<br/>TLS termination · reverse proxy"]:::result
+    CAD["caddy container<br/>TLS termination · basic_auth · routing"]:::result
     VM["VM sifap-lab-vm-eus2<br/>Ubuntu 22.04 · Docker"]:::step
+    WWW["/ landing page<br/>static HTML"]:::muted
+    TTY["ttyd container<br/>/terminal · web green screen"]:::result
+    APP["/app · modern Java + Next.js<br/>Stage 3 · 502 until then"]:::muted
     NAT["natural-ce container<br/>Natural CE · port 2700"]:::result
     ADA["adabas-db container<br/>Adabas CE · DBID 12"]:::result
-    KV["Lab Key Vault<br/>secret adabas-admin-password"]:::muted
+    KV["Lab Key Vault<br/>adabas-admin-password<br/>demo-basic-auth-password"]:::muted
+    BLOB["Payload storage account<br/>legacy corpus + provisioning scripts"]:::muted
+    PROV["systemd sifap-provisioning<br/>ADALOD · CATALL · smoke test"]:::alt
     LAW["Log Analytics<br/>metrics · alerts · diagnostics"]:::muted
 
     DEV --> DNS --> NSG --> VM
     VM --> CAD
-    CAD -->|"http://adabas-db:8190"| ADA
+    CAD -->|"/"| WWW
+    CAD -->|"/terminal"| TTY
+    CAD -->|"/app"| APP
+    CAD -->|"/admin"| ADA
+    TTY -->|"docker exec"| NAT
     VM --> NAT
     NAT -->|"adatcp://adabas-db:60001"| ADA
     VM -.->|"managed identity"| KV
+    VM -.->|"managed identity"| BLOB
+    BLOB --> PROV
+    PROV -->|"loads + compiles"| ADA
     VM -.->|"Azure Monitor agent"| LAW
 ```
 
@@ -111,7 +126,59 @@ https://sifap-lab-<random>.eastus2.cloudapp.azure.com
 
 Azure issues that FQDN because the public IP carries a `domain_name_label`. The label is derived from the same random suffix that makes the Key Vault name unique, so the two are traceably one deployment. The IP is `Static` with the `Standard` SKU, so stopping and starting the VM does not change the address behind the name. Override the label with `dns_label_prefix` if you want something memorable — it must be globally unique within the region.
 
-TLS is terminated by a **Caddy container** running alongside `adabas-db` and `natural-ce`. Requests arrive at 443, Caddy terminates TLS and reverse-proxies to `adabas-db:8190` over Docker's internal network. The Adabas admin console therefore never listens on a plaintext public port; the previous `http://<ip>:8190` exposure is closed by default.
+TLS is terminated by a **Caddy container** running alongside `adabas-db`, `natural-ce` and `ttyd`. Requests arrive at 443, Caddy terminates TLS and reverse-proxies over Docker's internal network. Nothing it proxies publishes a plaintext public port.
+
+### What lives at each route
+
+| Route | Serves | Auth | Notes |
+|---|---|---|---|
+| `/` | Landing page linking the two demos | Yes | Static HTML from `/opt/sifap/www` |
+| `/terminal/` | **The legacy green screen** — a Natural session in the browser | Yes | `ttyd` → `docker exec` into `natural-ce` |
+| `/app/` | **The modern Java + Next.js app** from Stage 3 | Yes | **502 until Stage 3 ships** — see below |
+| `/admin/` | Adabas REST administration console | Yes | Was the default route; no longer is |
+| `/healthz` | Fixed `ok` string | **No** | So uptime probes need no credential |
+
+Get them from Terraform rather than assembling them by hand:
+
+```bash
+terraform output demo_url terminal_url modern_app_url admin_console_url healthz_url
+```
+
+**Why a web terminal at all.** Natural is a character-mode system. Its port 2700 carries the Natural Development Server protocol that NaturalONE attaches to — it is not telnet, and no browser can open either. `ttyd` bridges the gap: it serves an xterm.js terminal over HTTP/WebSocket and runs one command per connection, and that command opens a Natural session inside the `natural-ce` container. That is what makes "here is the 1980s system, running" a link you can paste into a chat window.
+
+**`/app/` returns 502 on purpose.** The route is provisioned before the application exists so the URL never has to change once the team builds it. Point it at whatever Stage 3 produces with `modern_app_upstream` (default `sifap-app:8080`) and attach that container to the `sifap-lab` Docker network.
+
+**The `ttyd` trade-off, stated plainly.** The terminal container mounts the Docker socket, which is root-equivalent control of the host. It is how `docker exec` reaches into `natural-ce`; the alternative — a second Natural container sharing the FUSER volume — risks corrupting the library the workshop just compiled. What contains it: `ttyd` publishes no host port, so it is reachable only through Caddy; Caddy requires authentication; and the NSG still gates 80/443 unless `enable_public_acme` is on. This is a disposable lab holding no production data. Destroy it after the demo.
+
+### Authentication on the public origin
+
+Every route except `/healthz` is behind HTTP basic auth, using Caddy's `basic_auth` directive (renamed from `basicauth` in Caddy 2.10; the old spelling still parses but warns). bcrypt is the default algorithm, and the value in the config is the hash itself.
+
+Neither the username nor the hash appears in this repository, in `cloud-init.yaml` or in `custom_data`. The flow is:
+
+1. Terraform generates a random password and stores the **plaintext** in Key Vault as `demo-basic-auth-password`.
+2. At boot the VM reads it with its managed identity and pipes it through `caddy hash-password` **on stdin** — so the plaintext never appears in the process table or in `docker inspect`.
+3. The resulting hash is written to `/opt/sifap/caddy.env`, mode `0600`, and read by Caddy as `{$SIFAP_BASIC_AUTH_HASH}`.
+
+Read the password back with:
+
+```bash
+# Prints the az command for your deployment; run it to see the password
+terraform output -raw demo_basic_auth_password_command
+terraform output -raw demo_basic_auth_username
+```
+
+To bring your own credential instead, hash it yourself and pass it through the environment — never through a committed file:
+
+```bash
+caddy hash-password                     # or: docker run --rm -it caddy caddy hash-password
+export TF_VAR_demo_basic_auth_password_hash='$2a$14$...'   # single quotes: the hash contains $
+terraform apply
+```
+
+Terraform then stores only the hash, as `demo-basic-auth-hash`, and the plaintext stays with you.
+
+**It fails closed.** If the VM cannot read the secret, `bootstrap.sh` locks the site with a hash of a random string nobody holds: the URL stays up, `/healthz` still answers, and every other route is simply unenterable until it is fixed. And if the env file were missing entirely, Caddy refuses to start rather than serving an open origin — verified locally against Caddy 2.10.2, which errors with `username and password cannot be empty or missing`.
 
 ### Choosing a certificate mode
 
@@ -124,9 +191,9 @@ Let's Encrypt validates an HTTP-01 challenge by connecting to port 80 **from arb
 | `false` (default) | `allowed_source_cidrs` only | Caddy's internal CA | Yes, until you trust the CA |
 | `true` | `Internet` service tag | Let's Encrypt | No |
 
-Default is `false`. The demo is still `https://`, the traffic is still encrypted, and the listener is still restricted to your CIDRs — you just get a browser warning, which is the honest cost of not exposing an unauthenticated Adabas console to the internet.
+Default is `false`. The demo is still `https://`, the traffic is still encrypted, and the listener is still restricted to your CIDRs — you just get a browser warning, which is the honest cost of not widening the port.
 
-Set `enable_public_acme = true` when you need a green padlock for an audience that cannot install a CA certificate. Understand what it changes: ports 80 and 443 become reachable from the whole internet, and everything behind them is an Adabas admin console with one password. SSH, Natural (2700), and ADATCP (60001) stay allow-listed in both modes; they are never widened.
+Set `enable_public_acme = true` when you need a green padlock for an audience that cannot install a CA certificate. Understand what it changes: ports 80 and 443 become reachable from the whole internet. Basic auth is then the only thing between that internet and an interactive terminal on the database host, so treat the password accordingly and destroy the lab when the demo ends. SSH, Natural (2700), and ADATCP (60001) stay allow-listed in both modes; they are never widened.
 
 > [!IMPORTANT]
 > Even in ACME mode the module uses the `Internet` service tag rather than a literal `0.0.0.0/0`, and `allowed_source_cidrs` still rejects `0.0.0.0/0` outright. If you want a genuinely open demo, widen `allowed_source_cidrs` yourself, deliberately, and write down why.
@@ -145,8 +212,9 @@ terraform output -raw trust_demo_ca_command
 # Prints a ready-to-run curl for your deployment
 terraform output -raw health_check_command
 
+# /healthz is unauthenticated, so this needs no credential.
 # Internal-CA mode needs -k, because the CA is not in your trust store yet
-curl -sSfk "$(terraform output -raw demo_url)" && echo "demo is up"
+curl -sSfk "$(terraform output -raw healthz_url)" && echo "demo is up"
 ```
 
 If it does not answer, the bootstrap log is the first place to look:
@@ -363,9 +431,15 @@ The `apply` finishes while the VM is still running the bootstrap: installing Doc
 
 | What you want | Terraform output | How to use it |
 |---|---|---|
-| The demo URL | `demo_url` | Open it in a browser: `https://<label>.eastus2.cloudapp.azure.com` |
+| The demo URL | `demo_url` | Open it in a browser: the landing page linking both demos |
+| **The legacy green screen** | `terminal_url` | A Natural session in the browser |
+| **The modern application** | `modern_app_url` | 502 until Stage 3 answers on `modern_app_upstream` |
 | Just the hostname | `demo_fqdn` | For DNS checks and `ssh` |
-| Adabas REST administration | `admin_console_url` | Same origin as the demo URL, proxied over TLS. Sign in as `admin` |
+| Adabas REST administration | `admin_console_url` | `/admin/` on the demo origin, proxied over TLS. Sign in to the console as `admin` |
+| Adabas console without the proxy | `admin_console_tunnel_command` | `ssh -L` tunnel, for when the `/admin/` prefix breaks the console's assets |
+| **Demo URL username** | `demo_basic_auth_username` | Required on every route except `/healthz` |
+| **Demo URL password** | `demo_basic_auth_password_command` | Prints the `az keyvault secret show` command with the vault name filled in |
+| Readiness endpoint | `healthz_url` | Unauthenticated, for uptime probes |
 | Which certificate you will get | `tls_mode` | Tells you whether to expect a browser warning |
 | Trust the internal CA | `trust_demo_ca_command` | Removes the warning without widening the NSG |
 | Confirm the URL is live | `health_check_command` | Ready-to-run `curl` |
@@ -375,6 +449,12 @@ The `apply` finishes while the VM is still running the bootstrap: installing Doc
 | Adabas administration password | `adabas_admin_password_command` | Prints the `az keyvault secret show` command with the vault name filled in |
 | Bootstrap log | `bootstrap_log_command` | Prints the `tail -f` command for the VM log |
 | Bootstrap verdict in Log Analytics | `bootstrap_status_query` | KQL to run in the workspace |
+| **Did the legacy load and compile?** | `provisioning_status_command` | `systemctl status sifap-provisioning` |
+| **Provisioning log** | `provisioning_log_command` | Follows the Adabas load and the Natural compile |
+| **Re-run the load and compile** | `provisioning_rerun_command` | Idempotent; safe to repeat |
+| Provisioning verdict in Log Analytics | `provisioning_status_query` | KQL to run in the workspace |
+| What was staged for the VM | `payload_file_count` | Corpus and provisioning file counts |
+| Payload storage account | `payload_storage_account_name` | For `az storage blob list` |
 | Log Analytics workspace | `log_analytics_workspace_name` | For queries and alert rules |
 | Data-disk snapshot | `data_disk_snapshot_name` | Name of the snapshot, when one was requested |
 | Resource group name | `resource_group_name` | For `az` commands and to confirm removal |
@@ -408,25 +488,83 @@ az keyvault secret show --vault-name <KEY-VAULT-NAME> --name adabas-admin-passwo
 > [!WARNING]
 > Do not copy the password into repository files, issues, PRs, or messages. Read it from Key Vault whenever you need it.
 
-### Move the SIFAP sources into the container
+### The legacy sources: shipped automatically
 
-The bootstrap creates `/opt/sifap/corpus` on the VM and mounts it read-only at `/corpus` inside the `natural-ce` container. The module prepares the mount point but copies nothing; loading the sources is your responsibility.
+You do not copy anything by hand. Terraform stages the frozen SIFAP corpus from `../../01-archaeology/legacy-sifap/` into a private blob container at apply time, and the VM pulls it down at first boot using its managed identity, verifying every file against a SHA-256 manifest:
 
-```bash
-# From the repository root directory on your laptop
-FQDN=$(terraform -chdir=infra/adabas-natural-lab output -raw demo_fqdn)
-scp -r 01-archaeology/legacy-sifap/natural-programs "sifapadmin@${FQDN}:/tmp/"
-
-# On the VM, move the files into the directory mounted in the container
-ssh "sifapadmin@${FQDN}" 'sudo cp /tmp/natural-programs/* /opt/sifap/corpus/'
+```text
+/opt/sifap/corpus/natural-programs/   22 Natural members + 2 JCL jobs
+/opt/sifap/corpus/adabas-ddms/        4 DDMs + the FDT for file 150
 ```
 
-Then open a shell in the container to work with the sources:
+`/opt/sifap/corpus` is mounted read-only at `/corpus` inside `natural-ce`.
+
+**Why blob storage and not `cloud-init`.** Azure caps `custom_data` at 65535 bytes decoded. The corpus alone is roughly 77 KB once base64-encoded — over the limit before a single line of configuration is added. Staging it as blobs keeps `cloud-init` at about 55 KB and ships exactly the tree the apply is running from, which a `git clone` pinned to a ref could not do for sources that are not yet on a public branch.
+
+Confirm what was staged and what arrived:
+
+```bash
+terraform output -raw payload_file_count
+ssh "$(terraform output -raw demo_fqdn)" 'ls -R /opt/sifap/corpus | head -40'
+```
+
+If the directories are empty the download failed — almost always a missing `Storage Blob Data Reader` assignment (see [Permissions the payload needs](#permissions-the-payload-needs)). Re-run it in place:
+
+```bash
+ssh "sifapadmin@$(terraform output -raw demo_fqdn)" 'sudo /opt/sifap/fetch-payload.sh'
+```
+
+To work with the sources directly:
 
 ```bash
 sudo docker exec -it natural-ce bash
 ls /corpus
 ```
+
+### Loading and compiling: the provisioning unit
+
+Shipping the sources is not the same as running them. The scripts under `infra/adabas-natural-lab/provisioning/` are what create the Adabas file, load the data, import the DDMs and compile the `SIFAPPRD` library. They are staged and executed the same way the corpus is, landing at `/opt/sifap/provisioning`:
+
+| Script | Does |
+|---|---|
+| `run-all.sh` | Single idempotent entry point; orchestrates the three below |
+| `01-load-adabas.sh` | `ADAFRM` / `ADACMP` / `ADALOD` — creates SIFAP file 150 and loads the data |
+| `02-build-natural.sh` | Imports the DDMs and sources into `SIFAPPRD` and compiles in dependency order |
+| `03-smoke-test.sh` | Asserts that `CONSBENF` and a batch program really execute |
+
+**It runs as a systemd unit, not as a cloud-init step.** Adabas needs several minutes to build its demo database before any `ADALOD` can succeed, and a full `CATALL` on top of that runs long. A blocking `runcmd` risks the cloud-init timeout killing the load halfway through and leaving a half-populated file. The unit starts after Docker and the containers are up, survives the end of cloud-init and reboots, and reports through `systemctl`.
+
+Check what happened:
+
+```bash
+# active (exited) = it finished cleanly. failed = it did not, and the log says why.
+terraform output -raw provisioning_status_command
+
+# Follow the load and the compile
+terraform output -raw provisioning_log_command
+```
+
+Or without SSH, using the syslog marker the failure alert also watches:
+
+```bash
+terraform output -raw provisioning_status_query   # paste into Log Analytics
+```
+
+Re-run it after fixing something — `run-all.sh` is idempotent by contract:
+
+```bash
+terraform output -raw provisioning_rerun_command
+```
+
+**If the scripts are absent it fails loudly.** `provisioning/` may be empty at apply time. In that case `payload_file_count` says so, and the unit starts, fails immediately with exit code 3, and writes an explanation naming the missing file to `/var/log/sifap-provisioning.log`. That is deliberate: a unit in the `failed` state is a signal, whereas a silent no-op is how a demo reaches the room with an empty database.
+
+### Permissions the payload needs
+
+The VM reads the staging container as itself, so Terraform grants its managed identity `Storage Blob Data Reader` on that container. **Creating a role assignment requires Owner or User Access Administrator on the subscription** — Contributor is not enough, and the apply fails on that one resource.
+
+If you only have Contributor, set `assign_vm_blob_role = false` and have someone with the rights create the assignment. Nothing else in the module needs elevated rights.
+
+Note that role assignments are eventually consistent. `fetch-payload.sh` retries for five minutes precisely because the first request legitimately returns 403 while the assignment replicates.
 
 ---
 
@@ -436,23 +574,23 @@ The rules are in `main.tf`, in the `azurerm_network_security_group.lab` resource
 
 | Port | NSG rule | Priority | Source | Purpose |
 |---|---|---|---|---|
-| 443 | `AllowHttpsDemo` | 150 | Allow-list, or `Internet` with ACME | The demo URL. TLS terminated by Caddy |
+| 443 | `AllowHttpsDemo` | 150 | Allow-list, or `Internet` with ACME | The demo URL: landing page, green screen, modern app, Adabas console. TLS terminated by Caddy, all of it behind basic auth except `/healthz` |
 | 80 | `AllowHttpRedirectAndAcme` | 140 | Allow-list, or `Internet` with ACME | Redirect to HTTPS, and the ACME HTTP-01 challenge |
 | 22 | `AllowSshFromWorkshop` | 100 | Allow-list only | SSH. Key authentication; passwords disabled |
 | 2700 | `AllowNaturalDevelopmentServer` | 110 | Allow-list only | Natural Development Server, for NaturalONE |
 | 60001 | `AllowAdabasAdatcp` | 120 | Allow-list only | Adabas ADATCP, only for clients outside the VM |
 | 8190 | `AllowAdabasRestAdmin` | 130 | Allow-list only | **Disabled by default.** Plaintext admin console, superseded by the HTTPS proxy |
 
-Port 8190 is now opt-in through `expose_adabas_admin_port`. Leave it off: the same console is available over TLS at `admin_console_url`, and the direct port is unencrypted. It exists only as a fallback for debugging the proxy itself, and `admin_console_direct_url` prints the address when you need it.
+Port 8190 is now opt-in through `expose_adabas_admin_port`. Leave it off: the same console is available over TLS and behind authentication at `admin_console_url`, and the direct port is unencrypted. It exists only as a fallback for debugging the proxy itself, and `admin_console_direct_url` prints the address when you need it.
 
 Defence in depth backs that up at the container layer. Docker publishes ports by writing its own firewall rules, so a plain `8190:8190` listens on every interface regardless of what the host firewall says. With `expose_adabas_admin_port = false` the module binds the console to `127.0.0.1:8190` instead, which keeps it reachable over an SSH tunnel for debugging while making it unreachable from the network even if someone later widens the NSG by hand:
 
 ```bash
-ssh -L 8190:127.0.0.1:8190 "sifapadmin@$(terraform output -raw demo_fqdn)"
+terraform output -raw admin_console_tunnel_command   # prints the ssh -L line
 # then browse to http://localhost:8190
 ```
 
-Caddy is unaffected either way — it reaches `adabas-db:8190` across the Docker bridge, not through the host binding.
+Caddy is unaffected either way — it reaches `adabas-db:8190` across the Docker bridge, not through the host binding. The same is true of `ttyd`, which publishes no host port at all and is reachable only through the authenticated proxy.
 
 ---
 
@@ -482,7 +620,15 @@ Only two variables are required. The others have defaults defined in `variables.
 | `data_disk_snapshot_label` | No | `""` | Non-empty takes a snapshot of the data disk. See [Data protection](#data-protection) |
 | `adabas_image` | No | `softwareag/adabas-ce:7.4.0@sha256:...` | Adabas Community Edition image, pinned by digest |
 | `natural_image` | No | `softwareag/natural-ce:9.3.3@sha256:...` | Natural Community Edition image, pinned by digest |
-| `caddy_image` | No | `caddy:2.10.2-alpine@sha256:...` | Reverse proxy image, pinned by digest |
+| `caddy_image` | No | `caddy:2.10.2-alpine@sha256:...` | Reverse proxy image, pinned by digest. Also used to bcrypt the demo password at boot |
+| `ttyd_image` | No | `tsl0922/ttyd:1.7.7-alpine@sha256:...` | Web terminal serving the green screen, pinned by digest |
+| `docker_cli_image` | No | `docker:29.7.2-cli@sha256:...` | Source of the musl-linked `docker` client the terminal needs, pinned by digest |
+| `demo_basic_auth_username` | No | `sifap` | Username for the demo URL. See [Authentication on the public origin](#authentication-on-the-public-origin) |
+| `demo_basic_auth_password_hash` | No | `""` | Bring your own bcrypt hash. Empty makes Terraform generate a password into Key Vault. **Pass it via `TF_VAR_`, never in a file** |
+| `modern_app_upstream` | No | `sifap-app:8080` | What `/app/` proxies to. Returns 502 until Stage 3 answers there |
+| `terminal_natural_command` | No | `""` | Command the terminal runs to open a Natural session. Empty probes the known paths and falls back to a shell |
+| `legacy_corpus_path` | No | `../../01-archaeology/legacy-sifap` | Frozen legacy sources staged to the VM |
+| `assign_vm_blob_role` | No | `true` | Grants the VM `Storage Blob Data Reader` on the payload container. Needs Owner or UAA — see [Permissions the payload needs](#permissions-the-payload-needs) |
 | `adabas_dbid` | No | `12` | Adabas DBID mapped by Natural |
 | `auto_shutdown_time` | No | `2000` | Daily shutdown time in HHmm format |
 | `auto_shutdown_timezone` | No | `Eastern Standard Time` | Shutdown schedule time zone |
@@ -584,7 +730,7 @@ Snapshots are incremental, so a second snapshot of a mostly unchanged disk costs
 
 Two versions of "the same" lab should not differ because a tag moved underneath you.
 
-**Container images are pinned by digest.** `adabas_image`, `natural_image`, and `caddy_image` all carry `@sha256:...`, and a variable validation rejects any value without one. A digest names exactly one image; a tag names whatever was pushed last.
+**Container images are pinned by digest.** `adabas_image`, `natural_image`, `caddy_image`, `ttyd_image`, and `docker_cli_image` all carry `@sha256:...`, and a variable validation rejects any value without one. A digest names exactly one image; a tag names whatever was pushed last.
 
 To move to a new version, resolve the digest first — never guess it:
 
@@ -597,6 +743,31 @@ Copy the `Digest:` line into the variable, keeping the tag for readability:
 ```hcl
 adabas_image = "softwareag/adabas-ce:7.4.0@sha256:<digest-from-the-command-above>"
 ```
+
+### The `cloud-init` size budget
+
+Azure rejects `custom_data` larger than **65535 bytes decoded**, and `cloud-init.yaml` currently renders to about **57 KB — roughly 88% of the limit**. That is a real constraint, not a footnote: a few hundred added lines will fail the apply.
+
+`terraform validate` cannot catch it, because the template is only rendered during plan. Check it directly before committing a large edit:
+
+```bash
+terraform console <<'EOF'
+length(templatefile("cloud-init.yaml", {
+  adabas_image = var.adabas_image, natural_image = var.natural_image,
+  caddy_image = var.caddy_image, ttyd_image = var.ttyd_image,
+  docker_cli_image = var.docker_cli_image, adabas_dbid = var.adabas_dbid,
+  key_vault_uri = "https://example.vault.azure.net/", secret_name = "x",
+  demo_fqdn = "example.eastus2.cloudapp.azure.com", caddy_global_options = "",
+  caddy_tls_directive = "tls internal", adabas_admin_bind = "127.0.0.1:8190",
+  payload_base_url = "https://example.blob.core.windows.net/sifap-payload",
+  basic_auth_username = "sifap", basic_auth_secret_name = "x",
+  basic_auth_secret_kind = "password", modern_app_upstream = "sifap-app:8080",
+  terminal_natural_command = "",
+}))
+EOF
+```
+
+Anything large — sources, seed data, binaries — belongs in the blob payload instead. That is exactly why the legacy corpus is staged rather than embedded: it is 77 KB base64-encoded on its own, and the provisioning seed data is another 3.5 MB.
 
 **The VM image version is not pinned yet.** `source_image_version` defaults to `latest`, which means a rebuild months from now may land on a different Ubuntu 22.04 build than the one you tested.
 
@@ -709,6 +880,16 @@ This module requires `~> 1.14.0`, and `deploy-lab.yml` pins `1.14.6` to match.
 | Demo URL does not resolve | DNS label not yet propagated, or apply did not finish | Wait a minute, then `dig +short "$(terraform output -raw demo_fqdn)"` |
 | Browser warns about the certificate | Internal-CA mode, which is the default | Expected. Trust the CA with `terraform output -raw trust_demo_ca_command`, or set `enable_public_acme = true` |
 | Demo URL times out | Your IP is not in `allowed_source_cidrs` | Same fix as SSH below — the 443 rule uses the same allow-list |
+| Browser asks for a password | Working as designed — everything except `/healthz` is authenticated | `terraform output -raw demo_basic_auth_username` and `-raw demo_basic_auth_password_command` |
+| Password from Key Vault rejected at the demo URL | The VM could not read the secret and fell back to a random hash nobody holds | Search `/var/log/sifap-bootstrap.log` for `could not build the basic-auth hash`, fix the vault access, then re-run `sudo /opt/sifap/bootstrap.sh` |
+| `/terminal/` returns 502 | `ttyd` did not start | `sudo docker compose logs ttyd`; a common cause is a missing `/opt/sifap/bin/docker`, fixed by re-running `sudo /opt/sifap/bootstrap.sh` |
+| Terminal connects, then drops immediately | `--check-origin` rejecting the WebSocket upgrade | Remove `--check-origin` from the `ttyd` command in `/opt/sifap/docker-compose.yml` and `sudo docker compose up -d ttyd` |
+| Terminal opens a shell instead of Natural | The Natural start-up path was not found | Follow the instructions it prints, then set `terminal_natural_command` |
+| `/app/` returns 502 | Nothing is answering on `modern_app_upstream` | Expected until Stage 3. Attach the app container to the `sifap-lab` network |
+| `/admin/` renders half-broken | The console's assets assume a root path | Use `terraform output -raw admin_console_tunnel_command` |
+| `/corpus` is empty in `natural-ce` | The payload download failed | `sudo /opt/sifap/fetch-payload.sh` — see [Permissions the payload needs](#permissions-the-payload-needs) |
+| `sifap-provisioning` is `failed` with exit 3 | `provisioning/run-all.sh` was not staged | `provisioning/` was empty at apply time. Add the scripts, re-apply, then re-run |
+| `apply` fails on `azurerm_role_assignment.vm_payload_reader` | Your account has Contributor, not Owner or UAA | Set `assign_vm_blob_role = false` and have someone with the rights create it |
 | `https://` refused, bootstrap finished | Caddy container did not start | `sudo docker compose logs caddy` on the VM |
 | Let's Encrypt certificate never issues | ACME challenge cannot reach port 80 | Confirm `enable_public_acme = true` and that the DNS label resolves publicly |
 | `terraform plan` fails while reading the SSH key | The file at `ssh_public_key_path` does not exist | Generate the key pair or set the variable to the correct path |
@@ -742,6 +923,24 @@ The log begins with `=== SIFAP lab bootstrap started` and ends with `=== SIFAP l
 ssh sifapadmin@<FQDN> 'ls -l /opt/sifap/READY'
 ```
 
+### Provisioning still running
+
+Bootstrap finishing does **not** mean the legacy has loaded. `bootstrap.sh` hands off to the `sifap-provisioning` unit and returns; the Adabas load and the Natural compile continue in the background for several more minutes.
+
+```bash
+terraform output -raw provisioning_status_command   # active (exited) | activating | failed
+terraform output -raw provisioning_log_command      # follow it
+```
+
+Marker files answer the same question without parsing anything:
+
+| File | Meaning |
+|---|---|
+| `/opt/sifap/PAYLOAD-OK` | The corpus and scripts downloaded and checksummed cleanly |
+| `/opt/sifap/PAYLOAD-FAILED` | They did not — the VM has no legacy sources |
+| `/opt/sifap/PROVISIONED` | `run-all.sh` finished successfully |
+| `/opt/sifap/PROVISIONING-FAILED` | It ran and failed; the file records when and where |
+
 ### SSH refused or unresponsive
 
 This is the lab's most common failure, and it almost always has the same cause: **your public IP changed**. Home networks, corporate VPNs, and mobile connections change addresses frequently. The NSG still allows the old IP, while `DenyAllOtherInbound` blocks the new one.
@@ -768,6 +967,7 @@ cd /opt/sifap
 sudo docker compose ps
 sudo docker compose logs adabas-db
 sudo docker compose logs natural-ce
+sudo docker compose logs ttyd
 sudo docker compose logs caddy
 sudo docker compose up -d
 ```
@@ -845,9 +1045,14 @@ Note the `--location` argument: it is the region the vault was deleted *from*. W
 ## Completion criteria
 
 - [ ] `terraform output -raw demo_url` returns an `https://` FQDN, and it answers.
+- [ ] `curl -sSfk "$(terraform output -raw healthz_url)"` returns `ok` **without** a credential.
+- [ ] The demo URL prompts for a password, and the one from `demo_basic_auth_password_command` works.
 - [ ] The bootstrap log finished and `/opt/sifap/READY` exists.
-- [ ] `sudo docker compose ps` shows `adabas-db`, `natural-ce`, and `caddy` running.
-- [ ] Adabas REST administration opens over HTTPS with the `admin` user and the password read from Key Vault.
+- [ ] `sudo docker compose ps` shows `adabas-db`, `natural-ce`, `ttyd`, and `caddy` running.
+- [ ] `/opt/sifap/corpus/natural-programs` and `/opt/sifap/corpus/adabas-ddms` are populated, and `/opt/sifap/PAYLOAD-OK` exists.
+- [ ] `systemctl status sifap-provisioning` reports `active (exited)`, and `/opt/sifap/PROVISIONED` exists.
+- [ ] `terminal_url` opens a Natural session in the browser, not a bare shell.
+- [ ] Adabas REST administration opens at `/admin/` with the `admin` user and the password read from Key Vault.
 - [ ] `terraform state list` reads from the remote backend, not a local file.
 - [ ] `terraform.tfvars` remains outside version control.
 - [ ] The budget exists and `auto_shutdown_notification_email` is set.
@@ -865,6 +1070,8 @@ Note the `--location` argument: it is the region the vault was deleted *from*. W
 | Kit CI/CD conventions | [`.github/instructions/cicd.instructions.md`](../../.github/instructions/cicd.instructions.md) |
 | SIFAP Natural programs and DDMs | [`01-archaeology/legacy-sifap/`](../../01-archaeology/legacy-sifap/) |
 | How to read Natural code | [`01-archaeology/legacy-sifap/HOW-TO-READ-NATURAL.md`](../../01-archaeology/legacy-sifap/HOW-TO-READ-NATURAL.md) |
+| Caddy `basic_auth` directive | <https://caddyserver.com/docs/caddyfile/directives/basic_auth> |
+| `ttyd` web terminal | <https://github.com/tsl0922/ttyd> |
 | Workshop operations runbook | [`docs/runbook.md`](../../docs/runbook.md) |
 | Workshop troubleshooting | [`docs/troubleshooting.md`](../../docs/troubleshooting.md) |
 

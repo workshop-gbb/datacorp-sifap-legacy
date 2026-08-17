@@ -103,6 +103,61 @@ allowed_source_cidrs = [
 # expose_adabas_admin_port = true
 
 # ---------------------------------------------------------------------------
+# Demo authentication
+# ---------------------------------------------------------------------------
+# The public origin serves a web terminal into the legacy system, so it is NOT left
+# open. Every route except /healthz sits behind HTTP basic auth.
+#
+# By default Terraform generates a random password, stores it in Key Vault, and the VM
+# bcrypts it locally at boot. Read it back with the demo_basic_auth_password_command
+# output. That is the path most people want, and it needs nothing here.
+
+# Username for the demo URL.
+# demo_basic_auth_username = "sifap"
+
+# Supply your own bcrypt hash instead of letting Terraform generate a password. Only
+# the HASH is stored (in Key Vault); the plaintext stays with you and Terraform never
+# sees it.
+#
+# NEVER put this in a committed file. Generate and deliver it through the environment:
+#   caddy hash-password            # or: docker run --rm -it caddy caddy hash-password
+#   export TF_VAR_demo_basic_auth_password_hash='$2a$14$...'
+#
+# The single quotes matter: a bcrypt hash contains $ characters that the shell would
+# otherwise expand.
+# demo_basic_auth_password_hash = ""    # <- leave empty here; use TF_VAR_ instead
+
+# ---------------------------------------------------------------------------
+# The legacy corpus and provisioning
+# ---------------------------------------------------------------------------
+# The frozen SIFAP sources and the provisioning scripts are staged to a private blob
+# container at apply time and pulled down by the VM's managed identity at boot. They
+# are NOT embedded in cloud-init: base64-encoded they are ~77 KB on their own, over
+# Azure's 65535-byte custom_data limit.
+
+# Where the frozen legacy lives, relative to this module. Change it only if you are
+# running the lab against a different corpus.
+# legacy_corpus_path = "../../01-archaeology/legacy-sifap"
+
+# Terraform grants the VM identity "Storage Blob Data Reader" on the payload container
+# so it can fetch that staging area. Creating a role assignment needs Owner or User
+# Access Administrator on the subscription; if your account has only Contributor, the
+# apply fails on this one resource. Set it to false and have someone with the rights
+# create the assignment - the output tells you the exact command.
+# assign_vm_blob_role = false
+
+# Upstream the /app route proxies to, once Stage 3 has something to run. Until then
+# the route returns 502, which is deliberate: the URL is provisioned first so it never
+# has to change.
+# modern_app_upstream = "sifap-app:8080"
+
+# Command the web terminal runs inside the natural-ce container to open a session.
+# Empty (default) probes the known Natural CE paths and, failing that, drops into a
+# shell with instructions rather than a blank screen. Set it once the team has
+# confirmed the real start-up line.
+# terminal_natural_command = "/opt/softwareag/Natural/bin/natural"
+
+# ---------------------------------------------------------------------------
 # Sizing and workload
 # ---------------------------------------------------------------------------
 
@@ -128,6 +183,15 @@ allowed_source_cidrs = [
 #   az vm image list --publisher Canonical --offer 0001-com-ubuntu-server-jammy \
 #     --sku 22_04-lts-gen2 --all --query "[-5:].version" -o table
 # source_image_version = "22.04.202501150"
+
+# Container images. All five are pinned by digest, not by tag, so a rebuild runs the
+# same bytes. Re-pin with:
+#   docker buildx imagetools inspect <image>:<tag> --format '{{.Manifest.Digest}}'
+# adabas_image     = "..."
+# natural_image    = "..."
+# caddy_image      = "..."
+# ttyd_image       = "..."   # the web terminal serving the green screen
+# docker_cli_image = "..."   # source of the musl docker client the terminal uses
 
 # ---------------------------------------------------------------------------
 # Cost control

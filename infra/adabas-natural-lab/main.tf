@@ -105,9 +105,13 @@ locals {
   # "provisioning scripts are missing" instead of silently doing nothing.
   provisioning_dir = "${path.module}/provisioning"
 
+  # work/ is scratch: lib.sh creates it at runtime for CMPRINT output and ADACMP temporaries.
+  # Excluded so a developer who ran the scripts locally does not upload their leftovers on the
+  # next apply - and so the manifest stays a description of the SOURCE, not of someone's box.
   provisioning_files = {
     for f in fileset(local.provisioning_dir, "**") :
     "provisioning/${f}" => "${local.provisioning_dir}/${f}"
+    if !startswith(f, "work/")
   }
 
   payload_files = merge(local.corpus_files, local.provisioning_files)
@@ -127,7 +131,13 @@ locals {
   # plaintext password (default - the VM bcrypts it locally at boot) or an operator-supplied
   # bcrypt hash (used as-is). Neither ever reaches cloud-init; the VM only learns WHICH
   # secret to read and how to treat it.
-  basic_auth_generate    = var.demo_basic_auth_password_hash == ""
+  #
+  # nonsensitive() is deliberate and narrow. var.demo_basic_auth_password_hash is sensitive,
+  # so anything derived from it inherits that mark - including this boolean, which would then
+  # taint the secret NAME and the "which command fetches the password" output and force them
+  # to be hidden. What leaks here is only "did the operator supply their own hash?", which is
+  # visible from the plan anyway. The hash itself is never unwrapped.
+  basic_auth_generate    = nonsensitive(var.demo_basic_auth_password_hash == "")
   basic_auth_secret_name = local.basic_auth_generate ? "demo-basic-auth-password" : "demo-basic-auth-hash"
   basic_auth_secret_kind = local.basic_auth_generate ? "password" : "hash"
 

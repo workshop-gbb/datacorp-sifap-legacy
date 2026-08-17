@@ -65,6 +65,13 @@ container_sh() {
   docker exec "$container" sh -lc "$script"
 }
 
+container_sh_root() {
+  # natural-ce runs as uid 1724, so a plain `docker exec` cannot chown files that
+  # `docker cp` created as root. Ownership fixes must therefore run as root.
+  local container="$1" script="$2"
+  docker exec -u 0 "$container" sh -lc "$script"
+}
+
 container_has_command() {
   local container="$1" cmd="$2"
   docker exec "$container" sh -lc "command -v '$cmd' >/dev/null 2>&1"

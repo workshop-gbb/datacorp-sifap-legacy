@@ -81,7 +81,7 @@ ensure_libraries() {
 copy_sources_to_fuser() {
   copy_into_container "$BUILD_WORK/sifap-src/." "$NATURAL_CONTAINER" "/opt/softwareag/Natural/fuser/${NATURAL_LIBRARY}/SRC/"
   copy_into_container "$BUILD_WORK/sysddm-src/." "$NATURAL_CONTAINER" "/opt/softwareag/Natural/fuser/SYSDDM/SRC/"
-  container_sh "$NATURAL_CONTAINER" "chown -R 1724:1724 /opt/softwareag/Natural/fuser/${NATURAL_LIBRARY} /opt/softwareag/Natural/fuser/SYSDDM '$NATURAL_WORK_DIR'"
+  container_sh_root "$NATURAL_CONTAINER" "chown -R 1724:1724 /opt/softwareag/Natural/fuser/${NATURAL_LIBRARY} /opt/softwareag/Natural/fuser/SYSDDM '$NATURAL_WORK_DIR'"
 }
 
 run_compile_group() {

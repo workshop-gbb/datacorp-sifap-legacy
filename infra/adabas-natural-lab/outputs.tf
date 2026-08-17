@@ -15,8 +15,8 @@ output "vm_name" {
 # THE link to hand an audience. Read from the public IP resource rather than rebuilt from
 # parts, so it is whatever Azure actually issued.
 output "demo_url" {
-  description = "Public HTTPS URL for the demo. TLS terminates at the Caddy reverse proxy on the VM; the Adabas console behind it is never served in plaintext over the network."
-  value       = "https://${azurerm_public_ip.lab.fqdn}"
+  description = "Public HTTPS URL for the demo. Opens the landing page, which links the legacy green screen and the modern app. TLS terminates at the Caddy reverse proxy on the VM; nothing behind it is served in plaintext over the network, and every route except /healthz needs the basic-auth credential."
+  value       = "https://${azurerm_public_ip.lab.fqdn}/"
 }
 
 output "demo_fqdn" {
@@ -24,14 +24,62 @@ output "demo_fqdn" {
   value       = azurerm_public_ip.lab.fqdn
 }
 
+# One origin, four routes. They are separate outputs rather than one blob of text because a
+# workshop facilitator pastes them individually into chat, and a CI job can consume them.
+output "terminal_url" {
+  description = "The legacy green screen: a Natural session in the browser, served by ttyd over the TLS proxy. Natural itself speaks a character protocol on 2700 that no browser can open, which is why this route exists."
+  value       = "https://${azurerm_public_ip.lab.fqdn}/terminal/"
+}
+
+output "modern_app_url" {
+  description = "The modern Java + Next.js application from Stage 3. The route is provisioned before the app exists, so the URL never changes later; until a container answers on var.modern_app_upstream it returns 502, which is the honest answer rather than a 404."
+  value       = "https://${azurerm_public_ip.lab.fqdn}/app/"
+}
+
 output "admin_console_url" {
-  description = "Adabas REST administration console, proxied over TLS. Same origin as demo_url; sign in as 'admin' with the password from Key Vault."
-  value       = "https://${azurerm_public_ip.lab.fqdn}/"
+  description = "Adabas REST administration console, proxied over TLS behind basic auth. No longer the default route - '/' is the landing page. Sign in to the console itself as 'admin' with the password from adabas_admin_password_command."
+  value       = "https://${azurerm_public_ip.lab.fqdn}/admin/"
+}
+
+output "healthz_url" {
+  description = "Readiness endpoint. The ONLY route without basic auth, so uptime probes need no credential; it returns a fixed string and reveals nothing about the lab."
+  value       = "https://${azurerm_public_ip.lab.fqdn}/healthz"
 }
 
 output "admin_console_direct_url" {
   description = "PLAINTEXT fallback straight to the Adabas console, for when the proxy itself is the broken part. Reachable only while expose_adabas_admin_port = true, and only from allowed_source_cidrs."
-  value       = var.expose_adabas_admin_port ? "http://${azurerm_public_ip.lab.ip_address}:8190" : "disabled (expose_adabas_admin_port = false; use admin_console_url instead)"
+  value       = var.expose_adabas_admin_port ? "http://${azurerm_public_ip.lab.ip_address}:8190" : "disabled (expose_adabas_admin_port = false; use admin_console_url, or admin_console_tunnel_command)"
+}
+
+output "admin_console_tunnel_command" {
+  description = "Second fallback for the Adabas console: an SSH tunnel to 8190, bypassing the proxy entirely. Use it if the console's own assets turn out to need a root path and the /admin/ prefix renders it half-broken. Then open http://localhost:8190/."
+  value       = "ssh -L 8190:127.0.0.1:8190 ${var.admin_username}@${azurerm_public_ip.lab.fqdn}"
+}
+
+# ---------------------------------------------------------------------------
+# Demo authentication
+# ---------------------------------------------------------------------------
+
+# Basic auth over TLS. Modest by design: this is a disposable workshop lab with no production
+# data, and the alternative - an unauthenticated public origin serving an interactive shell
+# into the database host - is not a trade worth making. The NSG still gates 80/443 unless
+# enable_public_acme is on.
+output "demo_basic_auth_username" {
+  description = "Username for the demo URL. Every route except /healthz requires it."
+  value       = var.demo_basic_auth_username
+}
+
+# Same discipline as the Adabas password: emit the COMMAND, never the value, so nothing
+# secret lands in `terraform output`, in CI logs or in the state's output map.
+output "demo_basic_auth_password_command" {
+  description = "Reads the demo URL password from Key Vault. Returns a usable password only when Terraform generated one; if you supplied demo_basic_auth_password_hash yourself, the vault holds that hash and only you know the plaintext."
+  value = local.basic_auth_generate ? join("", [
+    "az keyvault secret show --vault-name ${azurerm_key_vault.lab.name} ",
+    "--name ${local.basic_auth_secret_name} --query value -o tsv",
+    ]) : join("", [
+    "not generated: you supplied demo_basic_auth_password_hash, so only the bcrypt hash ",
+    "is stored. Use the password you hashed.",
+  ])
 }
 
 output "tls_mode" {
@@ -86,6 +134,50 @@ output "adabas_admin_password_command" {
 output "bootstrap_log_command" {
   description = "Follows the first-boot bootstrap, including the multi-GB image pull."
   value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'sudo tail -f /var/log/sifap-bootstrap.log'"
+}
+
+# ---------------------------------------------------------------------------
+# Legacy provisioning
+# ---------------------------------------------------------------------------
+
+# Loading Adabas and compiling the Natural library takes far longer than cloud-init should be
+# kept waiting, so it runs as a systemd unit. These three outputs are how you find out what
+# happened without reading a log you have to know the path of.
+output "provisioning_status_command" {
+  description = "Answers 'did the legacy actually load and compile?' in one line. 'active (exited)' means run-all.sh finished cleanly; 'failed' means it did not, and the log says why."
+  value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'systemctl status sifap-provisioning --no-pager'"
+}
+
+output "provisioning_log_command" {
+  description = "Follows the Adabas load and the Natural compile. Expect several minutes: Adabas builds its demo database on first boot before any ADALOD can succeed."
+  value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'sudo tail -f /var/log/sifap-provisioning.log'"
+}
+
+output "provisioning_rerun_command" {
+  description = "Re-runs the load and compile. Safe to repeat - run-all.sh is idempotent by contract. Use it after fixing a failure, or after an apply that changed the corpus (re-fetch first)."
+  value = join(" && ", [
+    "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'sudo /opt/sifap/fetch-payload.sh",
+    "sudo systemctl restart sifap-provisioning'",
+  ])
+}
+
+output "provisioning_status_query" {
+  description = "KQL twin of provisioning_status_command, for when SSH is not available. Same syslog marker the failure alert watches."
+  value       = "Syslog | where SyslogMessage has \"SIFAP-PROVISIONING RESULT\" | project TimeGenerated, SyslogMessage | order by TimeGenerated desc"
+}
+
+output "payload_storage_account_name" {
+  description = "Storage account holding the staged legacy corpus and provisioning scripts. The VM reads it with its managed identity; there is no key, no SAS and no anonymous access. Useful for checking what actually got uploaded: az storage blob list --auth-mode login --account-name <this> -c sifap-payload -o table"
+  value       = azurerm_storage_account.payload.name
+}
+
+output "payload_file_count" {
+  description = "How many files Terraform staged for the VM, split between the frozen legacy corpus and the provisioning scripts. A provisioning count of 0 means infra/adabas-natural-lab/provisioning/ was empty at apply time and nothing will load the legacy - see README.md."
+  value = join("", [
+    "${length(local.corpus_files)} corpus files, ",
+    "${length(local.provisioning_files)} provisioning files",
+    length(local.provisioning_files) == 0 ? " (WARNING: no provisioning scripts staged)" : "",
+  ])
 }
 
 # ---------------------------------------------------------------------------
