@@ -49,6 +49,13 @@ locals {
   caddy_global_options = var.enable_public_acme ? "email ${var.acme_contact_email}" : "# ACME disabled: certificates are signed by Caddy's local CA"
   caddy_tls_directive  = var.enable_public_acme ? "# tls: automatic Let's Encrypt for ${local.demo_fqdn}" : "tls internal"
 
+  # Docker publishes container ports by punching through the host firewall, so a plain
+  # "8190:8190" listens on every interface no matter what ufw thinks. Binding to loopback
+  # keeps the console reachable over an SSH tunnel for debugging the proxy, while making it
+  # unreachable from the network even if someone later widens the NSG by hand. Caddy is
+  # unaffected: it reaches adabas-db over the Docker bridge, not the host binding.
+  adabas_admin_bind = var.expose_adabas_admin_port ? "8190:8190" : "127.0.0.1:8190:8190"
+
   # Only 80/443 ever widen, and only when ACME is explicitly enabled. "Internet" is Azure's
   # service tag for public address space; it is narrower than 0.0.0.0/0, which would also
   # match VNet and Azure-internal sources.
@@ -635,6 +642,7 @@ resource "azurerm_linux_virtual_machine" "lab" {
     demo_fqdn            = local.demo_fqdn
     caddy_global_options = local.caddy_global_options
     caddy_tls_directive  = local.caddy_tls_directive
+    adabas_admin_bind    = local.adabas_admin_bind
   }))
 
   lifecycle {

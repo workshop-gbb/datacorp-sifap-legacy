@@ -445,6 +445,15 @@ The rules are in `main.tf`, in the `azurerm_network_security_group.lab` resource
 
 Port 8190 is now opt-in through `expose_adabas_admin_port`. Leave it off: the same console is available over TLS at `admin_console_url`, and the direct port is unencrypted. It exists only as a fallback for debugging the proxy itself, and `admin_console_direct_url` prints the address when you need it.
 
+Defence in depth backs that up at the container layer. Docker publishes ports by writing its own firewall rules, so a plain `8190:8190` listens on every interface regardless of what the host firewall says. With `expose_adabas_admin_port = false` the module binds the console to `127.0.0.1:8190` instead, which keeps it reachable over an SSH tunnel for debugging while making it unreachable from the network even if someone later widens the NSG by hand:
+
+```bash
+ssh -L 8190:127.0.0.1:8190 "sifapadmin@$(terraform output -raw demo_fqdn)"
+# then browse to http://localhost:8190
+```
+
+Caddy is unaffected either way — it reaches `adabas-db:8190` across the Docker bridge, not through the host binding.
+
 ---
 
 ## Module variables

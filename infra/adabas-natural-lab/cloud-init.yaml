@@ -3,9 +3,10 @@
 # SIFAP legacy lab: Adabas Community Edition + Natural Community Edition
 #
 # Rendered by Terraform (templatefile). The ONLY interpolations in this file are
-# the nine template variables passed from main.tf:
+# the ten template variables passed from main.tf:
 #   adabas_image, natural_image, caddy_image, adabas_dbid, key_vault_uri,
-#   secret_name, demo_fqdn, caddy_global_options, caddy_tls_directive
+#   secret_name, demo_fqdn, caddy_global_options, caddy_tls_directive,
+#   adabas_admin_bind
 # Every other dollar sign belongs to shell and is written as $VAR or $(...),
 # never as $${VAR}, so Terraform's template engine cannot eat it. If you ever
 # need a literal dollar-brace in shell here, you MUST escape it as $${...}
@@ -146,7 +147,7 @@ write_files:
             - ./adabas.env
           ports:
             - "60001:60001"
-            - "8190:8190"
+            - "${adabas_admin_bind}"
           volumes:
             - /mnt/adabas-data:/data
           # The image's own healthcheck has no start_period, so it reports
