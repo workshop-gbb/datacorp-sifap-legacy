@@ -19,7 +19,7 @@ A **DDM (Data Definition Module)** is the file that describes the schema of an A
 
 **Why it matters:** without reading the DDM, you do not know which fields exist, what types they have, or which structures (`MU`, `PE`) will need to become child tables in PostgreSQL. Field names in `.NSN` programs are abbreviations that only make sense when cross-referenced with the DDM.
 
-**How this applies to SIFAP:** the `CALCBENF.NSN` program references fields such as `BN-VL-RENDA-PC` and `PS-VL-MAX`. To understand what each field represents, consult the `BENEFICIARY` and `SOCIAL-PROGRAM` DDMs.
+**How this applies to SIFAP:** the `CALCBENF.NSN` program references fields such as `BN-AMT-INCOME-PC` and `PS-AMT-MAX`. To understand what each field represents, consult the `BENEFICIARY` and `SOCIAL-PROGRAM` DDMs.
 
 ---
 

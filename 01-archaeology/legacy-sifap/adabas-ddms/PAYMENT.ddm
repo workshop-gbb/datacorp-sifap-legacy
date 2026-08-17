@@ -7,7 +7,7 @@
 * CHANGED:   10/01/1999 - MARCIA A. SOUZA - BATCH FIELDS
 *            10/01/1999 - MARCIA A. SOUZA - FF/FG REMITTANCE BATCH
 *            10/01/1999 - MARCIA A. SOUZA - EF CREDIT DATE/GF RETURN DATE
-*            12/12/2001 - MARCIA A. SOUZA - BD AMT-BONUS/EG TIPO-PAGTO
+*            12/12/2001 - MARCIA A. SOUZA - BD AMT-BONUS/EG TYPE-PAYMENT
 *            05/09/2002 - ROBERTO C. FERREIRA - SIAFI INTEGRATION
 *            05/09/2002 - ROBERTO C. FERREIRA - SUBDESC SA YEAR-REF
 *            14/07/2003 - ADILSON BATISTA - GG-GK REVERSAL AND CORRECTION
@@ -31,94 +31,94 @@ DBID: 057   FNR: 152
 *
 * --- KEYS ---
 *
-   1 AA NUM-PAYMENT            N   15    U UNIQUE SEQUENCE
+   1 AA NUM-PAYMENT              N   15    U UNIQUE SEQUENCE
    1 AB NUM-CPF                  A   11    D BENEFICIARY CPF
-   1 AC NUM-REGISTRATION            N   11  N   BENEFICIARY REGISTRATION
-   1 AD COD-PROGRAM             A    4    D SOCIAL PROGRAM
-   1 AE YEAR-MONTH-REF              N    6    D YYYYMM - REFERENCE PERIOD
+   1 AC NUM-REGISTRATION         N   11  N   BENEFICIARY REGISTRATION
+   1 AD COD-PROGRAM              A    4    D SOCIAL PROGRAM
+   1 AE YEAR-MONTH-REF           N    6    D YYYYMM - REFERENCE PERIOD
    1 AF NUM-CYCLE                N    6    D PROCESSING CYCLE
 *
 * --- AMOUNTS ---
 *
    1 BA AMT-GROSS                P  9,2      CALCULATED GROSS AMOUNT
-   1 BB AMT-NET              P  9,2      NET AMOUNT (GROSS-DISCOUNT)
-   1 BC AMT-DISC-TOTAL       P  7,2  N   SUM OF DISCOUNTS
+   1 BB AMT-NET                  P  9,2      NET AMOUNT (GROSS-DISCOUNT)
+   1 BC AMT-DISC-TOTAL           P  7,2  N   SUM OF DISCOUNTS
    1 BD AMT-BONUS                P  9,2  N   ALLOWANCE (ADDED 2001)
 *
 * --- ITEMIZED DISCOUNTS (PERIODIC GROUP - MAX. 8 TYPES) ---
 *
  P 1 CA GRP-DISC                         (1:8) APPLIED DISCOUNTS
-   2 CB TYPE-DISC            A    3  N   IR/JD/CS/PA/EM/TX/OU/EX
-   2 CC AMT-DISC             P  7,2  N   DISCOUNT AMOUNT
-   2 CD PCT-DISC             P  3,2  N   APPLIED PERCENTAGE
-   2 CE NUM-CASE             A   20  N   COURT CASE NO. (IF JD)
-   2 CF DT-START-DISC           N    8  N   YYYYMMDD
+   2 CB TYPE-DISC                A    3  N   IR/JD/CS/PA/EM/TX/OU/EX
+   2 CC AMT-DISC                 P  7,2  N   DISCOUNT AMOUNT
+   2 CD PCT-DISC                 P  3,2  N   APPLIED PERCENTAGE
+   2 CE NUM-CASE                 A   20  N   COURT CASE NO. (IF JD)
+   2 CF DT-START-DISC            N    8  N   YYYYMMDD
    2 CG DT-END-DISC              N    8  N   YYYYMMDD (0=UNDEFINED)
 *
 * --- STATUS AND PROCESSING ---
 *
-   1 DA SIT-PAYMENT            A    1  F D P=PENDING G=GENERATED E=ISSUED
+   1 DA STAT-PAYMENT             A    1  F D P=PENDING G=GENERATED E=ISSUED
 *                                             C=CONFIRMED D=RETURNED
 *                                             X=CANCELED R=REPROCESSED
-   1 DB DT-GENERATION               N    8    D YYYYMMDD - BATCH GENERATION
-   1 DC HR-GENERATION               N    6      HHMMSS
-   1 DD DT-ISSUE               N    8  N   YYYYMMDD - SENT TO BANK
-   1 DE DT-CONFIRMATION           N    8  N   YYYYMMDD - BANK RESPONSE
+   1 DB DT-GENERATION            N    8    D YYYYMMDD - BATCH GENERATION
+   1 DC HR-GENERATION            N    6      HHMMSS
+   1 DD DT-ISSUE                 N    8  N   YYYYMMDD - SENT TO BANK
+   1 DE DT-CONFIRMATION          N    8  N   YYYYMMDD - BANK RESPONSE
    1 DF DT-CANCELLATION          N    8  N   YYYYMMDD (IF APPLICABLE)
-   1 DG REASON-CANCELLATION         A    3  N   REASON CODE (INTERNAL TABLE)
+   1 DG REASON-CANCELLATION      A    3  N   REASON CODE (INTERNAL TABLE)
 *
 * --- BANKING DATA ---
 *
-   1 EA COD-BANK                A    3  N D FEBRABAN CODE
-   1 EB COD-BRANCH              A    6  N   BRANCH NUMBER
-   1 EC NUM-ACCOUNT                A   13  N   ACCOUNT NUMBER
-   1 ED TYPE-ACCOUNT               A    1  F   C=CHECKING P=SAVINGS
-   1 EE COD-OPERATION             A    3  N   CAIXA OPERATION (IF APPLICABLE)
-   1 EF DT-CREDIT               N    8  N D YYYYMMDD - ACCOUNT CREDIT
+   1 EA COD-BANK                 A    3  N D FEBRABAN CODE
+   1 EB COD-BRANCH               A    6  N   BRANCH NUMBER
+   1 EC NUM-ACCOUNT              A   13  N   ACCOUNT NUMBER
+   1 ED TYPE-ACCOUNT             A    1  F   C=CHECKING P=SAVINGS
+   1 EE COD-OPERATION            A    3  N   CAIXA OPERATION (IF APPLICABLE)
+   1 EF DT-CREDIT                N    8  N D YYYYMMDD - ACCOUNT CREDIT
 *                                             (ADDED 1999 - NOT DB)
-   1 EG TIPO-PAYMENT           A    1  F D N=NORMAL R=RETROACTIVE
+   1 EG TYPE-PAYMENT             A    1  F D N=NORMAL R=RETROACTIVE
 *                                             A=ALLOWANCE C=CORRECTION
 *
 * --- SIAFI INTEGRATION (ADDED 2002) ---
 *
    1 FA NUM-OB-SIAFI             A   12  N   SIAFI BANK ORDER
    1 FB NUM-NE-SIAFI             A   12  N   SIAFI COMMITMENT NOTE
-   1 FC COD-UG-ISSUER          A    6  N   MANAGEMENT UNIT
-   1 FD COD-MANAGEMENT               A    5  N   SIAFI MANAGEMENT CODE
-   1 FE STAT-INTEG-SIAFI          A    1  F   I=INTEGRATED P=PENDING E=ERROR
-   1 FF NUM-BATCH                 N    8    D REMITTANCE BATCH (1999)
-   1 FG SEQ-BATCH                 N    6      SEQUENCE WITHIN BATCH
+   1 FC COD-UG-ISSUER            A    6  N   MANAGEMENT UNIT
+   1 FD COD-MANAGEMENT           A    5  N   SIAFI MANAGEMENT CODE
+   1 FE STAT-INTEG-SIAFI         A    1  F   I=INTEGRATED P=PENDING E=ERROR
+   1 FF NUM-BATCH                N    8    D REMITTANCE BATCH (1999)
+   1 FG SEQ-BATCH                N    6      SEQUENCE WITHIN BATCH
 *
 * --- BANK RECONCILIATION ---
 *
-   1 GA DT-RECONCIL           N    8  N   YYYYMMDD
-   1 GB STAT-RECONCIL          A    1  F   C=RECONCILED D=DIVERGENT
+   1 GA DT-RECONCIL              N    8  N   YYYYMMDD
+   1 GB STAT-RECONCIL            A    1  F   C=RECONCILED D=DIVERGENT
 *                                             P=PENDING N=N/A
    1 GC AMT-RECONCILED           P  9,2  N   BANK-CONFIRMED AMOUNT
-   1 GD COD-BANK-RETURN        A    2  N D CNAB 240 RETURN CODE
+   1 GD COD-BANK-RETURN          A    2  N D CNAB 240 RETURN CODE
    1 GE DESCR-BANK-RETURN        A   40  N   RETURN DESCRIPTION
-   1 GF DT-RETURN             N    8  N   YYYYMMDD (ADDED 1999)
-   1 GG IND-REVERSAL              A    1  F   S/N (ADDED 2003)
-   1 GH NUM-PAYMENT-ORIGIN         N   15  N D ORIGINAL PAYMENT (2003)
-   1 GI AMT-CORR             P  9,2  N   CORRECTION AMOUNT
-   1 GJ DT-CORR              N    8  N   YYYYMMDD
-   1 GK IND-CORR            A    1  F   S/N
+   1 GF DT-RETURN                N    8  N   YYYYMMDD (ADDED 1999)
+   1 GG IND-REVERSAL             A    1  F   S/N (ADDED 2003)
+   1 GH NUM-PAYMENT-ORIGIN       N   15  N D ORIGINAL PAYMENT (2003)
+   1 GI AMT-CORR                 P  9,2  N   CORRECTION AMOUNT
+   1 GJ DT-CORR                  N    8  N   YYYYMMDD
+   1 GK IND-CORR                 A    1  F   S/N
 *
 * --- FILE HASH (ADDED 2015) ---
 *
-   1 HA HASH-REMITTANCE-FILE         A   64  N   SHA-256 REMITTANCE FILE
+   1 HA HASH-REMITTANCE-FILE     A   64  N   SHA-256 REMITTANCE FILE
    1 HB HASH-RETURN-FILE         A   64  N   SHA-256 RETURN FILE
  M 1 HC COD-OCCURRENCE           A    3  N   (1:10) BANK OCCURRENCES
 *                                             (ADDED 2005)
 *
 * --- CONTROL ---
 *
-   1 IA DT-INSERT              N    8      YYYYMMDD
-   1 IB HR-INSERT              N    6      HHMMSS
-   1 IC USR-INSERT             A    8  N   LOGIN - USUALLY 'BATCH'
-   1 ID DT-LAST-UPDATE         N    8  N   YYYYMMDD
-   1 IE HR-LAST-UPDATE         N    6  N   HHMMSS
-   1 IF USR-LAST-UPDATE        A    8  N
+   1 IA DT-INSERT                N    8      YYYYMMDD
+   1 IB HR-INSERT                N    6      HHMMSS
+   1 IC USR-INSERT               A    8  N   LOGIN - USUALLY 'BATCH'
+   1 ID DT-LAST-UPDATE           N    8  N   YYYYMMDD
+   1 IE HR-LAST-UPDATE           N    6  N   HHMMSS
+   1 IF USR-LAST-UPDATE          A    8  N
 *
 * --- DERIVED DESCRIPTORS ---
 *

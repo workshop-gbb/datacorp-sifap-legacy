@@ -28,15 +28,15 @@ DBID: 057   FNR: 153
 *
 * --- EVENT IDENTIFICATION ---
 *
-   1 AA NUM-AUDIT            N   15    U UNIQUE SEQUENCE
-   1 AB DT-EVENT                N    8    D YYYYMMDD
-   1 AC HR-EVENT                N    6      HHMMSS
-   1 AD TS-EVENT                N   14  N   YYYYMMDDHHMMSS (PRECISION)
-   1 AE NUM-TRANSACTION            A    8  N D CICS TRANSACTION (2003)
+   1 AA NUM-AUDIT                N   15    U UNIQUE SEQUENCE
+   1 AB DT-EVENT                 N    8    D YYYYMMDD
+   1 AC HR-EVENT                 N    6      HHMMSS
+   1 AD TS-EVENT                 N   14  N   YYYYMMDDHHMMSS (PRECISION)
+   1 AE NUM-TRANSACTION          A    8  N D CICS TRANSACTION (2003)
 *
 * --- ACTION ---
 *
-   1 BA COD-ACTION                 A    2  F D ACTION TYPE
+   1 BA COD-ACTION               A    2  F D ACTION TYPE
 *                                             IN=INSERTION
 *                                             AL=CHANGE
 *                                             EX=DELETION
@@ -48,13 +48,13 @@ DBID: 057   FNR: 153
 *                                             AU=AUTHORIZATION
 *                                             RE=REJECTION
    1 BB COD-MODULE               A    8  N   NATURAL PROGRAM NAME
-   1 BC DESCR-ACTION                 A   80  N   FREE-FORM ACTION DESCRIPTION
+   1 BC DESCR-ACTION             A   80  N   FREE-FORM ACTION DESCRIPTION
 *
 * --- AFFECTED ENTITY ---
 *
-   1 CA TYPE-ENTITY            A    4    D BENF/PGTO/PROG/ADMN/SIST
-   1 CB ID-ENTITY              A   15    D ENTITY KEY
-   1 CC NUM-CPF-AFFECTED          A   11  N D CPF (IF APPLICABLE)
+   1 CA TYPE-ENTITY              A    4    D BENF/PGTO/PROG/ADMN/SIST
+   1 CB ID-ENTITY                A   15    D ENTITY KEY
+   1 CC NUM-CPF-AFFECTED         A   11  N D CPF (IF APPLICABLE)
 *
 * --- BEFORE/AFTER DATA (ADDED 2005) ---
 *
@@ -64,19 +64,19 @@ DBID: 057   FNR: 153
  G 1 DD GRP-AFTER                           SUBSEQUENT STATE GROUP
  M 2 DE FIELD-UPDATED-AFTER       A   30  N   (1:20) FIELD NAME
  M 2 DF VALUE-AFTER          A   80  N   (1:20) SUBSEQUENT VALUE
-   1 DG AMT-PREV             A   60  N   SCALAR - COEXISTS WITH DC
+   1 DG AMT-PREV                 A   60  N   SCALAR - COEXISTS WITH DC
 *                                             (ADDED 2014)
-   1 DH AMT-NEW                 A   60  N   SCALAR - COEXISTS WITH DF
+   1 DH AMT-NEW                  A   60  N   SCALAR - COEXISTS WITH DF
 *                                             (ADDED 2014)
 *
 * --- USER AND SOURCE ---
 *
-   1 EA USR-EVENT               A    8    D LOGIN NATURAL
-   1 EB NAME-USER             A   40  N   FULL NAME
-   1 EC COD-PROFILE               A    3  N   ADM/OPR/CON/AUD/SUP
-   1 ED COD-ASSIGNMENT              A   10  N   ORGANIZATIONAL UNIT CODE
+   1 EA USR-EVENT                A    8    D LOGIN NATURAL
+   1 EB NAME-USER                A   40  N   FULL NAME
+   1 EC COD-PROFILE              A    3  N   ADM/OPR/CON/AUD/SUP
+   1 ED COD-ASSIGNMENT           A   10  N   ORGANIZATIONAL UNIT CODE
    1 EE IP-ORIGIN                A   15  N   TERMINAL IP (ADDED 2012)
-   1 EF ID-SESSION                A   20  N   SESSION IDENTIFIER
+   1 EF ID-SESSION               A   20  N   SESSION IDENTIFIER
    1 EG COD-TERMINAL             A    8  N D TERMINAL 3270 (1998)
    1 EH COD-LU                   A    8  N   VTAM LU NAME (1998)
 *
@@ -84,14 +84,14 @@ DBID: 057   FNR: 153
 *
    1 FA NUM-CYCLE-BATCH          N    6  N   PROCESSING CYCLE
    1 FB NUM-SEQ-BATCH            N   10  N   SEQUENCE WITHIN CYCLE
-   1 FC NAME-JOB-BATCH            A   16  N   JES2/JCL JOB NAME
-   1 FD STAT-BATCH                A    1  F   S=SUCCESS E=ERROR W=WARNING
-   1 FE DESCR-ERR-BATCH           A  120  N   ERROR MSG (IF APPLICABLE)
+   1 FC NAME-JOB-BATCH           A   16  N   JES2/JCL JOB NAME
+   1 FD STAT-BATCH               A    1  F   S=SUCCESS E=ERROR W=WARNING
+   1 FE DESCR-ERR-BATCH          A  120  N   ERROR MSG (IF APPLICABLE)
 *
 * --- CORRELATION (TO TRACK COMPOSITE OPERATIONS) ---
 *
-   1 GA ID-CORRELATION            A   36  N   COMPOSITE OPERATION UUID
-   1 GB NUM-SEQ-CORRELATION       N    3  N   SEQUENCE WITHIN OPERATION
+   1 GA ID-CORRELATION           A   36  N   COMPOSITE OPERATION UUID
+   1 GB NUM-SEQ-CORRELATION      N    3  N   SEQUENCE WITHIN OPERATION
 *
 * --- DERIVED DESCRIPTORS ---
 *

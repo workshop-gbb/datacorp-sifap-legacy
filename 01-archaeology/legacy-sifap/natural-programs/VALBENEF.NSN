@@ -29,13 +29,13 @@ LOCAL
 * VIEW DECLARED SINCE 1998 AND NEVER READ - TICKET 4471/2003
   1 BENEFICIARY-V VIEW OF BENEFICIARY
     2 NUM-CPF            (A11)
-    2 NAME-FULL          (A60)
+    2 FULL-NAME          (A60)
     2 DT-BIRTH           (N8)
-    2 SEXO               (A1)
+    2 SEX                (A1)
     2 GRP-ADDRESS
       3 UF               (A2)
       3 CEP              (N8)
-    2 STAT-BENEF         (A1)
+    2 STAT-BENEFICIARY   (A1)
 *
   1 #CPF                 (N11)
   1 #UF-OK               (L)

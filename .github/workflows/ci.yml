@@ -126,7 +126,10 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
         with:
-          terraform_version: "1.9.5"
+          # Must be >= the version that last wrote the state file. Terraform state
+          # is forward-only: 1.9.5 cannot read state written by 1.14.6, so CI would
+          # fail on any command that loads state.
+          terraform_version: "1.14.6"
       - name: Format check
         run: |
           set -euo pipefail
