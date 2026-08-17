@@ -13,6 +13,7 @@ BATCH_WORK_DIR="${SIFAP_BATCH_WORK_DIR:-${SIFAP_DATA_DIR}/work}"
 BACKUP_DIR="${SIFAP_BACKUP_DIR:-${SIFAP_DATA_DIR}/backups}"
 RETENTION_DAYS="${SIFAP_BACKUP_RETENTION_DAYS:-14}"
 EXPECTED_COUNTS="150:500 151:6 152:2000 153:200"
+LAST_BACKUP_ARCHIVE=""
 
 usage() {
   cat <<USAGE
@@ -70,6 +71,24 @@ archive_dir() {
   mkdir -p "$source_dir"
   info "Archiving ${label}: ${source_dir} -> ${archive_file}"
   tar -C "$source_dir" -czf "$archive_file" .
+}
+
+archive_adabas_data() {
+  local source_dir="$1" archive_file="$2"
+  mkdir -p "$source_dir"
+  info "Archiving Adabas database offline data directory: ${source_dir} -> ${archive_file}"
+  # _DB_LOCK and NUCTMP* are runtime artifacts.  Restoring them can make the
+  # next nucleus start abort with a stale concurrency lock even though the
+  # database files themselves are consistent.
+  tar -C "$source_dir" \
+    --exclude './db*/_DB_LOCK' \
+    --exclude './db*/NUCTMP*' \
+    -czf "$archive_file" .
+}
+
+remove_adabas_runtime_artifacts() {
+  find "$ADABAS_DATA_DIR" -path '*/_DB_LOCK' -type f -delete 2>/dev/null || true
+  find "$ADABAS_DATA_DIR" -name 'NUCTMP*' -type f -delete 2>/dev/null || true
 }
 
 extract_dir() {
@@ -182,9 +201,10 @@ backup() {
   if stop_if_running "$NATURAL_CONTAINER"; then nat_was_running=1; fi
   if stop_if_running "$ADABAS_CONTAINER"; then ada_was_running=1; fi
 
-  archive_dir "$ADABAS_DATA_DIR" "$stage/adabas-data.tar.gz" "Adabas database offline data directory"
+  archive_adabas_data "$ADABAS_DATA_DIR" "$stage/adabas-data.tar.gz"
   archive_dir "$NATURAL_FUSER_DIR" "$stage/natural-fuser.tar.gz" "Natural FUSER"
   archive_dir "$BATCH_WORK_DIR" "$stage/batch-work.tar.gz" "batch work files"
+  remove_adabas_runtime_artifacts
 
   start_if_needed "$ADABAS_CONTAINER" "$ada_was_running"
   if [ "$ada_was_running" -eq 1 ]; then wait_for_adabas_ready "${SIFAP_ADABAS_READY_TIMEOUT:-900}"; fi
@@ -193,6 +213,7 @@ backup() {
 
   tar -C "$BACKUP_DIR" -czf "$final_archive" "$backup_name"
   prune_old_backups
+  LAST_BACKUP_ARCHIVE="$final_archive"
   info "Backup complete: ${final_archive}"
   printf '%s\n' "$final_archive"
 }
@@ -224,6 +245,7 @@ restore_backup() {
   if stop_if_running "$ADABAS_CONTAINER"; then ada_was_running=1; fi
 
   extract_dir "$backup_dir/adabas-data.tar.gz" "$ADABAS_DATA_DIR" "Adabas database offline data directory"
+  remove_adabas_runtime_artifacts
   extract_dir "$backup_dir/natural-fuser.tar.gz" "$NATURAL_FUSER_DIR" "Natural FUSER"
   extract_dir "$backup_dir/batch-work.tar.gz" "$BATCH_WORK_DIR" "batch work files"
   chown -R 1724:1724 "$ADABAS_DATA_DIR" "$NATURAL_FUSER_DIR" 2>/dev/null || warn "Could not chown restored Adabas/FUSER directories; run as root on the VM if containers cannot read them"
@@ -248,7 +270,8 @@ counts() {
 
 verify_round_trip() {
   local archive
-  archive="$(backup | tail -1)"
+  backup
+  archive="$LAST_BACKUP_ARCHIVE"
   info "Round-trip verification will destroy current Adabas/FUSER/work directories and restore ${archive}"
   restore_backup "$archive"
   info "Backup/restore round trip completed and record counts match"

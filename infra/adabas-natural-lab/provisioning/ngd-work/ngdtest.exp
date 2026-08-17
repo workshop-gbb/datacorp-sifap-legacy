@@ -1,0 +1,8 @@
+set timeout 600
+log_file -a /opt/softwareag/Natural/sifap-ngd-work/ngdtest.log
+spawn natural SM=ON "STACK=(LOGON NGDTEST;READ TEST-EMP;CATALOG TEST-EMP;FIN)"
+expect {
+  -re "MORE|More" { send "\r"; exp_continue }
+  eof { }
+  timeout { puts "SIFAP-TIMEOUT" }
+}

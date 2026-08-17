@@ -9,7 +9,7 @@
 | Field | Value |
 |---|---|
 | **Target audience** | DevOps Engineer (Pair 5) and anyone who wants to run the actual legacy system |
-| **Prerequisites** | Your own Azure subscription, authenticated Azure CLI, Terraform 1.14.x, SSH key pair, the [`infra/bootstrap`](../bootstrap/README.md) state backend |
+| **Prerequisites** | Your own Azure subscription, authenticated Azure CLI, Terraform 1.14.x, SSH key pair, and a safe backup location for local Terraform state |
 | **Estimated time** | 15 minutes of commands, plus the VM's first-boot time |
 | **Region** | `eastus2` (East US 2) |
 | **Stage** | Optional track — support for Stage 1 (Archaeology) |
@@ -232,7 +232,7 @@ Bootstrap writes a machine-readable verdict to syslog on the way out — `SIFAP-
 - [ ] **Have an Azure subscription with permission to create resources.** You must be able to create a resource group, VM, Key Vault, access policies, a Log Analytics workspace, and a consumption budget. Confirm with `az account show`.
 - [ ] **Install and authenticate the Azure CLI.** Run `az login` and, if you have more than one subscription, `az account set --subscription "<SUBSCRIPTION-ID>"`.
 - [ ] **Install Terraform 1.14.x.** The requirement is in `versions.tf` (`required_version = "~> 1.14.0"`). Check with `terraform version`.
-- [ ] **Provision the remote state backend.** Apply [`infra/bootstrap`](../bootstrap/README.md) once per subscription, then use its outputs in `terraform init` below. State is no longer local.
+- [ ] **Prepare to protect local state.** This tenant forces Storage Account `publicNetworkAccess=Disabled` at management-group scope, so the Azure Blob backend is not reachable from laptops or GitHub-hosted runners. Local `terraform.tfstate` is the supported default; keep it on the facilitator workstation and back it up after every apply.
 - [ ] **Have an SSH key pair.** The module reads the public key specified by `ssh_public_key_path`, which defaults to `~/.ssh/id_rsa.pub`. If it does not exist, generate it with `ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa`.
 - [ ] **Confirm the regional vCPU quota.** This is not optional bookkeeping — a zero quota is what left the previous `brazilsouth` attempt half-applied.
 - [ ] **Accept the cost.** The VM, Premium SSD disks, and static public IP incur charges while they exist.
@@ -247,7 +247,7 @@ az vm list-usage --location eastus2 -o table
 
 Look for the `Standard DSv3 Family vCPUs` row. The default `Standard_D2s_v3` needs 2 vCPUs available. If the limit is 0, request an increase before applying — Terraform will otherwise create the resource group, Key Vault, disk, and network, then fail on the VM and leave you with exactly the half-applied state this module now works to avoid.
 
-The same check runs automatically in the `plan` and `apply` jobs of [`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml), and the command is available as an output:
+The same quota check runs in the manual preflight job of [`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml), and the command is available as an output:
 
 ```bash
 terraform output -raw quota_preflight_command
@@ -354,6 +354,13 @@ Everything is renamed. The `-brs` suffix is derived from `var.location` now, so 
 
 ## Step-by-step deployment
 
+- [ ] **Step 0 — Select the workshop subscription.**
+
+```bash
+az account set --subscription bf39c110-94c5-4bfa-959d-216b1f971d81
+az account show --query "{subscription:id, tenant:tenantId, user:user.name}" -o table
+```
+
 - [ ] **Step 1 — Enter the module directory.**
 
 ```bash
@@ -388,16 +395,19 @@ allowed_source_cidrs = [
 az vm list-usage --location eastus2 -o table
 ```
 
-- [ ] **Step 6 — Initialize with the remote backend.** The backend block in `versions.tf` is a partial configuration on purpose: storage account names are per-subscription, so they are supplied at init time instead of being committed. Take the values from the [`infra/bootstrap`](../bootstrap/README.md) outputs.
+- [ ] **Step 6 — Initialize with local state.** Do not pass `-backend-config` in the Microsoft corporate tenant; management-group policy makes the Blob backend unreachable.
 
 ```bash
-terraform init \
-  -backend-config="resource_group_name=$(terraform -chdir=../bootstrap output -raw resource_group_name)" \
-  -backend-config="storage_account_name=$(terraform -chdir=../bootstrap output -raw storage_account_name)" \
-  -backend-config="container_name=$(terraform -chdir=../bootstrap output -raw container_name)"
+terraform init
 ```
 
-Or keep the three lines in an untracked `backend.hcl` (already in `.gitignore`) and use `terraform init -backend-config=backend.hcl`.
+A different tenant that permits reachable state storage can opt in by uncommenting the `backend "azurerm"` block in `versions.tf` and supplying the backend config from [`infra/bootstrap`](../bootstrap/README.md). Do not do that here.
+
+- [ ] **Step 6.5 — Back up the state location before the first apply.** The first `apply` creates `terraform.tfstate`; every later `apply` updates it. It is gitignored because state can contain sensitive values.
+
+```bash
+mkdir -p ../../.local-state-backups/adabas-natural-lab
+```
 
 - [ ] **Step 7 — Generate and review the plan.**
 
@@ -409,6 +419,8 @@ terraform plan -out=lab.tfplan
 
 ```bash
 terraform apply lab.tfplan
+mkdir -p ../../.local-state-backups/adabas-natural-lab
+cp terraform.tfstate "../../.local-state-backups/adabas-natural-lab/terraform.tfstate.$(date -u +%Y%m%dT%H%M%SZ)"
 ```
 
 - [ ] **Step 9 — Read the outputs, starting with the demo URL.**
@@ -420,6 +432,16 @@ terraform output -raw demo_url
 
 > [!WARNING]
 > `terraform.tfvars` is ignored by git because it contains real participant IP addresses. Only `terraform.tfvars.example` is versioned. The same applies to `*.tfplan` and `plan.txt`, which store sensitive values — including the generated Adabas password — in plain text with no redaction. Never force-commit these files.
+
+
+### Protecting and recovering local state
+
+Local state is the source of truth for the lab. Losing `terraform.tfstate` does not delete Azure resources; it only makes Terraform forget them. The intended cleanup is always `terraform destroy` from the same working copy that applied the lab.
+
+- `*.tfstate*`, `.terraform/`, `*.tfvars`, `*.tfplan`, `plan.txt`, `backend.hcl`, `override.tf`, and `.local-state-backups/` are ignored; verify before every workshop with `git check-ignore`.
+- Back up `infra/adabas-natural-lab/terraform.tfstate` after every successful `apply` or `destroy` to an encrypted drive or private, access-controlled store.
+- If state is lost, either restore the newest backup or import each resource back with `terraform import` before running `destroy`. The lab resource group defaults to `sifap-lab-rg-eus2`; use `az resource list -g sifap-lab-rg-eus2 -o table` to inventory what must be imported.
+- If recovery is not worth the time, delete the lab resource group manually in Azure. That is the last-resort cleanup for orphaned local state, not the normal path.
 
 A module validation rejects `0.0.0.0/0` in `allowed_source_cidrs`. The reason is documented in `variables.tf`: Adabas CE does not provide channel encryption, and the Natural Development Server does not have strong authentication, so an open listener is a direct compromise path.
 
@@ -713,7 +735,7 @@ Both alerts notify the address in `auto_shutdown_notification_email`. Without it
 | Control | Applied to | Rationale |
 |---|---|---|
 | `prevent_destroy` | Lab Key Vault | The one resource holding a credential |
-| `prevent_destroy` | State storage account and its container ([`infra/bootstrap`](../bootstrap/README.md)) | Losing state orphans every resource it tracked |
+| Local state backup | Facilitator workstation | Losing `terraform.tfstate` orphans every resource it tracked |
 | Blob versioning + soft delete | State container | Recovers a corrupted or truncated state file |
 | `azurerm_snapshot` | Adabas data disk | On-demand copy before a risky change |
 | Managed data disk bind mounts | Adabas `/data`, Natural FUSER, `/opt/sifap/state` | Keeps database files, cataloged Natural objects, DDM markers, and phase state off the OS disk |
@@ -798,60 +820,43 @@ az vm image show --location eastus2 --urn \
 
 ---
 
-## Continuous delivery
+## GitHub Actions validation
 
-[`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml) plans on pull requests and applies on merge to `main`. It authenticates with OIDC, so no client secret and no storage access key exists in this repository to leak.
+[`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml) is intentionally **not** continuous deployment. It is `workflow_dispatch`-only and runs static checks, Azure preflight, and an optional ephemeral plan preview. Apply, finalize, and destroy are facilitator-local commands because GitHub-hosted runners cannot persist local Terraform state between runs.
 
 ### Required repository variables
 
 All are non-secret and set as **variables**, not secrets:
 
 ```bash
-gh variable set AZURE_CLIENT_ID        --body "<app-registration-client-id>"
-gh variable set AZURE_TENANT_ID        --body "<tenant-id>"
-gh variable set AZURE_SUBSCRIPTION_ID  --body "<subscription-id>"
-gh variable set TFSTATE_RESOURCE_GROUP --body "<from infra/bootstrap outputs>"
-gh variable set TFSTATE_STORAGE_ACCOUNT --body "<from infra/bootstrap outputs>"
-gh variable set TFSTATE_CONTAINER      --body "tfstate"
-gh variable set LAB_OWNER              --body "<github-handle>"
+gh variable set AZURE_CLIENT_ID          --body "<app-registration-client-id>"
+gh variable set AZURE_TENANT_ID          --body "35a95b67-eacb-4fb6-a20d-79635544da88"
+gh variable set AZURE_SUBSCRIPTION_ID    --body "bf39c110-94c5-4bfa-959d-216b1f971d81"
+gh variable set LAB_OWNER                --body "<github-handle>"
 gh variable set LAB_ALLOWED_SOURCE_CIDRS --body '["203.0.113.10/32"]'
-gh variable set LAB_SSH_PUBLIC_KEY     --body "$(cat ~/.ssh/id_rsa.pub)"
+gh variable set LAB_SSH_PUBLIC_KEY       --body "$(cat ~/.ssh/id_rsa.pub)"
 ```
 
 `LAB_SSH_PUBLIC_KEY` is a *public* key. It is not a secret, and storing it as one would only make it harder to read in logs when something breaks.
 
 ### Federated credentials
 
-The workflow will fail at login with `AADSTS70021` unless both subjects exist on the app registration. They must match exactly:
+The workflow will fail at login with `AADSTS70021` unless this subject exists on the app registration:
 
 | Subject | Used by |
 |---|---|
-| `repo:paulasilvatech/datacorp-mm-team-kit:environment:lab` | `apply` and `destroy` jobs |
-| `repo:paulasilvatech/datacorp-mm-team-kit:pull_request` | `plan` job |
+| `repo:paulasilvatech/datacorp-mm-team-kit:ref:refs/heads/english-version` | manual preflight and ephemeral plan runs from this branch |
 
 ```bash
 az ad app federated-credential create --id "<APP-OBJECT-ID>" --parameters '{
-  "name": "deploy-lab-environment",
+  "name": "deploy-lab-manual-english-version",
   "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:paulasilvatech/datacorp-mm-team-kit:environment:lab",
-  "audiences": ["api://AzureADTokenExchange"]
-}'
-
-az ad app federated-credential create --id "<APP-OBJECT-ID>" --parameters '{
-  "name": "deploy-lab-pull-request",
-  "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:paulasilvatech/datacorp-mm-team-kit:pull_request",
+  "subject": "repo:paulasilvatech/datacorp-mm-team-kit:ref:refs/heads/english-version",
   "audiences": ["api://AzureADTokenExchange"]
 }'
 ```
 
-The `plan` job deliberately declares no `environment:`. Adding one would change its OIDC subject and stop it matching the `pull_request` credential.
-
-### Environments and gates
-
-Create two GitHub environments with required reviewers: **`lab`** for applies and **`lab-destroy`** for teardowns. Separate environments mean an approval granted for a deployment cannot be reused to authorise a destroy.
-
-The service principal needs `Contributor` on the subscription or resource group, plus `Storage Blob Data Contributor` on the state container — Owner does not grant data-plane access to blobs.
+The service principal used for validation needs enough Azure rights to check providers, quota, and RBAC. The facilitator identity that runs local `terraform apply` needs `Owner` or `Contributor` plus `User Access Administrator` on the subscription or lab resource group, because the module creates role assignments for managed identities.
 
 ### Security gates
 
@@ -911,7 +916,7 @@ This module requires `~> 1.14.0`, and `deploy-lab.yml` pins `1.14.6` to match.
 | `docker` returns `permission denied` | Docker group membership applies only in a new session | Reconnect through SSH, or use `sudo docker ...` |
 | `apply` fails with an SKU or quota error | The region lacks `Standard_D2s_v3` or sufficient vCPU quota | Run the [quota preflight](#quota-preflight), then request an increase or change size |
 | Key Vault name already exists | A soft-deleted vault still holds the name | `az keyvault purge --name <NAME> --location eastus2` |
-| `terraform init` fails on the backend | Backend config missing, or no blob data-plane role | Re-run init with the `-backend-config` values from [`infra/bootstrap`](../bootstrap/README.md) |
+| `terraform init` tries to reach an Azure Blob backend | A previous `.terraform/` directory still remembers the old backend | Run `terraform init -reconfigure` after the backend block has been commented out; do not pass `-backend-config` in this tenant |
 | `destroy` stops on the Key Vault | `prevent_destroy` is doing its job | See [Destroy the environment](#destroy-the-environment) |
 
 ### Bootstrap still running
@@ -1030,7 +1035,7 @@ rm override.tf
 az group show --name "<RESOURCE-GROUP-NAME>"
 ```
 
-The `destroy` action in [`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml) performs exactly these steps, behind an environment approval and a typed `DESTROY` confirmation.
+Run destroy locally from the workstation that holds `terraform.tfstate`. The GitHub workflow intentionally has no destroy job because a hosted runner does not have the persistent local state needed to know what to destroy.
 
 > [!CAUTION]
 > `terraform destroy` removes the VM, disks, and all data loaded into Adabas. If the lab contains work you want to keep, copy it out first, or take a snapshot with `data_disk_snapshot_label`. Never use `terraform state rm` to get past the guard — that leaves real Azure resources running with nothing tracking them, and nothing to bill against.
@@ -1064,7 +1069,7 @@ Note the `--location` argument: it is the region the vault was deleted *from*. W
 - [ ] `systemctl status sifap-provisioning` reports `active (exited)`, and `/opt/sifap/PROVISIONED` exists.
 - [ ] `terminal_url` opens a Natural session in the browser, not a bare shell.
 - [ ] Adabas REST administration opens at `/admin/` with the `admin` user and the password read from Key Vault.
-- [ ] `terraform state list` reads from the remote backend, not a local file.
+- [ ] `terraform state list` reads from `infra/adabas-natural-lab/terraform.tfstate`, and that file has been backed up outside git.
 - [ ] `terraform.tfvars` remains outside version control.
 - [ ] The budget exists and `auto_shutdown_notification_email` is set.
 - [ ] When finished, you ran `az vm deallocate` (pause) or `terraform destroy` (removal).
@@ -1075,7 +1080,7 @@ Note the `--location` argument: it is the region the vault was deleted *from*. W
 
 | Resource | Location |
 |---|---|
-| Remote state backend module | [`infra/bootstrap/README.md`](../bootstrap/README.md) |
+| Optional remote state backend module | [`infra/bootstrap/README.md`](../bootstrap/README.md) |
 | Deployment workflow | [`.github/workflows/deploy-lab.yml`](../../.github/workflows/deploy-lab.yml) |
 | Kit infrastructure conventions | [`.github/instructions/infrastructure.instructions.md`](../../.github/instructions/infrastructure.instructions.md) |
 | Kit CI/CD conventions | [`.github/instructions/cicd.instructions.md`](../../.github/instructions/cicd.instructions.md) |

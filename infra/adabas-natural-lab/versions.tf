@@ -9,29 +9,26 @@ terraform {
   #   .github/workflows/deploy-lab.yml -> env.TERRAFORM_VERSION
   required_version = "~> 1.14.0"
 
-  # Remote state. Partial configuration on purpose: the container, blob key and auth mode
-  # are stable and committed, while resource_group_name and storage_account_name come from
-  # `infra/bootstrap` outputs (the account name carries a random suffix) and are supplied at
-  # init time:
+  # Local state is the default. Some workshop tenants enforce storage
+  # publicNetworkAccess = Disabled at management-group scope, which makes an Azure Blob
+  # backend unreachable from facilitator laptops and GitHub-hosted runners even when Entra
+  # RBAC is correct. Keep terraform.tfstate local, back it up, and run destroy from the same
+  # checked-out working copy.
+  #
+  # Optional remote backend for tenants that allow reachable state storage:
+  #
+  # backend "azurerm" {
+  #   container_name    = "tfstate"
+  #   key               = "adabas-natural-lab.tfstate"
+  #   use_azuread_auth  = true
+  #   use_oidc          = true
+  # }
+  #
+  # Then initialize with:
   #
   #   terraform init \
   #     -backend-config="resource_group_name=<RG>" \
   #     -backend-config="storage_account_name=<ACCOUNT>"
-  #
-  # NOTHING SECRET LIVES HERE. There is no access_key and no sas_token, and none can exist:
-  # the bootstrap account sets shared_access_key_enabled = false, so the only way in is the
-  # caller's own Entra identity - a federated OIDC token in CI, `az login` on a laptop.
-  backend "azurerm" {
-    container_name = "tfstate"
-    key            = "adabas-natural-lab.tfstate"
-
-    # Entra auth for the blob data plane. Mandatory: the account has no shared key.
-    use_azuread_auth = true
-
-    # Short-lived federated credential from GitHub Actions. Harmless locally, where the
-    # Azure CLI login is used instead.
-    use_oidc = true
-  }
 
   required_providers {
     azurerm = {

@@ -1,0 +1,35 @@
+/** Program TEST-EMP.
+/**
+/** :author ziv
+
+ DEFINE DATA LOCAL
+ 1 CALLDATA
+ 2 #LOOPCOUNT (I4) INIT<10>
+ 2 #PERSID(A08) INIT <'50005000'>
+ 2 #FIRST-NAME (A20)
+ 2 #NAME (A20)
+ 2 #ZIP (A6)
+ 2 #CITY (A20)
+ 2 #COUNTRY (A03)
+ 2 #DEPT (A6)
+ 2 #AREA-CODE (A6)
+ 2 #PHONE (A15)
+ 2 #JOB-TITLE (A25)
+ 2 #MESSAGE (A40)
+ END-DEFINE
+
+CALLNAT 'EMP-GET' CALLDATA
+
+WRITE 'Database response' /
+  'Employee-Get for' #PERSID //
+  'Firstname:' #FIRST-NAME /
+  'Name:' #NAME /
+  'Zip:' #ZIP /
+  'City:' #CITY /
+  'Country:' #COUNTRY /
+  'Department:' #DEPT /
+  'Phone:' #AREA-CODE #PHONE /
+  'Jobtitle:' #JOB-TITLE //
+  'Message:' #MESSAGE
+
+END

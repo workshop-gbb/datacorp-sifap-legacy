@@ -115,7 +115,7 @@ write_files:
     content: |
       <p>Bootstrap has not generated runtime status yet.</p>
 
-  - path: /opt/sifap/www/app-placeholder.html
+  - path: /opt/sifap/www/app/index.html
     owner: root:root
     permissions: '0644'
     content: |
@@ -197,22 +197,17 @@ write_files:
       		reverse_proxy ttyd:7681
       	}
 
-      	# The modern application. Provisioned before it exists; when the
-      	# upstream is down, serve an explanatory page instead of a raw 502.
+      	# The modern application. Caddy tries the real Stage 3 app first and
+      	# falls back to an internal static placeholder while it is absent.
       	handle /app* {
       		@bare path /app
       		redir @bare /app/
-      		reverse_proxy ${modern_app_upstream}
-      	}
-
-      	handle_errors {
-      		@app path /app*
-      		handle @app {
-      			root * /srv
-      			rewrite * /app-placeholder.html
-      			file_server
+      		reverse_proxy ${modern_app_upstream} app-placeholder:8080 {
+      			lb_policy first
+      			health_uri /app/
+      			health_interval 10s
+      			health_timeout 2s
       		}
-      		respond "upstream error" {http.error.status_code}
       	}
 
       	# The Adabas console, reachable but no longer the default route.
@@ -385,6 +380,22 @@ write_files:
           networks:
             - sifap-lab
 
+        app-placeholder:
+          image: ${caddy_image}
+          container_name: app-placeholder
+          restart: unless-stopped
+          command: ["caddy", "file-server", "--listen", ":8080", "--root", "/srv"]
+          volumes:
+            - /opt/sifap/www:/srv:ro
+          healthcheck:
+            test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/app/"]
+            interval: 15s
+            timeout: 10s
+            retries: 5
+            start_period: 10s
+          networks:
+            - sifap-lab
+
         # TLS termination for the public demo URL. The only container publishing
         # 80/443; everything it proxies stays on the internal bridge network.
         caddy:
@@ -409,6 +420,7 @@ write_files:
           depends_on:
             - adabas-db
             - ttyd
+            - app-placeholder
           # Probes the container-internal :8081 endpoint, not the public site, so a
           # certificate that is still being issued does not read as a dead proxy.
           healthcheck:

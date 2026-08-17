@@ -76,3 +76,10 @@ crash.*.log
 
 # Natural compile harness scratch (never commit: duplicates the legacy corpus)
 .nat-harness/
+
+# Sub-agent scratch/validation directories
+.sifap-rt-*/
+.sifap-*-validate/
+
+# Local Terraform state backups; can contain secrets.
+.local-state-backups/

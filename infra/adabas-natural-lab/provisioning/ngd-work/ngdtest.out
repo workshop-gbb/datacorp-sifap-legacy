@@ -1,0 +1,5 @@
+spawn natural SM=ON STACK=(LOGON NGDTEST;READ TEST-EMP;CATALOG TEST-EMP;FIN)
+
+	NATURAL V 9.3.3   Software AG 2025 
+
+=>
