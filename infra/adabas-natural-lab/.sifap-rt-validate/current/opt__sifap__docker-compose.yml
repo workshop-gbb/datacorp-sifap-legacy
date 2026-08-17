@@ -1,0 +1,169 @@
+networks:
+  sifap-lab:
+    driver: bridge
+
+volumes:
+  # Issued certificates and ACME account keys. Named volumes so a
+  # `docker compose down && up` does not re-request a certificate and
+  # burn Let's Encrypt rate limits.
+  caddy-data:
+  caddy-config:
+
+services:
+  adabas-db:
+    image: softwareag/adabas-ce:7.4.0@sha256:2d1eb6df66b188bbb6e024d24262ea5f03f35d4e9e2500694ca127c7747a3b8b
+    container_name: adabas-db
+    restart: unless-stopped
+    shm_size: 1gb
+    environment:
+      ACCEPT_EULA: "Y"
+      ADABAS_DBID: "12"
+      ADABAS_DB_CREATION: "demodb"
+      ADABAS_ADMIN_USER: "admin"
+    # ADABAS_ADMIN_PWD lives here, and only here. The file is written by
+    # bootstrap.sh with mode 0600 so the credential never sits in a
+    # world-readable compose file.
+    env_file:
+      - ./adabas.env
+    ports:
+      - "60001:60001"
+      - "127.0.0.1:8190:8190"
+    volumes:
+      - /mnt/sifap-data/adabas-data:/data
+    # The image's own healthcheck has no start_period, so it reports
+    # "unhealthy" for the several minutes crdemodb needs on first boot.
+    # This override makes `docker compose ps` tell the truth.
+    healthcheck:
+      test: ["CMD-SHELL", "sh /usr/local/bin/healthcheck.sh || exit 1"]
+      interval: 15s
+      timeout: 15s
+      retries: 5
+      start_period: 300s
+    networks:
+      - sifap-lab
+
+  natural-ce:
+    image: softwareag/natural-ce:9.3.3@sha256:b671669f6625b7d23847e46a5e2f50476778bb1b26550d9248bf6ed49e5597d5
+    container_name: natural-ce
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      SIFAP_WORK_BASE: "/work"
+      CMPRINT: "/work/logs/cmprint.log"
+      CMPRT01: "/work/reports/cmprt01.lst"
+      CMWKF01: "/work/cmwkf01.dat"
+      CMWKF02: "/work/cmwkf02.dat"
+    ports:
+      - "2700:2700"
+    volumes:
+      - /mnt/sifap-data/natural-fuser:/opt/softwareag/Natural/fuser
+      - /mnt/sifap-data/work:/work
+      - /opt/sifap/corpus:/corpus:ro
+      # Both containers share one bridge network, so Docker's embedded DNS
+      # resolves "adabas-db". This mapping file is what actually points
+      # Natural at the database; see /opt/sifap/dbmapping.txt above.
+      - /opt/sifap/dbmapping.txt:/opt/softwareag/AdabasClient/config/dbmapping.txt:ro
+    depends_on:
+      # Start order only. NOT condition: service_healthy - Adabas needs
+      # minutes to create the demo database on first boot and gating on
+      # health here would abort the whole bootstrap.
+      - adabas-db
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q :0A8C /proc/net/tcp /proc/net/tcp6 && test -d /opt/softwareag/Natural/fuser"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    networks:
+      - sifap-lab
+
+  # The green screen, over HTTPS. Natural speaks a character terminal
+  # protocol and its port 2700 is the Natural Development Server (the
+  # protocol NaturalONE attaches to), NOT telnet - no browser can open
+  # either. ttyd serves an xterm.js terminal and runs one command per
+  # connection; that command opens a Natural session inside natural-ce.
+  #
+  # DELIBERATELY NO `ports:` BLOCK. ttyd is reachable only through Caddy,
+  # which requires authentication. Publishing 7681 on the host would put an
+  # interactive session one NSG edit away from the internet.
+  #
+  # THE TRADE-OFF, STATED PLAINLY: this container mounts the Docker socket,
+  # which is root-equivalent control of the host. It is how `docker exec`
+  # reaches into natural-ce, and the alternative - a second Natural
+  # container sharing the FUSER volume - risks corrupting the very library
+  # the workshop just compiled. What contains it: no published port, basic
+  # auth at the origin, and 80/443 restricted to allowed_source_cidrs
+  # unless enable_public_acme is on. Destroy the lab after the demo.
+  ttyd:
+    image: tsl0922/ttyd:1.7.7-alpine@sha256:e17d5420fa78ea6271e32a06eec334adda6f54077e56e3969340fb47e604c24c
+    container_name: ttyd
+    restart: unless-stopped
+    # The image entrypoint is tini, so this is the full argv after it.
+    command:
+      - ttyd
+      - --port=7681
+      - --base-path=/terminal
+      # Without this the terminal is read-only and nobody can type.
+      - --writable
+      # Refuses WebSocket upgrades whose Origin does not match the Host.
+      # Caddy forwards the original Host, so they match. If the terminal
+      # connects and then immediately drops, drop this flag first.
+      - --check-origin
+      - --max-clients=10
+      - --ping-interval=20
+      - --terminal-type=xterm-256color
+      - /usr/local/bin/sifap-session
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Alpine image, musl libc: the host's own Ubuntu (glibc) client will
+      # not run here, so bootstrap.sh copies the client out of the pinned
+      # Alpine-based Docker CLI image instead.
+      - /opt/sifap/bin/docker:/usr/local/bin/docker:ro
+      - /opt/sifap/terminal-session.sh:/usr/local/bin/sifap-session:ro
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - natural-ce
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:7681/terminal/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - sifap-lab
+
+  # TLS termination for the public demo URL. The only container publishing
+  # 80/443; everything it proxies stays on the internal bridge network.
+  caddy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      # HTTP/3. Harmless when the NSG blocks UDP: clients fall back to TCP.
+      - "443:443/udp"
+    # The basic-auth username and bcrypt hash, and nothing else. Written by
+    # bootstrap.sh with mode 0600 from Key Vault, so the credential never
+    # sits in a world-readable compose file or in custom_data.
+    env_file:
+      - ./caddy.env
+    volumes:
+      - /opt/sifap/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/sifap/www:/srv:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - adabas-db
+      - ttyd
+    # Probes the container-internal :8081 endpoint, not the public site, so a
+    # certificate that is still being issued does not read as a dead proxy.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/healthz"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - sifap-lab

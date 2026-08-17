@@ -1,0 +1,8 @@
+set timeout 600
+log_file -a /opt/softwareag/Natural/sifap-ddm-work/vendor-employee.log
+spawn natural SM=ON "STACK=(LOGON DDMTEST;READ EMPLOYEE;CATALOG EMPLOYEE;FIN)"
+expect {
+  -re "MORE|More" { send "\r"; exp_continue }
+  eof { }
+  timeout { puts "SIFAP-TIMEOUT" }
+}

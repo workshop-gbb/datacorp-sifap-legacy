@@ -1,0 +1,8 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SIFAP legacy lab</title><style>body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#10151c;color:#e6edf3;margin:0;padding:2rem 1rem}main{max-width:48rem;margin:auto}.card{display:block;color:inherit;text-decoration:none;border:1px solid #2b3946;border-radius:10px;padding:1rem;margin:1rem 0;background:#161d26}.card h2{margin:.1rem 0;color:#7fb2e5;font-size:1.1rem}a:hover{border-color:#4f8cc9}code{background:#0c1117;padding:.1rem .3rem;border-radius:4px}.muted{color:#93a1b1}</style></head><body><main>
+<h1>SIFAP — legacy and modern, side by side</h1><p class="muted">Adabas + Natural on Azure, operated as a durable legacy lab.</p>
+<section class="card"><h2>Current state</h2><div id="status"><p>Loading status…</p></div></section>
+<a class="card" href="/terminal/"><h2>Green screen → /terminal</h2><p>Browser terminal for a Natural session in library SIFAPPRD.</p></a>
+<a class="card" href="/app/"><h2>Modern application → /app</h2><p>Placeholder until the Stage 3 Java + Next.js app starts; then this route proxies it automatically.</p></a>
+<a class="card" href="/admin/"><h2>Adabas console → /admin</h2><p>Administration UI; sign in as <code>admin</code> with the Key Vault password.</p></a>
+<p class="muted">Everything except <code>/healthz</code> requires HTTP basic authentication.</p>
+</main><script>fetch('/status.html',{cache:'no-store'}).then(r=>r.text()).then(h=>status.innerHTML=h).catch(()=>status.textContent='Status not generated yet; check /var/log/sifap-bootstrap.log.')</script></body></html>

@@ -1,0 +1,18 @@
+:18080 {
+  handle /healthz { respond "ok" 200 }
+  handle /app* {
+    @bare path /app
+    redir @bare /app/
+    reverse_proxy sifap-rt-app:8080
+  }
+  handle_errors {
+    @app path /app*
+    handle @app {
+      root * /srv
+      rewrite * /app-placeholder.html
+      file_server
+    }
+    respond "upstream error" {http.error.status_code}
+  }
+  handle { root * /srv; file_server }
+}

@@ -1,0 +1,94 @@
+{
+	# ACME disabled: certificates are signed by Caddy local CA
+	admin off
+}
+
+# Container-internal readiness endpoint. NOT published to the host, so it is
+# unreachable from outside the VM; it exists so the healthcheck can tell
+# "Caddy is up" apart from "the certificate is not ready yet".
+:8081 {
+	respond /healthz "ok" 200
+}
+
+sifap-lab-eastus2.cloudapp.azure.com {
+	tls internal
+	encode gzip
+
+	# Public readiness probe: curl -sSf https://sifap-lab-eastus2.cloudapp.azure.com/healthz
+	# Answers even while Adabas is still building the demo database, which
+	# separates "the URL is live" from "the database is ready". Deliberately
+	# outside the authenticated set so probes need no credential - it returns
+	# a fixed string and reveals nothing.
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	# Everything else. `not path` keeps /healthz open without opening anything
+	# adjacent to it.
+	@protected not path /healthz /healthz/*
+	basic_auth @protected {
+		"{$SIFAP_BASIC_AUTH_USER}" "{$SIFAP_BASIC_AUTH_HASH}"
+	}
+
+	# The green screen. ttyd is told its own base path (-b /terminal) so it
+	# emits correct asset and WebSocket URLs; nothing needs stripping here,
+	# and Caddy upgrades the WebSocket transparently.
+	#
+	# The trailing-slash redirect lives INSIDE the handle block on purpose:
+	# at the top level `redir` sorts BEFORE `basic_auth` in Caddy's directive
+	# order, so it would answer unauthenticated requests. Nested here it runs
+	# after the auth check, and everything except /healthz stays protected.
+	handle /terminal* {
+		@bare path /terminal
+		redir @bare /terminal/
+		reverse_proxy ttyd:7681
+	}
+
+	# The modern application. Provisioned before it exists; when the
+	# upstream is down, serve an explanatory page instead of a raw 502.
+	handle /app* {
+		@bare path /app
+		redir @bare /app/
+		reverse_proxy sifap-app:8080
+	}
+
+	handle_errors {
+		@app path /app*
+		handle @app {
+			root * /srv
+			rewrite * /app-placeholder.html
+			file_server
+		}
+		respond "upstream error" {http.error.status_code}
+	}
+
+	# The Adabas console, reachable but no longer the default route.
+	#
+	# Two blocks, not one: handle_path strips /admin BEFORE the inner matchers
+	# run, so a trailing-slash redirect nested inside it would see "/" and
+	# redirect /admin/ to itself forever. The bare path is caught first by an
+	# exact-match handle; handle blocks are mutually exclusive and evaluated in
+	# the order written, so only one of these ever fires.
+	#
+	# The prefix is stripped because the console serves its UI from its own
+	# root; if its assets turn out to use absolute URLs and the page renders
+	# half-broken, the documented fallback is an SSH tunnel straight to 8190
+	# (see admin_console_tunnel_command in outputs.tf).
+	handle /admin {
+		# The wildcard matcher is required, not decorative: `redir /admin/`
+		# alone reads its single leading-slash argument as a PATH MATCHER and
+		# fails to parse.
+		redir * /admin/
+	}
+	handle_path /admin* {
+		reverse_proxy adabas-db:8190 {
+			header_up X-Forwarded-Prefix /admin
+		}
+	}
+
+	# Everything not matched above: the landing page.
+	handle {
+		root * /srv
+		file_server
+	}
+}

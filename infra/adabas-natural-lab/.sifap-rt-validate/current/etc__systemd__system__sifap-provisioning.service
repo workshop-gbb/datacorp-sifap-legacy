@@ -1,0 +1,18 @@
+[Unit]
+Description=SIFAP legacy provisioning (Adabas load + Natural compile)
+Documentation=file:/var/log/sifap-provisioning.log
+After=docker.service network-online.target mnt-sifap\x2ddata.mount
+Requires=docker.service
+RequiresMountsFor=/mnt/sifap-data
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/sifap/provisioning.env
+# Long enough for a slow first ADALOD plus a full CATALL. The default 90s
+# would kill the load mid-flight and leave a half-populated file.
+TimeoutStartSec=3600
+ExecStart=/opt/sifap/run-provisioning.sh
+
+[Install]
+WantedBy=multi-user.target
