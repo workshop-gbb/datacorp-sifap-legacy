@@ -7,7 +7,8 @@
 #   adabas_image, natural_image, adabas_dbid, key_vault_uri, secret_name
 # Every other dollar sign belongs to shell and is written as $VAR or $(...),
 # never as $${VAR}, so Terraform's template engine cannot eat it. If you ever
-# need a literal ${...} in shell here, you MUST escape it as $${...}.
+# need a literal dollar-brace in shell here, you MUST escape it as $${...}
+# (an unescaped one makes templatefile fail at plan time, even inside a comment).
 #
 # custom_data is under lifecycle { ignore_changes }, so edits to this file do
 # NOT reach an already-created VM. Re-run /opt/sifap/bootstrap.sh over SSH
@@ -258,7 +259,10 @@ write_files:
         # nofail keeps a missing disk from wedging boot at the emergency prompt;
         # x-systemd.device-timeout stops systemd waiting 90s for it.
         FSTAB_LINE="UUID=$DISK_UUID /mnt/adabas-data ext4 defaults,nofail,x-systemd.device-timeout=30s 0 2"
-        if ! grep -q "^UUID=$DISK_UUID[[:space:]]" /etc/fstab; then
+        # Literal space, not [[:space:]]: "$DISK_UUID[" reads as an array
+        # subscript to both bash and shellcheck, and the obvious repair
+        # ($${DISK_UUID}) would need Terraform escaping to survive templatefile.
+        if ! grep -q "^UUID=$DISK_UUID /mnt/adabas-data " /etc/fstab; then
           # Drop any earlier entry for this mount point (e.g. a LABEL= line from
           # a previous bootstrap) so re-runs cannot stack duplicates.
           sed -i '\| /mnt/adabas-data |d' /etc/fstab
@@ -266,8 +270,10 @@ write_files:
           echo "added fstab entry: $FSTAB_LINE"
         fi
 
-        mountpoint -q /mnt/adabas-data || mount /mnt/adabas-data
+        # daemon-reload BEFORE mounting so systemd regenerates the .mount unit
+        # from the fstab line we just wrote.
         systemctl daemon-reload || true
+        mountpoint -q /mnt/adabas-data || mount /mnt/adabas-data
 
         if ! mountpoint -q /mnt/adabas-data; then
           echo "ERROR: /mnt/adabas-data did not mount"
