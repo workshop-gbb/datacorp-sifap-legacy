@@ -195,6 +195,40 @@ jobs:
               sys.exit(1)
           PY
 
+  provisioning-contracts:
+    name: Legacy lab provisioning contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6
+        with:
+          python-version: "3.12"
+      - name: Install pytest
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --quiet pytest
+      # The FDT derivation, the ADACMP E4 framing and the loader utility chain were each
+      # established empirically against Adabas CE and are easy to break silently: a wrong
+      # descriptor column or a 2-byte occurrence count still produces a file that loads,
+      # just with the wrong data. These tests pin that behaviour. `not live` drops the one
+      # test that needs a running Adabas container, which a hosted runner does not have.
+      - name: Run offline provisioning contract tests
+        working-directory: infra/adabas-natural-lab
+        run: |
+          set -euo pipefail
+          python3 -m pytest tests -m "not live" -q
+      - name: Verify no scratch or dead code reaches the VM payload
+        run: |
+          set -euo pipefail
+          leaked=$(git ls-files 'infra/adabas-natural-lab/provisioning/**' \
+            | grep -E '/(ngd-work|ddm-work|__pycache__|work)/|ngd_encoder\.py' || true)
+          if [ -n "$leaked" ]; then
+            echo "::error::Experimental scratch is tracked and would be staged to the lab VM:"
+            printf '%s\n' "$leaked"
+            exit 1
+          fi
+
   backend:
     name: Backend (Java 21 + Spring Boot)
     needs: detect-changes

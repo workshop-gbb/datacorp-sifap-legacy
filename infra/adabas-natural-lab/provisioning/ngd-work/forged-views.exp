@@ -1,8 +1,0 @@
-set timeout 600
-log_file -a /opt/softwareag/Natural/sifap-ngd-work/forged-views.log
-spawn natural SM=ON "STACK=(LOGON FORGED;READ PDAVALID;CATALOG PDAVALID;READ PDACALC;CATALOG PDACALC;READ LDASIFAP;CATALOG LDASIFAP;READ SUBVALCP;CATALOG SUBVALCP;READ SUBVALNI;CATALOG SUBVALNI;READ VALBENEF;CATALOG VALBENEF;READ CONSBENF;CATALOG CONSBENF;FIN)"
-expect {
-  -re "MORE|More" { send "\r"; exp_continue }
-  eof { }
-  timeout { puts "SIFAP-TIMEOUT" }
-}
