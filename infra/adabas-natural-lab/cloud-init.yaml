@@ -8,7 +8,7 @@
 #   adabas_dbid, key_vault_uri, secret_name, demo_fqdn, caddy_global_options,
 #   caddy_tls_directive, adabas_admin_bind, payload_base_url,
 #   basic_auth_username, basic_auth_secret_name, basic_auth_secret_kind,
-#   modern_app_upstream, terminal_natural_command
+#   modern_app_upstream, terminal_natural_command, state_base_url
 # Every other dollar sign belongs to shell and is written as $VAR or $(...),
 # never as $${VAR}, so Terraform's template engine cannot eat it. If you ever
 # need a literal dollar-brace in shell here, you MUST escape it as $${...}
@@ -127,6 +127,14 @@ write_files:
       <main>
       <h1>SIFAP &mdash; legacy and modern, side by side</h1>
       <p class="sub">Adabas Community Edition + Natural Community Edition on one Azure VM.</p>
+
+      <p><strong>Provisioning is two-phase.</strong> The VM automatically loads
+         Adabas and catalogs the Natural data areas. The four DDMs cannot be
+         created by Natural CE, so an operator creates them once in NaturalONE
+         through the Natural Development Server. After that, run
+         <code>sudo systemctl restart sifap-provisioning</code> on the VM to
+         finalize: catalog programs, run smoke tests, and write
+         <code>/opt/sifap/PROVISIONED</code>.</p>
 
       <a class="card" href="/terminal/">
         <h2>Green screen &rarr; /terminal</h2>
@@ -281,13 +289,6 @@ write_files:
           driver: bridge
 
       volumes:
-        # A NAMED volume, not a bind mount, on purpose. The image ships an
-        # initialised FUSER containing the SAMP4ONE demo library (HELLO-W etc.),
-        # which is the fastest smoke test a participant has. Docker pre-populates
-        # named volumes from the image on first creation and preserves the
-        # sagadmin (uid 1724) ownership; a bind mount over an empty host
-        # directory would hide all of it.
-        natural-fuser:
         # Issued certificates and ACME account keys. Named volumes so a
         # `docker compose down && up` does not re-request a certificate and
         # burn Let's Encrypt rate limits.
@@ -314,7 +315,7 @@ write_files:
             - "60001:60001"
             - "${adabas_admin_bind}"
           volumes:
-            - /mnt/adabas-data:/data
+            - /mnt/sifap-data/adabas-data:/data
           # The image's own healthcheck has no start_period, so it reports
           # "unhealthy" for the several minutes crdemodb needs on first boot.
           # This override makes `docker compose ps` tell the truth.
@@ -336,7 +337,7 @@ write_files:
           ports:
             - "2700:2700"
           volumes:
-            - natural-fuser:/opt/softwareag/Natural/fuser
+            - /mnt/sifap-data/natural-fuser:/opt/softwareag/Natural/fuser
             - /opt/sifap/corpus:/corpus:ro
             # Both containers share one bridge network, so Docker's embedded DNS
             # resolves "adabas-db". This mapping file is what actually points
@@ -632,6 +633,13 @@ write_files:
       logger -t sifap-payload -p user.notice "SIFAP-PAYLOAD RESULT: SUCCESS ($COUNT files)" || true
       echo "--- payload complete"
 
+  - path: /etc/sifap/provisioning.env
+    owner: root:root
+    permissions: '0644'
+    content: |
+      # Persistent copy is moved to /mnt/sifap-data/state/provisioning.env.
+      SIFAP_PHASE=auto
+
   # Wrapper around provisioning/run-all.sh, which is what actually loads Adabas
   # and compiles the Natural library. Run by systemd, never inline in cloud-init:
   # Adabas needs several minutes to build its demo database before any ADALOD can
@@ -660,8 +668,67 @@ write_files:
       exec > >(tee -a "$LOG") 2>&1
 
       ENTRYPOINT=/opt/sifap/provisioning/run-all.sh
+      STATE_DIR=/opt/sifap/state
+      FUSER=/mnt/sifap-data/natural-fuser
+      DDM_BACKUP=/mnt/sifap-data/state/ddm-gp-backup.tgz
+      STATE_BASE="${state_base_url}"
+      BLOB_API=2021-08-06
+      SIFAP_PHASE="${SIFAP_PHASE:-auto}"
 
-      rm -f /opt/sifap/PROVISIONED /opt/sifap/PROVISIONING-FAILED
+      rm -f /opt/sifap/PROVISIONING-FAILED
+
+      storage_token() {
+        curl -s --retry 3 --retry-delay 2 -H "Metadata:true" \
+          "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fstorage.azure.com%2F" \
+          | jq -r '.access_token // empty'
+      }
+
+      restore_ddm_backup_if_empty() {
+        mkdir -p "$FUSER" "$STATE_DIR"
+        if find "$FUSER" -path '*/GP/*.NGD' -type f -print -quit 2>/dev/null | grep -q .; then
+          echo "Natural DDMs already present in FUSER; restore not needed"
+          return 0
+        fi
+        if [ ! -s "$DDM_BACKUP" ]; then
+          token=$(storage_token || true)
+          if [ -n "$token" ]; then
+            curl -sSf --max-time 60 \
+              -H "Authorization: Bearer $token" -H "x-ms-version: $BLOB_API" \
+              -o "$DDM_BACKUP" "$STATE_BASE/ddm-gp-backup.tgz" \
+              && echo "downloaded DDM backup from lab state storage" || true
+          fi
+        fi
+        if [ -s "$DDM_BACKUP" ]; then
+          echo "restoring Natural DDM GP backup into persistent FUSER"
+          tar -xzf "$DDM_BACKUP" -C "$FUSER"
+          chown -R 1724:1724 "$FUSER"
+        else
+          echo "no DDM backup available yet; a fresh lab needs the NaturalONE DDM step"
+        fi
+      }
+
+      backup_ddms_if_present() {
+        mkdir -p "$STATE_DIR"
+        if ! find "$FUSER" -path '*/GP/*.NGD' -type f -print -quit 2>/dev/null | grep -q .; then
+          echo "no Natural DDM objects found to back up"
+          return 0
+        fi
+        tmp="$STATE_DIR/ddm-gp-backup.new.tgz"
+        ( cd "$FUSER" && find . -path './*/GP/*.NGD' -type f -print0 | tar --null -czf "$tmp" --files-from - )
+        mv "$tmp" "$DDM_BACKUP"
+        chown 1724:1724 "$DDM_BACKUP"
+        date -Is > "$STATE_DIR/DDMS-READY"
+        token=$(storage_token || true)
+        if [ -n "$token" ]; then
+          curl -sSf --max-time 120 -X PUT \
+            -H "Authorization: Bearer $token" -H "x-ms-version: $BLOB_API" \
+            -H "x-ms-blob-type: BlockBlob" --data-binary "@$DDM_BACKUP" \
+            "$STATE_BASE/ddm-gp-backup.tgz" \
+            && echo "uploaded DDM backup to lab state storage" || echo "WARNING: DDM backup upload failed"
+        else
+          echo "WARNING: could not get storage token; DDM backup remains only on data disk"
+        fi
+      }
 
       # Same marker contract as bootstrap.sh: one line, greppable, mirrored to
       # syslog so the Azure Monitor agent ships it and
@@ -672,7 +739,11 @@ write_files:
         if [ "$rc" -eq 0 ]; then
           echo "PROVISIONING RESULT: SUCCESS"
           logger -t sifap-provisioning -p user.notice "SIFAP-PROVISIONING RESULT: SUCCESS" || true
-          date -Is > /opt/sifap/PROVISIONED
+          if [ -f /opt/sifap/PROVISIONED ]; then
+            echo "finalize marker present: /opt/sifap/PROVISIONED"
+          else
+            echo "base phase completed without finalization; DDMs are still pending"
+          fi
         else
           echo "PROVISIONING RESULT: FAILED (exit $rc at line $PROV_LINE)"
           logger -t sifap-provisioning -p user.err "SIFAP-PROVISIONING RESULT: FAILED (exit $rc at line $PROV_LINE)" || true
@@ -685,6 +756,8 @@ write_files:
       trap on_exit EXIT
 
       echo "=== SIFAP provisioning started at $(date -Is) ==="
+      echo "phase: $SIFAP_PHASE"
+      restore_ddm_backup_if_empty
 
       # The scripts are owned by sibling work and staged by fetch-payload.sh, so
       # "not there" is a real state. Fail loudly and specifically: a unit in the
@@ -738,11 +811,16 @@ write_files:
       export NATURAL_CONTAINER=natural-ce
       export ADABAS_DBID="${adabas_dbid}"
       export HOST_ADABAS_ENV=/opt/sifap/adabas.env
+      export SIFAP_PHASE
+      export SIFAP_STATE_DIR="$STATE_DIR"
+      export SIFAP_DDMS_READY_MARKER="$STATE_DIR/DDMS-READY"
 
       cd /opt/sifap/provisioning
       # >&3: run-all.sh installs its own tee to $LOG, so its output goes to the
       # journal here and to the log there - once each, not twice.
       "$ENTRYPOINT" >&3 2>&3
+
+      backup_ddms_if_present
 
       echo "=== SIFAP provisioning finished at $(date -Is) ==="
 
@@ -758,12 +836,14 @@ write_files:
       [Unit]
       Description=SIFAP legacy provisioning (Adabas load + Natural compile)
       Documentation=file:/var/log/sifap-provisioning.log
-      After=docker.service network-online.target
+      After=docker.service network-online.target mnt-sifap\x2ddata.mount
       Requires=docker.service
+      RequiresMountsFor=/mnt/sifap-data
 
       [Service]
       Type=oneshot
       RemainAfterExit=yes
+      EnvironmentFile=-/etc/sifap/provisioning.env
       # Long enough for a slow first ADALOD plus a full CATALL. The default 90s
       # would kill the load mid-flight and leave a half-populated file.
       TimeoutStartSec=3600
@@ -810,7 +890,7 @@ write_files:
         done
       fi
 
-      systemctl enable --now docker
+      systemctl enable docker
 
       # Every human who can sudo on this box should be able to drive docker.
       # Derived from the sudo group rather than hardcoding the admin username,
@@ -871,8 +951,9 @@ write_files:
       # --- data disk -------------------------------------------------------
       # Azure exposes data disks under a stable by-path alias, which avoids the
       # /dev/sdc guesswork that breaks whenever device ordering shifts.
-      # This whole block runs BEFORE any container starts, so nothing can write
-      # Adabas data to the OS disk and then have it shadowed by the mount.
+      # This whole block runs BEFORE Docker starts any container, so nothing can
+      # write Adabas or Natural FUSER data to the OS disk and then have it
+      # shadowed by the mount.
       DISK=/dev/disk/azure/scsi1/lun0
       for _ in $(seq 1 60); do
         [ -e "$DISK" ] && break
@@ -882,13 +963,13 @@ write_files:
 
       if [ -e "$DISK" ]; then
         if ! blkid "$DISK" >/dev/null 2>&1; then
-          echo "formatting data disk"
-          mkfs.ext4 -F -L adabasdata "$DISK"
+          echo "formatting empty data disk"
+          mkfs.ext4 -F -L sifapdata "$DISK"
         else
           echo "data disk already carries a filesystem; leaving it alone"
         fi
 
-        mkdir -p /mnt/adabas-data
+        mkdir -p /mnt/sifap-data
 
         # UUID, not LABEL and never /dev/sdX: it is the only identifier that is
         # both stable across reattach and unique across disks.
@@ -900,14 +981,14 @@ write_files:
 
         # nofail keeps a missing disk from wedging boot at the emergency prompt;
         # x-systemd.device-timeout stops systemd waiting 90s for it.
-        FSTAB_LINE="UUID=$DISK_UUID /mnt/adabas-data ext4 defaults,nofail,x-systemd.device-timeout=30s 0 2"
+        FSTAB_LINE="UUID=$DISK_UUID /mnt/sifap-data ext4 defaults,nofail,x-systemd.device-timeout=30s 0 2"
         # Literal space, not [[:space:]]: "$DISK_UUID[" reads as an array
         # subscript to both bash and shellcheck, and the obvious repair
         # ($${DISK_UUID}) would need Terraform escaping to survive templatefile.
-        if ! grep -q "^UUID=$DISK_UUID /mnt/adabas-data " /etc/fstab; then
+        if ! grep -q "^UUID=$DISK_UUID /mnt/sifap-data " /etc/fstab; then
           # Drop any earlier entry for this mount point (e.g. a LABEL= line from
           # a previous bootstrap) so re-runs cannot stack duplicates.
-          sed -i '\| /mnt/adabas-data |d' /etc/fstab
+          sed -i '\| /mnt/adabas-data |d; \| /mnt/sifap-data |d' /etc/fstab
           echo "$FSTAB_LINE" >> /etc/fstab
           echo "added fstab entry: $FSTAB_LINE"
         fi
@@ -915,29 +996,58 @@ write_files:
         # daemon-reload BEFORE mounting so systemd regenerates the .mount unit
         # from the fstab line we just wrote.
         systemctl daemon-reload || true
-        mountpoint -q /mnt/adabas-data || mount /mnt/adabas-data
+        mountpoint -q /mnt/sifap-data || mount /mnt/sifap-data
 
-        if ! mountpoint -q /mnt/adabas-data; then
-          echo "ERROR: /mnt/adabas-data did not mount"
+        if ! mountpoint -q /mnt/sifap-data; then
+          echo "ERROR: /mnt/sifap-data did not mount"
           exit 1
         fi
         echo "data disk mounted:"
-        df -h /mnt/adabas-data
+        df -h /mnt/sifap-data
       else
-        echo "WARNING: data disk never appeared; falling back to the OS disk."
-        echo "WARNING: capacity is limited to the 64 GB OS disk. Check the LUN 0"
-        echo "WARNING: attachment with: az vm show -d -g <rg> -n <vm> -o json"
-        mkdir -p /mnt/adabas-data
+        echo "ERROR: data disk never appeared at $DISK."
+        echo "ERROR: refusing to fall back to the OS disk because Natural DDMs"
+        echo "ERROR: and Adabas data must survive OS disk rebuilds."
+        echo "ERROR: check the LUN 0 attachment with:"
+        echo "ERROR:   az vm show -d -g <rg> -n <vm> -o json"
+        exit 1
       fi
 
-      mkdir -p /opt/sifap/corpus
+      mkdir -p /mnt/sifap-data/adabas-data /mnt/sifap-data/natural-fuser /mnt/sifap-data/state /opt/sifap/corpus /etc/sifap
+      chown -R 1724:1724 /mnt/sifap-data/adabas-data /mnt/sifap-data/natural-fuser
+      chmod 0750 /mnt/sifap-data /mnt/sifap-data/adabas-data /mnt/sifap-data/natural-fuser
+      chmod 0755 /mnt/sifap-data/state
+
+      if [ -d /opt/sifap/state ] && [ ! -L /opt/sifap/state ]; then
+        cp -a /opt/sifap/state/. /mnt/sifap-data/state/ 2>/dev/null || true
+        rm -rf /opt/sifap/state
+      fi
+      ln -sfn /mnt/sifap-data/state /opt/sifap/state
+
+      if [ ! -f /mnt/sifap-data/state/provisioning.env ]; then
+        if [ -f /etc/sifap/provisioning.env ] && [ ! -L /etc/sifap/provisioning.env ]; then
+          cp /etc/sifap/provisioning.env /mnt/sifap-data/state/provisioning.env
+        else
+          printf 'SIFAP_PHASE=auto\n' > /mnt/sifap-data/state/provisioning.env
+        fi
+      fi
+      ln -sfn /mnt/sifap-data/state/provisioning.env /etc/sifap/provisioning.env
+      chown root:root /mnt/sifap-data/state/provisioning.env
+      chmod 0644 /mnt/sifap-data/state/provisioning.env
+
+      mkdir -p /etc/systemd/system/docker.service.d
+      cat > /etc/systemd/system/docker.service.d/10-sifap-data.conf <<'EOF'
+      [Unit]
+      RequiresMountsFor=/mnt/sifap-data
+      After=mnt-sifap\x2ddata.mount
+      EOF
+      systemctl daemon-reload || true
 
       # Both images run as the non-root service account sagadmin, uid/gid 1724
       # (verified in /etc/passwd of adabas-ce and natural-ce). The Adabas
       # entrypoint hard-fails with exit 20 if /data is not writable, so grant
       # exactly that account write access instead of chmod 777.
-      chown -R 1724:1724 /mnt/adabas-data
-      chmod 0750 /mnt/adabas-data
+      chown -R 1724:1724 /mnt/sifap-data/adabas-data /mnt/sifap-data/natural-fuser
 
       sysctl --system
 
@@ -1030,8 +1140,11 @@ write_files:
       fi
 
       # --- containers ------------------------------------------------------
-      # The daemon is enabled by install-docker.sh, but "systemctl enable --now"
-      # returns before the socket is actually accepting connections.
+      # Docker is enabled by install-docker.sh but started only after the data
+      # disk is mounted and the RequiresMountsFor drop-in is installed. That
+      # prevents restart policies from ever creating an empty FUSER on the OS
+      # disk.
+      systemctl start docker
       for attempt in $(seq 1 30); do
         docker info >/dev/null 2>&1 && break
         echo "waiting for the docker daemon (attempt $attempt/30)"
@@ -1060,6 +1173,13 @@ write_files:
         echo "ERROR: almost certainly egress or DNS on the VM. Check with:"
         echo "ERROR:   docker pull ${adabas_image}"
         exit 1
+      fi
+
+      if ! find /mnt/sifap-data/natural-fuser -mindepth 1 -print -quit | grep -q .; then
+        echo "seeding persistent Natural FUSER from the image"
+        docker run --rm -v /mnt/sifap-data/natural-fuser:/target "${natural_image}" \
+          sh -lc 'cp -a /opt/softwareag/Natural/fuser/. /target/'
+        chown -R 1724:1724 /mnt/sifap-data/natural-fuser
       fi
 
       # --- docker client for the web terminal -------------------------------

@@ -18,11 +18,10 @@ find_seed_cpf() {
 }
 
 run_natural_program() {
-  local label="$1" commands="$2" input="$3" output="$4"
-  local cmd_file="$SMOKE_WORK/${label}.cmsynin" obj_file="$SMOKE_WORK/${label}.cmobjin"
-  printf '%s\n' "$commands" > "$cmd_file"
-  printf '%s\n' "$input" > "$obj_file"
-  natural_batch "$cmd_file" "$obj_file" "$output" "$label"
+  local label="$1" program="$2" input="$3" output="$4"
+  local input_file="$SMOKE_WORK/${label}.input"
+  printf '%s\n' "$input" > "$input_file"
+  natural_run "$label" "$NATURAL_LIBRARY" "$program" "$input_file" "$output"
 }
 
 assert_contains() {
@@ -51,22 +50,22 @@ main() {
   suffix="${cpf: -5}"
 
   info "Running CONSBENF smoke test for seeded CPF ending in ${suffix}"
-  run_natural_program consbenf \
-"LOGON ${NATURAL_LIBRARY}
-CONSBENF
-FIN" \
+  run_natural_program consbenf CONSBENF \
 "C
 ${cpf}
 0" \
 "$SMOKE_WORK/consbenf.out" || failures=$((failures + 1))
   assert_contains "$SMOKE_WORK/consbenf.out" 'SIFAP - BENEFICIARY INFORMATION|BENEFICIARY QUERY' 'CONSBENF produced beneficiary screen/output' || failures=$((failures + 1))
   assert_contains "$SMOKE_WORK/consbenf.out" "${suffix}" 'CONSBENF output contains the expected seeded CPF suffix' || failures=$((failures + 1))
+  if grep -Ei 'not found|não encontrado|nao encontrado' "$SMOKE_WORK/consbenf.out" >/dev/null 2>&1; then
+    warn "FAIL: CONSBENF reported that the seeded beneficiary was not found"
+    failures=$((failures + 1))
+  else
+    info "PASS: CONSBENF did not report the seeded beneficiary as missing"
+  fi
 
   info "Running BATCHPGT smoke test for period ${SMOKE_PERIOD}"
-  run_natural_program batchpgt \
-"LOGON ${NATURAL_LIBRARY}
-BATCHPGT
-FIN" \
+  run_natural_program batchpgt BATCHPGT \
 "${SMOKE_PERIOD}" \
 "$SMOKE_WORK/batchpgt.out" || failures=$((failures + 1))
   assert_contains "$SMOKE_WORK/batchpgt.out" 'BATCHPGT - MONTHLY PAYMENT GENERATION' 'BATCHPGT banner is present' || failures=$((failures + 1))

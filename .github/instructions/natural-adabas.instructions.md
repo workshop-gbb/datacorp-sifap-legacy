@@ -16,8 +16,8 @@ DEFINE DATA
   LOCAL
     01 #MY-VARIABLE  (A20)    /* A = alphanumeric, 20 chars */
     01 #COUNTER      (N5)     /* N = numeric, 5 digits */
-    01 #AMOUNT       (P9,2)   /* P = packed decimal, 9 integer + 2 decimal digits */
-    01 #RATES        (N3,4/1:27)  /* array: 27 occurrences of N3,4 */
+    01 #AMOUNT       (P9.2)   /* P = packed decimal, 9 integer + 2 decimal digits */
+    01 #RATES        (N3.4/1:27)  /* array: 27 occurrences of N3.4 */
   END-DEFINE
 
   /* Main logic here */
@@ -25,10 +25,11 @@ DEFINE DATA
 END
 ```
 
-> **The decimal separator in a format specification is a COMMA, never a period.**
-> `(P9,2)` and `(N3,4)` are valid; `(P9.2)` and `(N3.4)` **do not compile**.
+> **In this lab, the decimal separator in a format specification is a period.**
+> Natural Community Edition 9.3.3 compiles `(P9.2)` and `(N3.4)`. It rejects `(P9,2)` with `NAT0165`.
+> Natural installations can vary by decimal-character setting; this workshop follows the Community Edition image.
 > This rule applies only to the *declaration* — **literals still use a period**: `MOVE 1.3500 TO #FATOR`.
-> In arrays, the range is part of the notation: `(A60/1:10)`, `(N3,4/1:27)`, `(N3,6/1:10,1:12)`.
+> In arrays, the range is part of the notation: `(A60/1:10)`, `(N3.4/1:27)`, `(N3.6/1:10,1:12)`.
 
 Key blocks to recognize:
 
@@ -72,6 +73,8 @@ A Natural library is **flat**: there are no subdirectories, and each member is r
 | `.jcl` | Job Control Language | batch scheduler |
 
 `CALLNAT`, `INCLUDE`, `PARAMETER USING`, and `LOCAL USING` **MUST NOT be ignored**: each pulls code or declarations from another file. A program read in isolation is incomplete.
+
+Natural member names are limited to 8 characters. In this corpus, the Natural DDM/member names are `BENEFIC`, `SOCPROG`, `PAYMENT`, and `AUDIT`. The Adabas file can still be described conceptually as the Beneficiary or Social Program file, and the DDM field names keep their long names.
 
 ## Adabas FDT (Field Definition Table)
 
@@ -147,7 +150,7 @@ END-READ
 
 Packed decimal (`P` format) stores digits efficiently: each byte holds two digits, and the final nibble is the sign (C=positive, D=negative). It is common in financial calculations.
 
-When mapping to Java: ALWAYS use `BigDecimal`, NEVER `double` or `float`. Packed fields with the `P9,2` format mean 9 integer digits plus 2 decimal places → `BigDecimal` with `scale(2)`.
+When mapping to Java: ALWAYS use `BigDecimal`, NEVER `double` or `float`. Packed fields with the `P9.2` format mean 9 integer digits plus 2 decimal places → `BigDecimal` with `scale(2)`.
 
 **On the mainframe, money is packed (`P`), not `N`.** When reading the corpus, a monetary value declared as `N` is a warning sign — it may be an oversight by the original author or a deliberate divergence between the program and DDM. ALWAYS compare the format in the program with the format of the same field in the `.ddm`: type and size mismatches are a classic source of silent truncation and overflow.
 
@@ -168,7 +171,7 @@ When approaching a legacy program for the first time:
 
 | Rule | Rationale |
 |---|---|
-| Natural declarations use comma decimal notation such as `(P9,2)` | Period notation in declarations does not compile |
+| In this lab, Natural declarations use period decimal notation such as `(P9.2)` | Comma notation such as `(P9,2)` fails with `NAT0165` in Natural CE 9.3.3 |
 | Trace `CALLNAT`, `INCLUDE`, `PARAMETER USING`, and `LOCAL USING` | A Natural member read in isolation is incomplete |
 | Compare program field formats with the matching DDM | Type and size mismatches can cause silent truncation or overflow |
 | Map packed money fields to `BigDecimal` | `double` and `float` lose financial precision |

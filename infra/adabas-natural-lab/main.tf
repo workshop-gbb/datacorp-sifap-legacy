@@ -125,6 +125,8 @@ locals {
 
   payload_container_name = "sifap-payload"
   payload_base_url       = "${azurerm_storage_account.payload.primary_blob_endpoint}${local.payload_container_name}"
+  state_container_name   = "sifap-state"
+  state_base_url         = "${azurerm_storage_account.payload.primary_blob_endpoint}${local.state_container_name}"
 
   # --- demo origin authentication -------------------------------------------
   # Two supported shapes, one code path on the VM: Key Vault holds either the generated
@@ -785,6 +787,14 @@ resource "azurerm_storage_container" "payload" {
   container_access_type = "private"
 }
 
+resource "azurerm_storage_container" "state" {
+  provider = azurerm.payload_data_plane
+
+  name                  = local.state_container_name
+  storage_account_name  = azurerm_storage_account.payload.name
+  container_access_type = "private"
+}
+
 # One blob per file rather than a single archive: Terraform has no tar function, and the
 # archive provider would add a fourth provider to a lock file CI reads in --lockfile=readonly
 # mode. `source` (not source_content) keeps binary seed data intact, and content_md5 is what
@@ -830,6 +840,14 @@ resource "azurerm_role_assignment" "vm_payload_reader" {
 
   scope                = azurerm_storage_container.payload.resource_manager_id
   role_definition_name = "Storage Blob Data Reader"
+  principal_id         = azurerm_linux_virtual_machine.lab.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "vm_state_contributor" {
+  count = var.assign_vm_blob_role ? 1 : 0
+
+  scope                = azurerm_storage_container.state.resource_manager_id
+  role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_linux_virtual_machine.lab.identity[0].principal_id
 }
 
@@ -916,6 +934,7 @@ resource "azurerm_linux_virtual_machine" "lab" {
     # Where the corpus and the provisioning scripts come from, and how to prove they arrived
     # intact. No credential: the VM authenticates as itself.
     payload_base_url = local.payload_base_url
+    state_base_url   = local.state_base_url
 
     # WHICH secret to read and how to treat it - never the secret itself.
     basic_auth_username    = var.demo_basic_auth_username

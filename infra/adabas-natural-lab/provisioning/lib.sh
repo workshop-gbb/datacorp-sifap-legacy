@@ -15,10 +15,11 @@ ADABAS_WORK_DIR="${ADABAS_WORK_DIR:-/data/sifap-provisioning}"
 NATURAL_WORK_DIR="${NATURAL_WORK_DIR:-/opt/softwareag/Natural/sifap-provisioning}"
 FTOUCH_BIN="${FTOUCH_BIN:-/opt/softwareag/Natural/bin/ftouch}"
 NATURAL_STACK_TIMEOUT="${NATURAL_STACK_TIMEOUT:-600}"
+SIFAP_STATE_DIR="${SIFAP_STATE_DIR:-/opt/sifap/state}"
 ADABAS_DBID="${ADABAS_DBID:-}"
 
 log() {
-  printf '%s [%s] %s\n' "$(date -Is)" "${1:-INFO}" "${*:2}"
+  printf '%s [%s] %s\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "${1:-INFO}" "${*:2}"
 }
 
 info() { log INFO "$*"; }
@@ -211,12 +212,105 @@ EOF_EXP
   fi
 }
 
+natural_run() {
+  local label="$1" library="$2" program="$3" input_file="$4" output_file="$5"
+  local stack="LOGON ${library};${program};FIN"
+  local exp="${WORK_DIR}/${label}.exp"
+
+  cat > "$exp" <<EOF_EXP
+set timeout ${NATURAL_STACK_TIMEOUT}
+log_file -a ${NATURAL_WORK_DIR}/${label}.log
+set input [open "${NATURAL_WORK_DIR}/${label}.input" r]
+set payload [read \$input]
+close \$input
+regsub -all "\n" \$payload "\r" payload
+if {[string length \$payload] > 0} { append payload "\r" }
+spawn natural SM=ON "STACK=(${stack})"
+after 1000
+if {[string length \$payload] > 0} { send -- \$payload }
+expect {
+  -re "MORE|More" { send "\r"; exp_continue }
+  eof { }
+  timeout { puts "SIFAP-TIMEOUT" }
+}
+EOF_EXP
+
+  container_sh "$NATURAL_CONTAINER" "mkdir -p '$NATURAL_WORK_DIR' && rm -f '${NATURAL_WORK_DIR}/${label}.log'"
+  copy_into_container "$exp" "$NATURAL_CONTAINER" "${NATURAL_WORK_DIR}/${label}.exp"
+  copy_into_container "$input_file" "$NATURAL_CONTAINER" "${NATURAL_WORK_DIR}/${label}.input"
+  container_sh "$NATURAL_CONTAINER" "expect '${NATURAL_WORK_DIR}/${label}.exp' >/dev/null 2>&1 || true"
+  container_sh "$NATURAL_CONTAINER" \
+    "sed -e 's/\x1b\[[0-9;?]*[a-zA-Z]//g' -e 's/\x1b[()][A-Z0-9]//g' '${NATURAL_WORK_DIR}/${label}.log' | tr -d '\r' > '${NATURAL_WORK_DIR}/${label}.out'"
+  docker cp "${NATURAL_CONTAINER}:${NATURAL_WORK_DIR}/${label}.out" "$output_file" \
+    || fatal "Natural ${label} produced no session output"
+
+  if grep -q 'SIFAP-TIMEOUT' "$output_file" 2>/dev/null; then
+    fatal "Natural ${label} timed out after ${NATURAL_STACK_TIMEOUT}s; see ${output_file}"
+  fi
+  if grep -oE 'NAT[0-9]{4}' "$output_file" 2>/dev/null | grep -qvE 'NAT0084'; then
+    return 1
+  fi
+}
+
+missing_cataloged_members() {
+  local library="$1" member missing=0
+  shift
+  for member in "$@"; do
+    if ! container_sh "$NATURAL_CONTAINER" "test -f '/opt/softwareag/Natural/fuser/${library}/GP/${member}.NGA' -o -f '/opt/softwareag/Natural/fuser/${library}/GP/${member}.NGL' -o -f '/opt/softwareag/Natural/fuser/${library}/GP/${member}.NGN' -o -f '/opt/softwareag/Natural/fuser/${library}/GP/${member}.NGP'"; then
+      printf '%s\n' "$member"
+      missing=1
+    fi
+  done
+  return "$missing"
+}
+
 assert_cataloged() {
-  local library="$1" expected="$2" found
-  found="$(container_sh "$NATURAL_CONTAINER" "ls /opt/softwareag/Natural/fuser/${library}/GP 2>/dev/null | wc -l" | tr -d ' \r')"
-  [ "${found:-0}" -ge "$expected" ] \
-    || fatal "${library} has ${found:-0} cataloged objects, expected at least ${expected}"
-  info "${library}: ${found} cataloged objects in GP"
+  local library="$1" missing
+  shift
+  missing="$(missing_cataloged_members "$library" "$@" || true)"
+  if [ -n "$missing" ]; then
+    fatal "${library} is missing cataloged object(s): $(printf '%s' "$missing" | paste -sd ' ' -)"
+  fi
+  info "${library}: verified cataloged object(s): $*"
+}
+
+ddms_cataloged() {
+  local library="$1" member missing=0
+  shift
+  case "${SIFAP_DDMS_READY_OVERRIDE:-}" in
+    1|true|TRUE|yes|YES|ready|READY)
+      mkdir -p "$SIFAP_STATE_DIR"
+      touch "$SIFAP_STATE_DIR/DDMS-READY"
+      warn "SIFAP_DDMS_READY_OVERRIDE marks DDMs ready; use only in tests"
+      return 0
+      ;;
+    0|false|FALSE|no|NO|missing|MISSING)
+      warn "SIFAP_DDMS_READY_OVERRIDE marks DDMs missing; use only in tests"
+      return 1
+      ;;
+  esac
+
+  for member in "$@"; do
+    if ! container_sh "$NATURAL_CONTAINER" "test -f '/opt/softwareag/Natural/fuser/${library}/GP/${member}.NGD'"; then
+      warn "Missing DDM ${member}.NGD in Natural library ${library}/GP"
+      missing=1
+    fi
+  done
+  if [ "$missing" -eq 0 ]; then
+    mkdir -p "$SIFAP_STATE_DIR"
+    touch "$SIFAP_STATE_DIR/DDMS-READY"
+    info "All required DDMs are cataloged in ${library}; wrote ${SIFAP_STATE_DIR}/DDMS-READY"
+    return 0
+  fi
+  return 1
+}
+
+require_ddms_cataloged() {
+  local library="$1"
+  shift
+  if ! ddms_cataloged "$library" "$@"; then
+    fatal "Required DDMs are missing from ${library}/GP. Create BENEFIC, SOCPROG, PAYMENT, and AUDIT once in NaturalONE via the Natural Development Server on port 2700, then rerun with SIFAP_PHASE=finalize."
+  fi
 }
 
 extract_nat_error() {

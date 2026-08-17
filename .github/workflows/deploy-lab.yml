@@ -33,7 +33,7 @@ on:
         required: true
         default: plan
         type: choice
-        options: [plan, apply, destroy]
+        options: [plan, apply, finalize, destroy]
       confirm:
         description: "Type DESTROY to confirm teardown (destroy only)"
         required: false
@@ -154,17 +154,226 @@ jobs:
           retention-days: 14
 
   # ---------------------------------------------------------------------------
+  # Cloud preflight. This is the fast-fail gate for plan/apply: authenticate with
+  # the same OIDC path Terraform uses, prove Azure can actually host the chosen
+  # VM size, prove the caller can use the remote state backend, and prove the
+  # subscription has the providers and RBAC this module needs.
+  # ---------------------------------------------------------------------------
+  preflight:
+    name: Azure preflight
+    needs: scan
+    if: >-
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.action == 'plan' || inputs.action == 'apply'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.0
+
+      - name: Azure login (OIDC)
+        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify OIDC login and subscription access
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$*"; exit 1; }
+
+          [ -n "${ARM_CLIENT_ID:-}" ] || fail "AZURE_CLIENT_ID is not set. Configure the lab repository variable with the app registration client ID."
+          [ -n "${ARM_TENANT_ID:-}" ] || fail "AZURE_TENANT_ID is not set. Configure the lab repository variable with the tenant ID."
+          [ -n "${ARM_SUBSCRIPTION_ID:-}" ] || fail "AZURE_SUBSCRIPTION_ID is not set. Configure the lab repository variable with the target subscription ID."
+
+          account_json="$(az account show -o json)" || fail "OIDC login did not produce an Azure account. Check the app registration federated credential subjects documented at the top of this workflow."
+          actual_subscription="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<< "$account_json")"
+          [ "$actual_subscription" = "$ARM_SUBSCRIPTION_ID" ] || fail "OIDC logged into subscription ${actual_subscription}, but AZURE_SUBSCRIPTION_ID is ${ARM_SUBSCRIPTION_ID}. Fix the repository variable or the azure/login inputs."
+
+          az account subscription show --id "$ARM_SUBSCRIPTION_ID" --query "{subscriptionId:subscriptionId,state:state}" -o table \
+            || fail "The federated identity cannot read subscription ${ARM_SUBSCRIPTION_ID}. Grant at least Reader on the subscription, then rerun."
+
+      - name: Verify required resource providers
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$*"; exit 1; }
+
+          providers=(
+            Microsoft.Authorization
+            Microsoft.Compute
+            Microsoft.Consumption
+            Microsoft.DevTestLab
+            Microsoft.Insights
+            Microsoft.KeyVault
+            Microsoft.Network
+            Microsoft.OperationalInsights
+            Microsoft.Resources
+            Microsoft.Storage
+          )
+
+          for provider in "${providers[@]}"; do
+            state="$(az provider show --namespace "$provider" --query registrationState -o tsv 2>/dev/null || true)"
+            if [ "$state" != "Registered" ]; then
+              fail "Resource provider ${provider} is ${state:-not registered}. Register it with: az provider register --namespace ${provider} --wait"
+            fi
+            echo "${provider}: ${state}"
+          done
+
+      - name: Verify RBAC for Terraform and remote state
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$*"; exit 1; }
+
+          [ -n "${{ vars.TFSTATE_RESOURCE_GROUP }}" ] || fail "TFSTATE_RESOURCE_GROUP is not set. Configure it from infra/bootstrap outputs."
+          [ -n "${{ vars.TFSTATE_STORAGE_ACCOUNT }}" ] || fail "TFSTATE_STORAGE_ACCOUNT is not set. Configure it from infra/bootstrap outputs."
+          [ -n "${{ vars.TFSTATE_CONTAINER }}" ] || fail "TFSTATE_CONTAINER is not set. Configure it from infra/bootstrap outputs."
+
+          subscription_scope="/subscriptions/${ARM_SUBSCRIPTION_ID}"
+          roles_json="$(az role assignment list --assignee "$ARM_CLIENT_ID" --include-inherited --scope "$subscription_scope" --query "[].roleDefinitionName" -o json)" \
+            || fail "Cannot list role assignments for the federated identity at ${subscription_scope}. Grant Reader/User Access Administrator visibility or inspect the app registration assignment manually."
+
+          has_role() {
+            python3 -c 'import json,sys; roles=set(json.loads(sys.argv[2] or "[]")); sys.exit(0 if sys.argv[1] in roles else 1)' "$1" "$roles_json"
+          }
+
+          if ! has_role Owner && ! has_role Contributor; then
+            fail "The federated identity needs Owner or Contributor on ${subscription_scope} to create the resource group, VM, networking, storage, Key Vault, monitoring and budget resources."
+          fi
+
+          if ! has_role Owner && ! has_role "User Access Administrator"; then
+            fail "The module creates azurerm_role_assignment.vm_payload_reader, so the federated identity needs Owner or User Access Administrator on ${subscription_scope}."
+          fi
+
+          state_account_id="$(az storage account show \
+            --resource-group "${{ vars.TFSTATE_RESOURCE_GROUP }}" \
+            --name "${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
+            --query id -o tsv)" \
+            || fail "Cannot read remote-state storage account ${{ vars.TFSTATE_STORAGE_ACCOUNT }} in ${{ vars.TFSTATE_RESOURCE_GROUP }}. Check the TFSTATE_* repository variables and Reader access."
+
+          state_roles_json="$(az role assignment list --assignee "$ARM_CLIENT_ID" --include-inherited --scope "$state_account_id" --query "[].roleDefinitionName" -o json)" \
+            || fail "Cannot list role assignments on the remote-state storage account. Grant Storage Blob Data Contributor to the federated identity on ${state_account_id}."
+
+          python3 -c 'import json,sys; roles=set(json.loads(sys.argv[1] or "[]")); allowed={"Storage Blob Data Contributor","Storage Blob Data Owner"}; sys.exit(0 if roles & allowed else 1)' "$state_roles_json" \
+            || fail "Terraform backend uses Azure AD blob data-plane auth. Grant Storage Blob Data Contributor or Storage Blob Data Owner on the remote-state storage account/container."
+
+          echo "Required subscription and remote-state RBAC assignments are present."
+
+      - name: Verify remote backend reachability and lock
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$*"; exit 1; }
+
+          container_json="$(az storage container show \
+            --auth-mode login \
+            --account-name "${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
+            --name "${{ vars.TFSTATE_CONTAINER }}" \
+            --query "{name:name,leaseStatus:properties.lease.status,leaseState:properties.lease.state}" \
+            -o json)" \
+            || fail "Cannot reach Terraform state container ${{ vars.TFSTATE_CONTAINER }} with Azure AD auth. Grant Storage Blob Data Contributor on the backend container/account."
+          echo "$container_json"
+
+          blob_json="$(az storage blob show \
+            --auth-mode login \
+            --account-name "${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
+            --container-name "${{ vars.TFSTATE_CONTAINER }}" \
+            --name "adabas-natural-lab.tfstate" \
+            --query "{name:name,leaseStatus:properties.lease.status,leaseState:properties.lease.state}" \
+            -o json 2>/dev/null || true)"
+
+          if [ -z "$blob_json" ]; then
+            echo "State blob does not exist yet; first apply can create it."
+            exit 0
+          fi
+
+          echo "$blob_json"
+          lease_status="$(python3 -c 'import json,sys; print((json.load(sys.stdin).get("leaseStatus") or "").lower())' <<< "$blob_json")"
+          lease_state="$(python3 -c 'import json,sys; print((json.load(sys.stdin).get("leaseState") or "").lower())' <<< "$blob_json")"
+          if [ "$lease_status" = "locked" ] || [ "$lease_state" = "leased" ]; then
+            fail "Terraform state adabas-natural-lab.tfstate is leased/locked. Confirm no workflow or local terraform is running; if abandoned, break the blob lease in the Azure Portal or with az storage blob lease break."
+          fi
+
+      - name: Verify East US 2 VM quota and SKU capacity
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$*"; exit 1; }
+
+          vm_size="$(awk '
+            $0 ~ /^variable "vm_size"/ { in_block=1 }
+            in_block && $1 == "default" {
+              gsub(/"/, "", $3)
+              print $3
+              exit
+            }
+          ' "${LAB_DIR}/variables.tf")"
+          [ -n "$vm_size" ] || fail "Could not derive vm_size from ${LAB_DIR}/variables.tf. Keep the variable default parseable or update this preflight."
+
+          sku_json="$(az vm list-skus \
+            --location eastus2 \
+            --resource-type virtualMachines \
+            --size "$vm_size" \
+            --all \
+            --query "[?name=='${vm_size}'].{name:name,capabilities:capabilities,restrictions:restrictions}" \
+            -o json)"
+
+          python3 - "$vm_size" "$sku_json" > sku.env <<'PY'
+          import json, sys
+          vm_size = sys.argv[1]
+          skus = json.loads(sys.argv[2] or "[]")
+          if not skus:
+              print(f"ERROR=VM SKU {vm_size} is not offered in eastus2. Pick an offered size or change var.location.")
+              sys.exit(0)
+          sku = skus[0]
+          restrictions = sku.get("restrictions") or []
+          if restrictions:
+              print("ERROR=VM SKU %s is restricted in eastus2: %s. Pick an unrestricted size/zone or request capacity from Azure." % (vm_size, json.dumps(restrictions)))
+              sys.exit(0)
+          vcpu = next((c.get("value") for c in sku.get("capabilities", []) if c.get("name") == "vCPUs"), "")
+          if not vcpu:
+              print(f"ERROR=Could not read vCPUs capability for {vm_size} from az vm list-skus.")
+              sys.exit(0)
+          print(f"REQUIRED_VCPUS={vcpu}")
+          PY
+          # shellcheck disable=SC1091
+          source sku.env
+          if [ -n "${ERROR:-}" ]; then
+            fail "$ERROR"
+          fi
+
+          quota_json="$(az vm list-usage \
+            --location eastus2 \
+            --query "[?name.value=='standardDSv3Family'] | [0].{current:currentValue,limit:limit}" \
+            -o json)"
+          current="$(python3 -c 'import json,sys; print(int(json.load(sys.stdin)["current"]))' <<< "$quota_json")"
+          limit="$(python3 -c 'import json,sys; print(int(json.load(sys.stdin)["limit"]))' <<< "$quota_json")"
+          available=$((limit - current))
+
+          echo "VM size: ${vm_size}"
+          echo "Required vCPUs: ${REQUIRED_VCPUS}"
+          echo "standardDSv3Family quota in eastus2: used=${current}, limit=${limit}, available=${available}"
+
+          if [ "$available" -lt "$REQUIRED_VCPUS" ]; then
+            fail "East US 2 standardDSv3Family has ${available} available vCPUs, but ${vm_size} requires ${REQUIRED_VCPUS}. Request a quota increase for standardDSv3Family in eastus2 or choose a smaller/offered VM size before applying."
+          fi
+
+  # ---------------------------------------------------------------------------
   # Plan on pull requests, and on a manual `plan` dispatch. Read-only against
   # Azure, so no environment gate - but it does hold real credentials, hence the
   # fork guard below.
   # ---------------------------------------------------------------------------
   plan:
     name: Terraform plan
-    needs: scan
+    needs: [scan, preflight]
     if: >-
-      (github.event_name == 'pull_request' &&
-       github.event.pull_request.head.repo.full_name == github.repository) ||
-      (github.event_name == 'workflow_dispatch' && inputs.action == 'plan')
+      needs.preflight.result == 'success' &&
+      ((github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository) ||
+       (github.event_name == 'workflow_dispatch' && inputs.action == 'plan'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -192,16 +401,6 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      # The reason the brazilsouth attempt died half-applied. Ten seconds here beats
-      # discovering a zero vCPU quota after the resource group, vault and disk are live.
-      - name: Preflight - compute quota in East US 2
-        run: |
-          echo "::group::vCPU quota, eastus2"
-          az vm list-usage --location eastus2 -o table
-          echo "::endgroup::"
-          az vm list-usage --location eastus2 --query \
-            "[?contains(localName,'Standard DSv3')].{Quota:localName,Used:currentValue,Limit:limit}" -o table
 
       - name: Materialise SSH public key
         run: |
@@ -287,10 +486,11 @@ jobs:
   # ---------------------------------------------------------------------------
   apply:
     name: Terraform apply
-    needs: scan
+    needs: [scan, preflight]
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
+      needs.preflight.result == 'success' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+       (github.event_name == 'workflow_dispatch' && inputs.action == 'apply'))
     runs-on: ubuntu-latest
     timeout-minutes: 60 # VM provisioning plus cloud-init container pulls
     environment:
@@ -320,9 +520,6 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Preflight - compute quota in East US 2
-        run: az vm list-usage --location eastus2 -o table
 
       - name: Materialise SSH public key
         run: |
@@ -364,14 +561,227 @@ jobs:
             echo "| Admin console | $(terraform output -raw admin_console_url) |"
             echo "| TLS | $(terraform output -raw tls_mode) |"
             echo ""
-            echo "Cloud-init still has containers to pull after apply returns, so the URL"
-            echo "starts answering a few minutes after this job goes green."
+            echo "The finalize job now checks cloud-init/provisioning through Azure Run Command"
+            echo "before declaring the lab usable."
             echo ""
             echo '```bash'
             terraform output -raw health_check_command
             echo ""
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Post-apply truth gate. Terraform returning successfully only means Azure
+  # accepted the VM; the lab is not usable until cloud-init and the provisioning
+  # unit have finished. This job can also be run on demand after the one-time
+  # NaturalONE DDM creation step.
+  # ---------------------------------------------------------------------------
+  finalize:
+    name: Finalize lab provisioning
+    needs: [scan, apply]
+    if: >-
+      always() &&
+      needs.scan.result == 'success' &&
+      ((github.event_name == 'workflow_dispatch' && inputs.action == 'finalize') ||
+       (((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+         (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')) &&
+        needs.apply.result == 'success'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: lab
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: deploy-lab-apply
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.0
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Azure login (OIDC)
+        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform init
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          terraform init -lockfile=readonly \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}"
+
+      - name: Resolve deployed lab outputs
+        id: lab
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          set -euo pipefail
+          {
+            echo "resource_group=$(terraform output -raw resource_group_name)"
+            echo "vm_name=$(terraform output -raw vm_name)"
+            echo "healthz_url=$(terraform output -raw healthz_url)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Poll provisioning through Azure Run Command
+        id: provision
+        env:
+          LAB_RESOURCE_GROUP: ${{ steps.lab.outputs.resource_group }}
+          LAB_VM_NAME: ${{ steps.lab.outputs.vm_name }}
+          HEALTHZ_URL: ${{ steps.lab.outputs.healthz_url }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$*"; exit 1; }
+
+          read -r -d '' probe_script <<'SCRIPT' || true
+          set -u
+          log=/var/log/sifap-provisioning.log
+          provisioned=/opt/sifap/PROVISIONED
+          ddms_ready=/opt/sifap/state/DDMS-READY
+
+          tail_log() {
+            if [ -f "$log" ]; then
+              echo "--- tail ${log} ---"
+              tail -n 80 "$log"
+            else
+              echo "${log} does not exist yet."
+            fi
+          }
+
+          if [ -f "$provisioned" ]; then
+            echo "SIFAP_STATUS=PROVISIONED"
+            echo "Completion marker exists: ${provisioned}"
+            exit 0
+          fi
+
+          if systemctl is-active --quiet sifap-provisioning 2>/dev/null; then
+            echo "SIFAP_STATUS=RUNNING"
+            echo "sifap-provisioning is still running."
+            tail_log
+            exit 0
+          fi
+
+          if systemctl is-failed --quiet sifap-provisioning 2>/dev/null; then
+            if [ -f "$ddms_ready" ]; then
+              echo "SIFAP_STATUS=FINALIZE_FAILED"
+              echo "DDMs are present, but finalize failed."
+            else
+              echo "SIFAP_STATUS=BASE_FAILED"
+              echo "Base provisioning failed before DDM creation."
+            fi
+            tail_log
+            exit 0
+          fi
+
+          if [ -f "$ddms_ready" ]; then
+            echo "SIFAP_STATUS=FINALIZE_STARTED"
+            echo "DDMs are present. Starting finalize phase through systemd."
+            systemctl set-environment SIFAP_PHASE=finalize
+            systemctl restart sifap-provisioning
+            sleep 5
+            tail_log
+            exit 0
+          fi
+
+          result="$(systemctl show sifap-provisioning --property=Result --value 2>/dev/null || true)"
+          substate="$(systemctl show sifap-provisioning --property=SubState --value 2>/dev/null || true)"
+          if [ "$result" = "success" ] || [ "$substate" = "exited" ]; then
+            echo "SIFAP_STATUS=WAITING_FOR_DDMS"
+            echo "Base provisioning succeeded. DDM readiness marker is absent: ${ddms_ready}"
+            tail_log
+            exit 0
+          fi
+
+          echo "SIFAP_STATUS=RUNNING"
+          echo "Provisioning has not reached a terminal state yet (Result=${result:-unknown}, SubState=${substate:-unknown})."
+          tail_log
+          SCRIPT
+
+          deadline=$((SECONDS + 2700))
+          last_message=""
+
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            echo "::group::Run Command probe $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            if ! run_command_json="$(az vm run-command invoke \
+              --resource-group "$LAB_RESOURCE_GROUP" \
+              --name "$LAB_VM_NAME" \
+              --command-id RunShellScript \
+              --scripts "$probe_script" \
+              -o json 2>&1)"; then
+              echo "$run_command_json"
+              echo "::endgroup::"
+              echo "Run Command is not ready yet; retrying in 45 seconds."
+              sleep 45
+              continue
+            fi
+
+            message="$(python3 -c 'import json,sys; data=json.load(sys.stdin); print((data.get("value") or [{}])[0].get("message",""))' <<< "$run_command_json")"
+            last_message="$message"
+            printf '%s\n' "$message"
+            echo "::endgroup::"
+
+            status="$(awk -F= '/^SIFAP_STATUS=/{status=$2} END{print status}' <<< "$message")"
+            case "$status" in
+              PROVISIONED)
+                echo "Provisioning completion marker exists."
+                echo "status=provisioned" >> "$GITHUB_OUTPUT"
+                curl --retry 10 --retry-delay 15 --max-time 20 -fsSk "$HEALTHZ_URL" >/dev/null \
+                  || fail "/healthz did not return HTTP 200 at ${HEALTHZ_URL}. Caddy or TLS is not healthy; /app/ may still return 502 and is not checked."
+                {
+                  echo "## Lab provisioning complete"
+                  echo ""
+                  echo "Azure Run Command found \`/opt/sifap/PROVISIONED\`, and \`/healthz\` returned HTTP 200."
+                  echo ""
+                  echo "> \`/app/\` can still return 502 until attendees deploy the Stage 3 modern app; that is expected."
+                } >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+                ;;
+              WAITING_FOR_DDMS)
+                echo "::warning::Base provisioning succeeded and the lab is up, but the four Natural DDMs are absent. This is the expected first-deploy stopping point."
+                echo "status=waiting_for_ddms" >> "$GITHUB_OUTPUT"
+                {
+                  echo "## Lab is waiting for one-time DDM creation"
+                  echo ""
+                  echo "Base provisioning succeeded. Natural CE 9.3.3 cannot create DDMs, so create BENEFIC, SOCPROG, PAYMENT and AUDIT once in NaturalONE over the Natural Development Server on port 2700."
+                  echo ""
+                  echo "After creating the DDMs, run:"
+                  echo ""
+                  echo '```bash'
+                  echo 'gh workflow run deploy-lab.yml -f action=finalize'
+                  echo '```'
+                  echo ""
+                  echo "This is reported as success because a first deploy is correctly usable up to the documented manual DDM gate; making it red would make every first deployment look broken."
+                } >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+                ;;
+              BASE_FAILED)
+                printf '%s\n' "$message"
+                fail "Base provisioning failed. The log tail above came from /var/log/sifap-provisioning.log."
+                ;;
+              FINALIZE_FAILED)
+                printf '%s\n' "$message"
+                fail "DDMs are present, but finalize failed. The log tail above came from /var/log/sifap-provisioning.log."
+                ;;
+              RUNNING|FINALIZE_STARTED|"")
+                sleep 45
+                ;;
+              *)
+                echo "Unknown SIFAP_STATUS='${status}'. Retrying in 45 seconds."
+                sleep 45
+                ;;
+            esac
+          done
+
+          printf '%s\n' "$last_message"
+          fail "Timed out after 45 minutes waiting for /opt/sifap/PROVISIONED or the documented DDM gate. Check Azure Run Command output and /var/log/sifap-provisioning.log."
 
   # ---------------------------------------------------------------------------
   # Teardown. Manual only, needs the word DESTROY typed out, and approves through

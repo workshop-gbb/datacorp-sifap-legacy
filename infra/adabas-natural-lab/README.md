@@ -523,16 +523,24 @@ ls /corpus
 
 ### Loading and compiling: the provisioning unit
 
-Shipping the sources is not the same as running them. The scripts under `infra/adabas-natural-lab/provisioning/` are what create the Adabas file, load the data, import the DDMs and compile the `SIFAPPRD` library. They are staged and executed the same way the corpus is, landing at `/opt/sifap/provisioning`:
+Shipping the sources is not the same as running them. The scripts under `infra/adabas-natural-lab/provisioning/` are what create the Adabas file, load the data, verify DDM readiness and compile the `SIFAPPRD` library. They are staged and executed the same way the corpus is, landing at `/opt/sifap/provisioning`:
 
 | Script | Does |
 |---|---|
-| `run-all.sh` | Single idempotent entry point; orchestrates the three below |
+| `run-all.sh` | Single idempotent entry point; honors `SIFAP_PHASE=auto\|base\|finalize` |
 | `01-load-adabas.sh` | `ADAFRM` / `ADACMP` / `ADALOD` — creates SIFAP file 150 and loads the data |
-| `02-build-natural.sh` | Imports the DDMs and sources into `SIFAPPRD` and compiles in dependency order |
+| `02-build-natural.sh` | Base catalogs data areas; finalize catalogs subprograms/programs after DDMs exist |
 | `03-smoke-test.sh` | Asserts that `CONSBENF` and a batch program really execute |
 
-**It runs as a systemd unit, not as a cloud-init step.** Adabas needs several minutes to build its demo database before any `ADALOD` can succeed, and a full `CATALL` on top of that runs long. A blocking `runcmd` risks the cloud-init timeout killing the load halfway through and leaving a half-populated file. The unit starts after Docker and the containers are up, survives the end of cloud-init and reboots, and reports through `systemctl`.
+**It runs as a systemd unit, not as a cloud-init step.** Adabas needs several minutes to build its demo database before any `ADALOD` can succeed, and a full `CATALL` on top of that runs long. A blocking `runcmd` risks the cloud-init timeout killing the load halfway through and leaving a half-populated file. The unit starts after Docker and the persistent data disk are ready, survives the end of cloud-init and reboots, and reports through `systemctl`.
+
+**Provisioning is two-phase because Natural CE 9.3.3 cannot create DDMs.**
+
+1. `SIFAP_PHASE=auto` (the default in `/etc/sifap/provisioning.env`) runs the `base` work: load Adabas, verify the four files, and catalog the three data areas. On a fresh VM it exits successfully when the four DDMs are still missing; that is expected, not a failed deployment.
+2. Create the four DDMs (`BENEFIC`, `SOCPROG`, `PAYMENT`, `AUDIT`) once in NaturalONE through the Natural Development Server output.
+3. Restart the unit. `auto` detects the DDMs, runs `finalize`, catalogs the remaining objects, runs smoke tests, and leaves `/opt/sifap/PROVISIONED`.
+
+`/opt/sifap/state` is a symlink to the managed data disk. The DDM readiness marker is `/opt/sifap/state/DDMS-READY`; the phase file at `/etc/sifap/provisioning.env` is also backed by that disk, so it survives reboots and OS disk rebuilds.
 
 Check what happened:
 
@@ -550,7 +558,7 @@ Or without SSH, using the syslog marker the failure alert also watches:
 terraform output -raw provisioning_status_query   # paste into Log Analytics
 ```
 
-Re-run it after fixing something — `run-all.sh` is idempotent by contract:
+Re-run it after fixing something, after creating the DDMs, or after changing the corpus — `run-all.sh` is idempotent by contract:
 
 ```bash
 terraform output -raw provisioning_rerun_command
@@ -560,7 +568,7 @@ terraform output -raw provisioning_rerun_command
 
 ### Permissions the payload needs
 
-The VM reads the staging container as itself, so Terraform grants its managed identity `Storage Blob Data Reader` on that container. **Creating a role assignment requires Owner or User Access Administrator on the subscription** — Contributor is not enough, and the apply fails on that one resource.
+The VM reads the staging container as itself, so Terraform grants its managed identity `Storage Blob Data Reader` on that container. It also grants `Storage Blob Data Contributor` on a separate `sifap-state` container so the VM can archive the manually created Natural DDM objects after finalize and restore them on a later boot. **Creating a role assignment requires Owner or User Access Administrator on the subscription** — Contributor is not enough, and the apply fails on that one resource.
 
 If you only have Contributor, set `assign_vm_blob_role = false` and have someone with the rights create the assignment. Nothing else in the module needs elevated rights.
 
@@ -608,7 +616,7 @@ Only two variables are required. The others have defaults defined in `variables.
 | `location` | No | `eastus2` | Azure region. Also drives the name suffix |
 | `location_short` | No | `""` | Name suffix. Empty derives it from `location` — leave it empty |
 | `vm_size` | No | `Standard_D2s_v3` | 2 vCPU / 8 GB, the practical minimum for Adabas CE and Natural CE together |
-| `source_image_version` | No | `latest` | Ubuntu image version. See [Reproducible builds](#reproducible-builds) |
+| `source_image_version` | No | `22.04.202608060` | Ubuntu image version. See [Reproducible builds](#reproducible-builds) |
 | `admin_username` | No | `sifapadmin` | VM administrator. `cloud-init.yaml` adds `sifapadmin` to the `docker` group explicitly, so changing this value requires `sudo` for Docker commands |
 | `ssh_public_key_path` | No | `~/.ssh/id_rsa.pub` | Path to the authorized public key |
 | `dns_label_prefix` | No | `""` | DNS label for the demo URL. Empty derives it from the project and random suffix |
@@ -616,7 +624,7 @@ Only two variables are required. The others have defaults defined in `variables.
 | `acme_contact_email` | No | `""` | Expiry-notice address, used only when `enable_public_acme` is `true` |
 | `expose_adabas_admin_port` | No | `false` | `true` reopens plaintext 8190. Prefer the HTTPS proxy |
 | `key_vault_allowed_ip_rules` | No | `[]` | Key Vault firewall allow-list. Empty leaves the vault on its public endpoint |
-| `data_disk_size_gb` | No | `32` | Size of the managed disk that stores the database containers |
+| `data_disk_size_gb` | No | `32` | Size of the managed disk that stores Adabas data, Natural FUSER, and provisioning state |
 | `data_disk_snapshot_label` | No | `""` | Non-empty takes a snapshot of the data disk. See [Data protection](#data-protection) |
 | `adabas_image` | No | `softwareag/adabas-ce:7.4.0@sha256:...` | Adabas Community Edition image, pinned by digest |
 | `natural_image` | No | `softwareag/natural-ce:9.3.3@sha256:...` | Natural Community Edition image, pinned by digest |
@@ -708,8 +716,12 @@ Both alerts notify the address in `auto_shutdown_notification_email`. Without it
 | `prevent_destroy` | State storage account and its container ([`infra/bootstrap`](../bootstrap/README.md)) | Losing state orphans every resource it tracked |
 | Blob versioning + soft delete | State container | Recovers a corrupted or truncated state file |
 | `azurerm_snapshot` | Adabas data disk | On-demand copy before a risky change |
+| Managed data disk bind mounts | Adabas `/data`, Natural FUSER, `/opt/sifap/state` | Keeps database files, cataloged Natural objects, DDM markers, and phase state off the OS disk |
+| DDM GP archive | `sifap-state/ddm-gp-backup.tgz` | Backs up manually created `*.NGD` DDM objects after finalize and restores them when the FUSER is empty |
 
 **Intentional exceptions.** The VM, its OS and data disks, the public IP, and the network carry no `prevent_destroy`. This lab is disposable by design, and guarding everything would make the documented teardown impossible. The guard is on the two things whose loss is not recoverable by re-running `apply`: the credential store and the state.
+
+The Natural FUSER is mounted from `/mnt/sifap-data/natural-fuser`, owned by uid/gid `1724` for the Software AG containers. Docker is started only after `/mnt/sifap-data` is mounted; if the disk is missing, bootstrap fails rather than creating an empty FUSER on the OS disk.
 
 To snapshot the data disk before something risky — a CATALL across the whole corpus, an image upgrade — set a label and apply:
 
@@ -760,6 +772,7 @@ length(templatefile("cloud-init.yaml", {
   demo_fqdn = "example.eastus2.cloudapp.azure.com", caddy_global_options = "",
   caddy_tls_directive = "tls internal", adabas_admin_bind = "127.0.0.1:8190",
   payload_base_url = "https://example.blob.core.windows.net/sifap-payload",
+  state_base_url = "https://example.blob.core.windows.net/sifap-state",
   basic_auth_username = "sifap", basic_auth_secret_name = "x",
   basic_auth_secret_kind = "password", modern_app_upstream = "sifap-app:8080",
   terminal_natural_command = "",
@@ -769,21 +782,19 @@ EOF
 
 Anything large — sources, seed data, binaries — belongs in the blob payload instead. That is exactly why the legacy corpus is staged rather than embedded: it is 77 KB base64-encoded on its own, and the provisioning seed data is another 3.5 MB.
 
-**The VM image version is not pinned yet.** `source_image_version` defaults to `latest`, which means a rebuild months from now may land on a different Ubuntu 22.04 build than the one you tested.
+**The VM image version is pinned.** `source_image_version` defaults to `22.04.202608060` for the Canonical Ubuntu 22.04 LTS Gen2 image in East US 2. To bump it, list the available versions and then verify the exact URN before editing the default:
 
-> [!NOTE]
-> Resolving a marketplace image version needs an authenticated call to your subscription, so it could not be pinned when this module was written. Pin it once, in your own subscription:
->
-> ```bash
-> az vm image list \
->   --location eastus2 \
->   --publisher Canonical \
->   --offer 0001-com-ubuntu-server-jammy \
->   --sku 22_04-lts-gen2 \
->   --all --query "[-1].version" -o tsv
-> ```
->
-> Put the result in `source_image_version`. Until then the `TODO(pin)` comment in `variables.tf` marks it as a known gap rather than a decision.
+```bash
+az vm image list \
+  --location eastus2 \
+  --publisher Canonical \
+  --offer 0001-com-ubuntu-server-jammy \
+  --sku 22_04-lts-gen2 \
+  --all --query "[-10:].version" -o table
+
+az vm image show --location eastus2 --urn \
+  Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:<version>
+```
 
 ---
 

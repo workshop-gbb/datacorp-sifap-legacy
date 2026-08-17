@@ -144,7 +144,7 @@ output "bootstrap_log_command" {
 # kept waiting, so it runs as a systemd unit. These three outputs are how you find out what
 # happened without reading a log you have to know the path of.
 output "provisioning_status_command" {
-  description = "Answers 'did the legacy actually load and compile?' in one line. 'active (exited)' means run-all.sh finished cleanly; 'failed' means it did not, and the log says why."
+  description = "Answers where the two-phase provisioning stands. A fresh lab can be active (exited) after base only; /opt/sifap/PROVISIONED means finalize completed."
   value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'systemctl status sifap-provisioning --no-pager'"
 }
 
@@ -154,7 +154,7 @@ output "provisioning_log_command" {
 }
 
 output "provisioning_rerun_command" {
-  description = "Re-runs the load and compile. Safe to repeat - run-all.sh is idempotent by contract. Use it after fixing a failure, or after an apply that changed the corpus (re-fetch first)."
+  description = "Re-runs auto provisioning. Use it after fixing a failure, after an apply that changed the corpus, or after creating the DDMs in NaturalONE."
   value = join(" && ", [
     "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'sudo /opt/sifap/fetch-payload.sh",
     "sudo systemctl restart sifap-provisioning'",

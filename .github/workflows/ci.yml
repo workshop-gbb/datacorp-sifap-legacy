@@ -42,6 +42,43 @@ jobs:
               - 'infra/**'
               - '**/*.tf'
 
+  natural-format:
+    name: Natural format guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Reject comma decimal format specs
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          root = Path("01-archaeology/legacy-sifap/natural-programs")
+          pattern = re.compile(r"\(([NP]\d+),(\d+)((?:/\d+:\d+(?:,\d+:\d+)*)?)\)")
+          failures = []
+
+          for path in sorted(root.rglob("*")):
+              if not path.is_file():
+                  continue
+              for line_number, line in enumerate(path.read_text(errors="replace").splitlines(), 1):
+                  for match in pattern.finditer(line):
+                      spec = match.group(0)
+                      fix = f"({match.group(1)}.{match.group(2)}{match.group(3)})"
+                      failures.append((path, line_number, spec, fix))
+
+          for path, line_number, spec, fix in failures:
+              print(
+                  f"::error file={path},line={line_number}::"
+                  f"Natural CE 9.3.3 rejects comma decimal format {spec} with NAT0165. Use {fix}."
+              )
+
+          if failures:
+              sys.exit(1)
+          PY
+
   backend:
     name: Backend (Java 21 + Spring Boot)
     needs: detect-changes

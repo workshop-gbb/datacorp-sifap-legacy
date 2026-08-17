@@ -6,14 +6,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 . "$SCRIPT_DIR/lib.sh"
 
-DDM_DIR="${DDM_DIR:-${CORPUS_DIR}/adabas-ddms}"
 SOURCE_DIR="${SOURCE_DIR:-${CORPUS_DIR}/natural-programs}"
 BUILD_WORK="${WORK_DIR}/natural-build"
+BUILD_PHASE="${SIFAP_NATURAL_BUILD_PHASE:-${1:-auto}}"
 
-# Natural member names cannot exceed 8 characters, which is why the DDMs
-# carry short names even though the Adabas files are spelled out in full.
+# DDMs are a manual NaturalONE step in Natural CE. These short member names
+# remain here so provisioning can verify the generated .NGD objects.
 DDMS=(BENEFIC SOCPROG PAYMENT AUDIT)
-DDM_FILES=(BENEFICIARY.ddm SOCIAL-PROGRAM.ddm PAYMENT.ddm AUDIT.ddm)
 DATA_AREAS=(PDAVALID PDACALC LDASIFAP)
 COPYCODES=(CCVALCPF CCAUDIT)
 SUBPROGRAMS=(SUBVALCP SUBVALNI VALBENEF VALELEG CALCBENF)
@@ -21,9 +20,7 @@ PROGRAMS=(CADBENEF CONSBENF BATCHPGT BATCHREL RELPGT CADPROG CADDEPEND VALDOCS C
 
 require_inputs() {
   local member ext
-  [ -d "$DDM_DIR" ] || fatal "DDM directory missing: ${DDM_DIR}"
   [ -d "$SOURCE_DIR" ] || fatal "Natural source directory missing: ${SOURCE_DIR}"
-  for member in "${DDM_FILES[@]}"; do [ -r "$DDM_DIR/$member" ] || fatal "Missing DDM listing: $DDM_DIR/$member"; done
   for member in "${DATA_AREAS[@]}"; do
     if [ "$member" = "LDASIFAP" ]; then ext=NSL; else ext=NSA; fi
     [ -r "$SOURCE_DIR/${member}.${ext}" ] || fatal "Missing Natural data area: $SOURCE_DIR/${member}.${ext}"
@@ -33,57 +30,30 @@ require_inputs() {
   for member in "${PROGRAMS[@]}"; do [ -r "$SOURCE_DIR/${member}.NSP" ] || warn "Program source not found and will be skipped: $SOURCE_DIR/${member}.NSP"; done
 }
 
-generate_nsd() {
-  local ddm="$1" out="$2" fnr dbid name
-  name="$(awk -F: '/^DDM NAME:/{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); split($2,a," "); print a[1]; exit}' "$ddm")"
-  fnr="$(awk '/FNR:[[:space:]]*[0-9]+/{for(i=1;i<=NF;i++) if($i=="FNR:") {print $(i+1); exit}}' "$ddm")"
-  dbid="${ADABAS_DBID}"
-  {
-    printf 'DB: %03d FILE: %03d  - %-32s DEFAULT SEQUENCE: AA\n' "$dbid" "$fnr" "$name"
-    printf 'TYPE: ADABAS\n\n'
-    printf 'T L DB Name                              F Leng  S D Remark\n'
-    printf -- '- - -- --------------------------------  - ----  - - ------------------------\n'
-    awk '
-      BEGIN { keep=0 }
-      /^\* --- IDENTIFICATION ---|^\* --- KEYS ---|^\* --- EVENT IDENTIFICATION ---/ { keep=1 }
-      /^\* --- DERIVED DESCRIPTORS ---/ { keep=2; print "* --- DERIVED DESCRIPTORS ---"; next }
-      /^\* COLUMN LEGEND/ { exit }
-      keep==1 {
-        if ($0 ~ /^[[:space:]]*(G|M|P)?[[:space:]]*[12][[:space:]]+[A-Z][A-Z][[:space:]]+/) print $0
-      }
-      keep==2 {
-        if ($0 ~ /^[[:space:]]*S[[:space:]]+[A-Z0-9][A-Z0-9][[:space:]]+/) print "  1" substr($0,3)
-        else if ($0 ~ /^[[:space:]]*\/\*/) { sub(/^[[:space:]]*\/\*/, "*      -------- SOURCE FIELD(S) -------\n*     "); print }
-      }
-    ' "$ddm"
-    printf '******DDM OUTPUT TERMINATED******\n'
-  } > "$out"
-}
-
 prepare_sources() {
-  local member ext i
+  local member ext
   rm -rf "$BUILD_WORK"
-  mkdir -p "$BUILD_WORK/sifap-src" "$BUILD_WORK/sysddm-src"
-  for i in "${!DDMS[@]}"; do
-    generate_nsd "$DDM_DIR/${DDM_FILES[$i]}" "$BUILD_WORK/sysddm-src/${DDMS[$i]}.NSD"
-  done
+  mkdir -p "$BUILD_WORK/sifap-src"
   for member in "${DATA_AREAS[@]}"; do
     if [ "$member" = "LDASIFAP" ]; then ext=NSL; else ext=NSA; fi
     cp "$SOURCE_DIR/${member}.${ext}" "$BUILD_WORK/sifap-src/"
   done
   for member in "${COPYCODES[@]}"; do cp "$SOURCE_DIR/${member}.NSC" "$BUILD_WORK/sifap-src/"; done
-  for member in "${SUBPROGRAMS[@]}"; do cp "$SOURCE_DIR/${member}.NSN" "$BUILD_WORK/sifap-src/"; done
-  for member in "${PROGRAMS[@]}"; do [ -r "$SOURCE_DIR/${member}.NSP" ] && cp "$SOURCE_DIR/${member}.NSP" "$BUILD_WORK/sifap-src/"; done
+  case "$BUILD_PHASE" in
+    finalize|auto|all)
+      for member in "${SUBPROGRAMS[@]}"; do cp "$SOURCE_DIR/${member}.NSN" "$BUILD_WORK/sifap-src/"; done
+      for member in "${PROGRAMS[@]}"; do [ -r "$SOURCE_DIR/${member}.NSP" ] && cp "$SOURCE_DIR/${member}.NSP" "$BUILD_WORK/sifap-src/"; done
+      ;;
+  esac
 }
 
 ensure_libraries() {
-  container_sh "$NATURAL_CONTAINER" "mkdir -p /opt/softwareag/Natural/fuser/${NATURAL_LIBRARY}/SRC /opt/softwareag/Natural/fuser/${NATURAL_LIBRARY}/GP /opt/softwareag/Natural/fuser/SYSDDM/SRC /opt/softwareag/Natural/fuser/SYSDDM/GP '$NATURAL_WORK_DIR'"
+  container_sh "$NATURAL_CONTAINER" "mkdir -p /opt/softwareag/Natural/fuser/${NATURAL_LIBRARY}/SRC /opt/softwareag/Natural/fuser/${NATURAL_LIBRARY}/GP '$NATURAL_WORK_DIR'"
 }
 
 copy_sources_to_fuser() {
   copy_into_container "$BUILD_WORK/sifap-src/." "$NATURAL_CONTAINER" "/opt/softwareag/Natural/fuser/${NATURAL_LIBRARY}/SRC/"
-  copy_into_container "$BUILD_WORK/sysddm-src/." "$NATURAL_CONTAINER" "/opt/softwareag/Natural/fuser/SYSDDM/SRC/"
-  container_sh_root "$NATURAL_CONTAINER" "chown -R 1724:1724 /opt/softwareag/Natural/fuser/${NATURAL_LIBRARY} /opt/softwareag/Natural/fuser/SYSDDM '$NATURAL_WORK_DIR'"
+  container_sh_root "$NATURAL_CONTAINER" "chown -R 1724:1724 /opt/softwareag/Natural/fuser/${NATURAL_LIBRARY} '$NATURAL_WORK_DIR'"
 }
 
 run_compile_group() {
@@ -108,44 +78,39 @@ main() {
   prepare_sources
   ensure_libraries
   copy_sources_to_fuser
-  ftouch_register "$NATURAL_CONTAINER" SYSDDM /opt/softwareag/Natural/fuser/SYSDDM/SRC
   ftouch_register "$NATURAL_CONTAINER" "$NATURAL_LIBRARY" "/opt/softwareag/Natural/fuser/${NATURAL_LIBRARY}/SRC"
 
-  # Authoritative order from 01-archaeology/HOW-TO-COMPILE-AND-RUN.md section 2.4.
-  #
-  # DDMs are the one step this script cannot automate, and the reason is a
-  # property of the image rather than of this code. Verified against
-  # softwareag/natural-ce:9.3.3:
-  #
-  #   * A DDM is not compilable source. Feeding a DDM listing to CATALOG gets
-  #     NAT4225 ("Invalid level. Level must be 1 - 7") because Natural parses it
-  #     as a program.
-  #   * DDMs are generated by the SYSDDM utility, which reads the FDT straight
-  #     out of the running database. The Community Edition FNAT ships no SYSDDM
-  #     objects: LOGON SYSDDM succeeds but the library is empty.
-  #   * ftouch cannot stand in for it either - lib=SYSDDM fails with
-  #     "Mass update could not be started. Return code 6149".
-  #
-  # So the DDMs must be generated once, interactively, through NaturalONE over
-  # the Natural Development Server on port 2700 (the lab already exposes it), or
-  # by an image that ships SYSDDM. Everything the DDMs depend on is already in
-  # place by this point: Adabas files 150-153 carry the real FDTs, so SYSDDM has
-  # something to read. See the lab README, "Generating the DDMs".
-  if [ "${SIFAP_SKIP_DDMS:-0}" != "1" ]; then
-    warn "DDM generation is a manual, one-time NaturalONE step; re-run with SIFAP_SKIP_DDMS=1 once it is done"
-    warn "Members that DEFINE a VIEW cannot catalog until the DDMs exist: ${DDMS[*]}"
-  fi
-  run_compile_group "$NATURAL_LIBRARY" data-areas "${DATA_AREAS[@]}"
-  info "Copycodes installed as source only: ${COPYCODES[*]}"
-  if [ "${SIFAP_SKIP_DDMS:-0}" = "1" ]; then
-    run_compile_group "$NATURAL_LIBRARY" subprograms "${SUBPROGRAMS[@]}"
-    run_compile_group "$NATURAL_LIBRARY" programs "${PROGRAMS[@]}"
-    assert_cataloged "$NATURAL_LIBRARY" "$(( ${#DATA_AREAS[@]} + ${#SUBPROGRAMS[@]} ))"
-  else
-    info "Skipping subprograms and programs until the DDMs are generated"
-  fi
+  case "$BUILD_PHASE" in
+    base)
+      run_compile_group "$NATURAL_LIBRARY" data-areas "${DATA_AREAS[@]}"
+      assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}"
+      info "Copycodes installed as source only: ${COPYCODES[*]}"
+      info "DDMs are created manually once in NaturalONE; base phase intentionally stops before DDM-dependent objects: ${DDMS[*]}"
+      ;;
+    finalize)
+      require_ddms_cataloged "$NATURAL_LIBRARY" "${DDMS[@]}"
+      run_compile_group "$NATURAL_LIBRARY" subprograms "${SUBPROGRAMS[@]}"
+      run_compile_group "$NATURAL_LIBRARY" programs "${PROGRAMS[@]}"
+      assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}" "${SUBPROGRAMS[@]}" "${PROGRAMS[@]}"
+      ;;
+    auto|all)
+      run_compile_group "$NATURAL_LIBRARY" data-areas "${DATA_AREAS[@]}"
+      assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}"
+      info "Copycodes installed as source only: ${COPYCODES[*]}"
+      if ddms_cataloged "$NATURAL_LIBRARY" "${DDMS[@]}"; then
+        run_compile_group "$NATURAL_LIBRARY" subprograms "${SUBPROGRAMS[@]}"
+        run_compile_group "$NATURAL_LIBRARY" programs "${PROGRAMS[@]}"
+        assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}" "${SUBPROGRAMS[@]}" "${PROGRAMS[@]}"
+      else
+        info "Skipping subprograms and programs until DDMs are created in NaturalONE: ${DDMS[*]}"
+      fi
+      ;;
+    *)
+      fatal "Invalid SIFAP_NATURAL_BUILD_PHASE=${BUILD_PHASE}; expected base, finalize, or auto"
+      ;;
+  esac
 
-  info "Natural build phase finished"
+  info "Natural build phase (${BUILD_PHASE}) finished"
 }
 
 main "$@"

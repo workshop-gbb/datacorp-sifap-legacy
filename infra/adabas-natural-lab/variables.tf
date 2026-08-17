@@ -64,19 +64,19 @@ variable "source_image_version" {
   description = <<-EOT
     Version of the Ubuntu 22.04 LTS gen2 marketplace image.
 
-    TODO(pin): replace "latest" with an exact version so a rebuild six months from now boots
-    the same kernel and the same package set. The exact list is only visible to an
-    authenticated caller, so it cannot be resolved offline; run this against your own
-    subscription and paste the result:
+    Pinned for reproducible rebuilds. To bump it, list available East US 2 versions,
+    choose an explicit version, and verify it before changing this default:
 
       az vm image list --publisher Canonical \
+        --location eastus2 \
         --offer 0001-com-ubuntu-server-jammy --sku 22_04-lts-gen2 \
-        --all --query "[-5:].version" -o table
+        --all --query "[-10:].version" -o table
 
-    Example of the shape you are looking for: "22.04.202501150".
+      az vm image show --location eastus2 --urn \
+        Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:<version>
   EOT
   type        = string
-  default     = "latest"
+  default     = "22.04.202608060"
 }
 
 variable "admin_username" {
