@@ -57,7 +57,7 @@ SIFAP is a foundational system for the benefit-payment cycle and is classified a
 | **1998** | Production launch (v1.0)                      | CADBENEF, CADPROG, and CONSBENF modules. Initial registration of 1.2 million beneficiaries migrated from the previous system (SIPAG/DOS).                                                                         |
 | **1999** | First major update (v2.0)                     | Batch processing implemented for monthly payment cycles. BATCHPGT and BATCHREL programs. Integration with Banco do Brasil for CNAB 240 file remittance.                                                           |
 | **2002** | SIAFI integration (v2.5)                      | Financial reconciliation module. BATCHCON program for automatic reconciliation of bank orders. Approved by STN.                                                                                                  |
-| **2005** | Technology migration (v3.0)                   | Upgrade to Natural 6.3 / Adabas 7.4. New audit module (RELAUDIT). Creation of the AUDITORIA DDM. Partial refactoring of calculation programs.                                                                      |
+| **2005** | Technology migration (v3.0)                   | Upgrade to Natural 6.3 / Adabas 7.4. New audit module (RELAUDIT). Creation of the AUDIT DDM. Partial refactoring of calculation programs.                                                                      |
 | **2008** | Technical documentation effort               | Documentation project led by Fernanda Oliveira (business analyst). **Partially completed**—covers only registration modules. Calculation and batch modules remain without formal documentation.                    |
 | **2012** | Attempt to document business rules            | CGTI/MDAS initiative. Discovery work stopped after three key analysts retired. Produced "RN-SIFAP-2012-parcial.doc" (47 pages, incomplete).                                                                        |
 | **2015** | Last significant feature (v4.0)               | CALCDSCT module—calculation of legal deductions. Implemented by Marcos Antônio Ferreira, the last Natural programmer with comprehensive system knowledge.                                                         |
@@ -128,17 +128,17 @@ SIFAP uses four DDMs (Data Definition Modules) in Adabas:
 
 | DDM                 | Adabas File (FNR)    | Description                                                                                                 | Records (2018 est.)             |
 | ------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| **BENEFICIARIO**    | FNR 150              | Beneficiary records—personal data, documentation, address, registration status, status history             | ~4,200,000                     |
-| **PROGRAMA-SOCIAL** | FNR 151              | Social-program records—eligibility rules, value ranges, calculation parameters                             | ~45 (parameter records)        |
-| **PAGAMENTO**       | FNR 152              | Payment records—gross amount, deductions, net amount, credit date, paying bank, status                      | ~180,000,000                   |
-| **AUDITORIA**       | FNR 153              | Audit log—user actions, registration changes, inspection events                                             | ~25,000,000                    |
+| **BENEFICIARY**    | FNR 150              | Beneficiary records—personal data, documentation, address, registration status, status history             | ~4,200,000                     |
+| **SOCIAL-PROGRAM** | FNR 151              | Social-program records—eligibility rules, value ranges, calculation parameters                             | ~45 (parameter records)        |
+| **PAYMENT**       | FNR 152              | Payment records—gross amount, deductions, net amount, credit date, paying bank, status                      | ~180,000,000                   |
+| **AUDIT**       | FNR 153              | Audit log—user actions, registration changes, inspection events                                             | ~25,000,000                    |
 
 **Modeling notes:**
 
 - Field names follow the **abbreviated 1990s convention** (for example, `BN-NM-BENEF` = beneficiary name, `PG-VL-BRUTO` = gross payment amount, `AU-DT-OCORR` = audit-event date).
 - Value fields use packed decimal format.
 - Adabas does not manage referential integrity—all validation occurs in Natural programs.
-- The PROGRAMA-SOCIAL DDM contains MU (multiple value) and PE (periodic group) fields to store value ranges by fiscal year.
+- The SOCIAL-PROGRAM DDM contains MU (multiple value) and PE (periodic group) fields to store value ranges by fiscal year.
 
 ### 4.4. Batch Processing
 
@@ -238,7 +238,7 @@ SIFAP screens use **Natural maps** in 3270 format (24 rows × 80 columns), acces
 
 ### 6.3. Growth
 
-The volume of records in the PAGAMENTO table grows by approximately **46 million records/year** (3.8M × 12 months + reversals and supplemental payments). No purge policy is implemented. The oldest records date from **1998**.
+The volume of records in the PAYMENT table grows by approximately **46 million records/year** (3.8M × 12 months + reversals and supplemental payments). No purge policy is implemented. The oldest records date from **1998**.
 
 ---
 

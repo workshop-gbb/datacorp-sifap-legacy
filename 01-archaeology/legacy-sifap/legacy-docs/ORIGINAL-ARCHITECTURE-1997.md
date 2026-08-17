@@ -161,7 +161,7 @@ The SIFAP will use **3 DDMs** (Data Definition Modules) in the Adabas:
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
 erDiagram
-    BENEFICIARIO {
+    BENEFICIARY {
         string BN-NR-CPF PK
         string BN-NM-BENEF DE
         date BN-DT-NASC
@@ -177,7 +177,7 @@ erDiagram
         string BN-NR-CONTA
     }
 
-    PROGRAMA-SOCIAL {
+    SOCIAL-PROGRAM {
         string PS-CD-PROG PK
         string PS-NM-PROG
         decimal PS-VL-MIN
@@ -188,7 +188,7 @@ erDiagram
         string PS-VL-FAIXAS PE
     }
 
-    PAGAMENTO {
+    PAYMENT {
         int PG-NR-SEQ PK
         string PG-NR-CPF DE
         string PG-CD-PROG DE
@@ -200,13 +200,13 @@ erDiagram
         string PG-CD-BANCO
     }
 
-    BENEFICIARIO ||--o{ PAGAMENTO : "generates"
-    BENEFICIARIO }o--|| PROGRAMA-SOCIAL : "linked to"
+    BENEFICIARY ||--o{ PAYMENT : "generates"
+    BENEFICIARY }o--|| SOCIAL-PROGRAM : "linked to"
 ```
 
 Caption: PK = primary key (super descriptor) · DE = descriptor (index Adabas) · PE = periodic group · MU = multivalued field
 
-<!-- The DDM AUDITORIA (FNR 153) was not included in the original project.
+<!-- The DDM AUDIT (FNR 153) was not included in the original project.
  It was added in 2005, during the migration to Natural 6.3/Adabas 7.4,
  upon request from the Inspection Department (DEFIS).
  The audit programs (AUDCONSUL, AUDRELAT) provided for in this
@@ -241,9 +241,9 @@ Suffixes indicate the data type:
 
 | DDM | Initial volume | Estimated growth/year | 5 year projection |
 | --------------- | -------------------------- | ------------------------ | --------------- |
-| BENEFICIARIO | 1,200,000 (SIPAG migration) | 300,000 | 2,700,000 |
-| PROGRAMA-SOCIAL | 15 | 5 | 40 |
-| PAGAMENTO | 0 (new) | 14,400,000 (1.2M x 12) | 72,000,000 |
+| BENEFICIARY | 1,200,000 (SIPAG migration) | 300,000 | 2,700,000 |
+| SOCIAL-PROGRAM | 15 | 5 | 40 |
+| PAYMENT | 0 (new) | 14,400,000 (1.2M x 12) | 72,000,000 |
 
 > **Note on the projection:** We consider linear growth of 25% per year in the registration of beneficiaries, compatible with the expected expansion of the Federal Government's social programs. The projection may vary depending on new public policies.
 
@@ -261,7 +261,7 @@ TB flowchart
     classDef result fill:#FFFFFF,stroke:#171717,color:#171717,stroke-width:2px
 
     START["Start of cycle<br/>(1st working day)"]:::step
-    PGT["BATCHPGT<br/>1. Read BENEFICIARIO<br/>2. Calculate value<br/>3. Write PAGAMENTO<br/>4. Generate CNAB"]:::step
+    PGT["BATCHPGT<br/>1. Read BENEFICIARY<br/>2. Calculate value<br/>3. Write PAYMENT<br/>4. Generate CNAB"]:::step
     CNAB["File CNAB<br/>(shipment BB)<br/>Shipping D+1"]:::artifact
     REL["BATCHREL<br/>Reports<br/>totalizers"]:::step
     RET["Return BB<br/>(D+3)"]:::artifact
@@ -296,7 +296,7 @@ Based on benchmarks carried out in the organization's approval environment (IBM 
 | --------- | -------------------- | -------------- | --------------------------------------- |
 | SIFAP-PGT | 1,200,000 records | 1h30min | Sequential processing with I/O Adabas |
 | SIFAP-REL | N/A | 20min | Totalizer reading |
-| SIFAP-CON | ~1,200,000 records | 45min | Match between CNAB and PAGAMENTO |
+| SIFAP-CON | ~1,200,000 records | 45min | Match between CNAB and PAYMENT |
 
 > **Assumption:** These times are estimates based on initial volume. The growth of the beneficiary base will imply a proportional increase in processing time. It is recommended to review the sizing when the volume reaches 2,500,000 records.
 
@@ -379,11 +379,11 @@ Every operation that changes data in the system (inclusion, change, deletion) wi
 - Identification of the affected record;
 - Previous and subsequent values ​​(for changes).
 
-> **Design note:** In the initial phase, audit records will be written in fields of type MU (multiple value) in DDM BENEFICIARIO itself, using a periodic group (PE) for history. This approach simplifies implementation and avoids creating an additional DDM.
+> **Design note:** In the initial phase, audit records will be written in fields of type MU (multiple value) in DDM BENEFICIARY itself, using a periodic group (PE) for history. This approach simplifies implementation and avoids creating an additional DDM.
 
 <!-- This decision was reversed in 2005, when the volume of
- audit on PE of DDM BENEFICIARIO caused severe degradation of
- performance. DDM AUDITORIA (FNR 153) was then created as an entity
+ audit on PE of DDM BENEFICIARY caused severe degradation of
+ performance. DDM AUDIT (FNR 153) was then created as an entity
  separately, and the subprogram LOGAUDIT was refactored to write to this
  new DDM. DBA Cláudia Regina dos Santos led the migration of
  existing audit records for the new file Adabas. -->
@@ -444,8 +444,8 @@ The evolution of the SIFAP is planned in the following phases, subject to approv
  from SENARC. This module was NOT included in any previous planning.
  - RELPGT (payment report) - implemented in 2003 by Patrícia
  Helena Moura. Replaced partial functionality of the BATCHREL.
- - DDM AUDITORIA (FNR 153) - created in 2005. The original project provided
- audit as PE in DDM BENEFICIARIO.
+ - DDM AUDIT (FNR 153) - created in 2005. The original project provided
+ audit as PE in DDM BENEFICIARY.
  - CadÚnico Integration - implemented as an emergency in 2006, without
  program cataloged in the official inventory. -->
 

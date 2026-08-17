@@ -60,7 +60,7 @@ LOCAL
   1 #STAT-PROG           (A1)
   1 #AGE-MIN             (N3)
   1 #AGE-MAX             (N3)
-  1 #INCOME-MAX          (P7,2)
+  1 #MAX-INCOME          (P7,2)
   1 #I                   (N2)
   1 #MSG                 (A78)
 END-DEFINE
@@ -108,7 +108,7 @@ FIND PROGRAM-V WITH COD-PROGRAM = #COD-PROG
   MOVE PROGRAM-V.STAT-PROGRAM      TO #STAT-PROG
   MOVE PROGRAM-V.AGE-MIN         TO #AGE-MIN
   MOVE PROGRAM-V.AGE-MAX         TO #AGE-MAX
-  MOVE PROGRAM-V.MAX-PERCAP-INCOME  TO #INCOME-MAX
+  MOVE PROGRAM-V.MAX-PERCAP-INCOME  TO #MAX-INCOME
 END-FIND
 *
 IF #STAT-PROG NE 'A'
@@ -171,8 +171,8 @@ END-IF
 * ============================================
 * CHECK FAMILY INCOME
 * ============================================
-IF #INCOME-MAX > 0
-  IF #INCOME > #INCOME-MAX
+IF #MAX-INCOME > 0
+  IF #INCOME > #MAX-INCOME
     ADD 1 TO #QTY-REASON
     MOVE 'FAMILY INCOME ABOVE PROGRAM CEILING' TO #REASON(#QTY-REASON)
     MOVE FALSE TO #ELIGIBLE

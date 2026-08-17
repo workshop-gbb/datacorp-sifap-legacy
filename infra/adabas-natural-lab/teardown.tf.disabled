@@ -1,0 +1,29 @@
+# Teardown override - NOT loaded until you copy it into place.
+#
+# The lab Key Vault carries lifecycle { prevent_destroy = true } in main.tf, so
+# `terraform destroy` stops on it by design. That guard exists so nobody wipes a
+# running demo with a stray command; it is not meant to make teardown impossible.
+#
+# This file is the sanctioned way to lift it. Terraform merges override.tf and
+# *_override.tf files argument-by-argument into the matching resource, including the
+# contents of lifecycle blocks, so copying it in flips exactly one flag and touches
+# nothing else. Using `terraform state rm` instead would leave real Azure resources
+# with no owner and nothing tracking them - never do that here.
+#
+#   cd infra/adabas-natural-lab
+#   cp teardown.tf.disabled override.tf     # guard lifted, this resource only
+#   terraform destroy
+#   rm override.tf                          # put the guard back
+#
+# override.tf is listed in .gitignore, so a lifted guard cannot be committed by
+# accident. The destroy job in .github/workflows/deploy-lab.yml performs exactly
+# these steps, behind a GitHub environment approval and a typed confirmation.
+#
+# The extension is .disabled on purpose: Terraform only loads files ending in .tf,
+# so this one is inert where it sits and the guard stays on until someone acts.
+
+resource "azurerm_key_vault" "lab" {
+  lifecycle {
+    prevent_destroy = false
+  }
+}

@@ -150,11 +150,11 @@ The SIFAP uses **3 main DDMs** in the Adabas:
 
 | DDM | File (FNR) | Description |
 | --------------- | ------------- | -------------------------------- |
-| BENEFICIARIO | FNR 150 | Beneficiary registration |
-| PROGRAMA-SOCIAL | FNR 151 | Parameters of social programs |
-| PAGAMENTO | FNR 152 | Payment records |
+| BENEFICIARY | FNR 150 | Beneficiary registration |
+| SOCIAL-PROGRAM | FNR 151 | Parameters of social programs |
+| PAYMENT | FNR 152 | Payment records |
 
-<!-- NOTE: The DDM AUDITORIA (FNR 153), created in 2005 during the migration to
+<!-- NOTE: The DDM AUDIT (FNR 153), created in 2005 during the migration to
  Natural 6.3, not included in this section as it was added after writing
  beginning of this chapter. Check with Roberto Carlos for update. -->
 
@@ -190,7 +190,7 @@ TB flowchart
 ```
 
 <!-- NOTE: This diagram does not reflect programs added in 2005
- (RELAUDIT, CALCCORR) nor the DDM AUDITORIA. Request update
+ (RELAUDIT, CALCCORR) nor the DDM AUDIT. Request update
  to the responsible analyst. -->
 
 ---
@@ -228,7 +228,7 @@ The SIFAP is made up of **12 main programs**, organized into the following modul
 
 #### 3.2.1. CADBENEF - Beneficiary Registration
 
-**Description:** Online program for maintaining beneficiary registration. Allows logical inclusion, alteration and deletion of records in the DDM BENEFICIARIO.
+**Description:** Online program for maintaining beneficiary registration. Allows logical inclusion, alteration and deletion of records in the DDM BENEFICIARY.
 
 **Transaction:** SF01 (inclusion), SF02 (change), SF03 (deletion)
 
@@ -277,7 +277,7 @@ The SIFAP is made up of **12 main programs**, organized into the following modul
 **Features:**
 
 - Inclusion and alteration of social programs;
-- Parameterization of value ranges (fields MU in DDM PROGRAMA-SOCIAL);
+- Parameterization of value ranges (fields MU in DDM SOCIAL-PROGRAM);
 - Definition of eligibility rules per program;
 - Validity control (start/end date).
 
@@ -290,7 +290,7 @@ The SIFAP is made up of **12 main programs**, organized into the following modul
 
 #### 3.3.1. CALCBENF - Benefits Calculation
 
-**Description:** Program for calculating the value of the benefit to be paid to the beneficiary, based on the ranges and rules defined in DDM PROGRAMA-SOCIAL.
+**Description:** Program for calculating the value of the benefit to be paid to the beneficiary, based on the ranges and rules defined in DDM SOCIAL-PROGRAM.
 
 **Features:**
 
@@ -334,9 +334,9 @@ The SIFAP is made up of **12 main programs**, organized into the following modul
 
 **Execution flow:**
 
-1. Sequential reading of DDM BENEFICIARIO (active registers, BN-CD-SIT = 'A');
+1. Sequential reading of DDM BENEFICIARY (active registers, BN-CD-SIT = 'A');
 2. For each beneficiary, invoke CALCBENF to obtain the benefit value;
-3. Record recording on DDM PAGAMENTO with status 'P' (pending);
+3. Record recording on DDM PAYMENT with status 'P' (pending);
 4. Generation of the remittance file CNAB 240 for Banco do Brasil;
 5. Totalization and recording of processing logs.
 
@@ -418,7 +418,7 @@ TB flowchart
     BATCHREL_PRE["BATCHREL<br/>(D-1)<br/>Preview"]:::step
     BATCHPGT["BATCHPGT<br/>(D = 1st DU)<br/>Payroll"]:::step
     CNAB["File CNAB<br/>BB"]:::artifact
-    DDM_PAGTO["DDM PAGAMENTO<br/>(Adabas)"]:::artifact
+    DDM_PAGTO["DDM PAYMENT<br/>(Adabas)"]:::artifact
     LOG["Processing Log"]:::artifact
     RETURN["Bank Return<br/>(D+3)"]:::artifact
     BATCHCON["BATCHCON<br/>(D+4)<br/>Reconciliation"]:::step
@@ -483,7 +483,7 @@ In case of ABEND while running BATCHPGT, follow the steps below:
 | S0C7 | Data exception | Numeric field with invalid value in Adabas | Identify corrupt registry via ADAORD. Correct or delete. |
 | S878 | Virtual storage exceeded | Processing volume above forecast | Increase REGION on JCL. Contact operation.                       |
 | S0C4 | Protection exception | Addressing error in subprogram | Contact Roberto Carlos Meirelles for analysis.                  |
-| U4038 | Natural runtime error | Overflow error in calculation | Check values ​​in DDM PROGRAMA-SOCIAL (ranges).               |
+| U4038 | Natural runtime error | Overflow error in calculation | Check values ​​in DDM SOCIAL-PROGRAM (ranges).               |
 | ADA-RSP 148 | Adabas timeout | Response time exceeded | Check containment on Adabas. Contact DBA.                     |
 
 ### 5.4. Rollback Procedure
@@ -596,7 +596,7 @@ The following sections and information remain pending documentation:
 4. BATCHCON reconciliation rules (section 3.5.3)
 5. Complete rollback procedure (section 5.4)
 6. Complete transaction map (Annex A)
-7. Inclusion of DDM AUDITORIA in the data model section (section 2.3)
+7. Inclusion of DDM AUDIT in the data model section (section 2.3)
 8. Rules for calculating the 13th benefit - Christmas bonus (section 3.3.1)
 
 > **Expected update:** 1st quarter of 2009 (subject to team availability).

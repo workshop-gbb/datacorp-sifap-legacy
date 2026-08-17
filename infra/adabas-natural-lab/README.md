@@ -1,6 +1,6 @@
 # Adabas + Natural Lab — optional legacy runtime
 
-> **Track:** [Team Kit](../../README.md) › [Stage 1 — Archaeology](../../01-arqueologia/README.md) › **Adabas + Natural Lab**
+> **Track:** [Team Kit](../../README.md) › [Stage 1 — Archaeology](../../01-archaeology/README.md) › **Adabas + Natural Lab**
 
 **Provisions an Azure VM with Adabas Community Edition and Natural Community Edition in containers for participants who want to run the legacy programs of SIFAP (Payment Inspection and Administration System) instead of only reading them.**
 
@@ -34,7 +34,7 @@ The goal is to let you load the SIFAP Natural sources, compile them (CATALL/STOW
 
 ### When you do not need this lab
 
-The workshop's main path does not depend on this environment. In Stages 1 through 4, the SIFAP legacy system is reading material: the Natural programs and DDMs in [`01-arqueologia/legado-sifap/`](../../01-arqueologia/legado-sifap/) are text files, and the traceability required in Stage 2 (`source_legacy:`) points to those files, not to an execution.
+The workshop's main path does not depend on this environment. In Stages 1 through 4, the SIFAP legacy system is reading material: the Natural programs and DDMs in [`01-archaeology/legacy-sifap/`](../../01-archaeology/legacy-sifap/) are text files, and the traceability required in Stage 2 (`source_legacy:`) points to those files, not to an execution.
 
 | Situation | Do you need the lab? |
 |---|---|
@@ -212,7 +212,7 @@ The bootstrap creates `/opt/sifap/corpus` on the VM and mounts it read-only at `
 
 ```bash
 # From the repository root directory on your laptop
-scp -r 01-arqueologia/legado-sifap/natural-programs sifapadmin@<IP-PUBLICO>:/tmp/
+scp -r 01-archaeology/legacy-sifap/natural-programs sifapadmin@<IP-PUBLICO>:/tmp/
 
 # On the VM, move the files into the directory mounted in the container
 ssh sifapadmin@<IP-PUBLICO> 'sudo cp /tmp/natural-programs/* /opt/sifap/corpus/'
@@ -429,8 +429,8 @@ az keyvault purge --name "<KEY-VAULT-NAME>" --location brazilsouth
 | Resource | Location |
 |---|---|
 | Kit infrastructure conventions | [`.github/instructions/infrastructure.instructions.md`](../../.github/instructions/infrastructure.instructions.md) |
-| SIFAP Natural programs and DDMs | [`01-arqueologia/legado-sifap/`](../../01-arqueologia/legado-sifap/) |
-| How to read Natural code | [`01-arqueologia/legado-sifap/COMO-LER-NATURAL.md`](../../01-arqueologia/legado-sifap/COMO-LER-NATURAL.md) |
+| SIFAP Natural programs and DDMs | [`01-archaeology/legacy-sifap/`](../../01-archaeology/legacy-sifap/) |
+| How to read Natural code | [`01-archaeology/legacy-sifap/HOW-TO-READ-NATURAL.md`](../../01-archaeology/legacy-sifap/HOW-TO-READ-NATURAL.md) |
 | Workshop operations runbook | [`docs/runbook.md`](../../docs/runbook.md) |
 | Workshop troubleshooting | [`docs/troubleshooting.md`](../../docs/troubleshooting.md) |
 
@@ -440,6 +440,6 @@ az keyvault purge --name "<KEY-VAULT-NAME>" --location brazilsouth
 
 | Previous | Next |
 |---|---|
-| [Stage 1 — Archaeology](../../01-arqueologia/README.md)<br/><sub>Overview of the stage supported by this lab.</sub> | [SIFAP Legacy System](../../01-arqueologia/legado-sifap/README.md)<br/><sub>Legacy system documentation and program inventory.</sub> |
+| [Stage 1 — Archaeology](../../01-archaeology/README.md)<br/><sub>Overview of the stage supported by this lab.</sub> | [SIFAP Legacy System](../../01-archaeology/legacy-sifap/README.md)<br/><sub>Legacy system documentation and program inventory.</sub> |
 
 <sub>[Back to the kit index](../../README.md)</sub>

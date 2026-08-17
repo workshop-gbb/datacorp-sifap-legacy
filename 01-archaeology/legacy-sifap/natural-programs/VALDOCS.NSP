@@ -15,112 +15,112 @@ DEFINE DATA
 LOCAL USING PDAVALID
 LOCAL
 * VIEW DECLARED SINCE 1998 AND NEVER READ - TICKET 4471/2003
-  1 BENEFICIARIO-V VIEW OF BENEFICIARIO
-    2 NUM-CPF            (A11)
-    2 NOME-COMPLETO      (A60)
-    2 RG-NUMERO          (A15)
-    2 GRP-ENDERECO
-      3 UF               (A2)
-    2 IND-DOCUMENTOS-OK  (A1)
+  1 BENEFICIARY-V VIEW OF BENEFICIARY
+    2 NUM-CPF             (A11)
+    2 FULL-NAME           (A60)
+    2 RG-NUMBER           (A15)
+    2 GRP-ADDRESS
+      3 UF                (A2)
+    2 IND-DOCS-OK         (A1)
 *
-  1 #CPF                 (N11)
-  1 #NIS                 (N11)
-  1 #RG                  (A15)
-  1 #TITULO              (A12)
-  1 #CTPS                (A15)
-  1 #RESULTADO           (A1)
-  1 #MSG                 (A60/1:5)
-  1 #QTD-ERROS           (N2)
-  1 #CPF-OK              (L)
-  1 #RG-OK               (L)
-  1 #DOC-ESP-OK          (L)
-  1 #I                   (N2)
-  1 #RG-LEN              (N2)
-  1 #PREF-CPF            (A3)
+  1 #CPF                  (N11)
+  1 #NIS                  (N11)
+  1 #RG                   (A15)
+  1 #TITLE                (A12)
+  1 #CTPS                 (A15)
+  1 #RESULT               (A1)
+  1 #MSG                  (A60/1:5)
+  1 #QTY-ERRS             (N2)
+  1 #CPF-OK               (L)
+  1 #RG-OK                (L)
+  1 #DOC-SPECIAL-OK       (L)
+  1 #I                    (N2)
+  1 #RG-LEN               (N2)
+  1 #PREFIX-CPF           (A3)
 *
 * CPF VALIDATION
-  1 #CPF-STR             (A11)
-  1 #DIG                 (N1/1:11)
-  1 #SOMA                (N5)
-  1 #RESTO               (N3)
-  1 #DV1                 (N1)
-  1 #DV2                 (N1)
-  1 #PESO                (N2)
+  1 #CPF-STR              (A11)
+  1 #DIG                  (N1/1:11)
+  1 #SUM                  (N5)
+  1 #REMAIN               (N3)
+  1 #DV1                  (N1)
+  1 #DV2                  (N1)
+  1 #WEIGHT               (N2)
 *
 * SPECIAL PREFIXES
-  1 #PREF-ESP            (A3/1:8)
+  1 #PREFIX-SPECIAL       (A3/1:8)
 END-DEFINE
 *
-MOVE 0 TO #QTD-ERROS
-MOVE 'V' TO #RESULTADO
+MOVE 0 TO #QTY-ERRS
+MOVE 'V' TO #RESULT
 *
 * LOAD SPECIAL DOCUMENT PREFIXES
-MOVE '000' TO #PREF-ESP(1)
-MOVE '001' TO #PREF-ESP(2)
-MOVE '002' TO #PREF-ESP(3)
-MOVE '010' TO #PREF-ESP(4)
-MOVE '011' TO #PREF-ESP(5)
-MOVE '099' TO #PREF-ESP(6)
-MOVE '100' TO #PREF-ESP(7)
-MOVE '999' TO #PREF-ESP(8)
+MOVE '000' TO #PREFIX-SPECIAL(1)
+MOVE '001' TO #PREFIX-SPECIAL(2)
+MOVE '002' TO #PREFIX-SPECIAL(3)
+MOVE '010' TO #PREFIX-SPECIAL(4)
+MOVE '011' TO #PREFIX-SPECIAL(5)
+MOVE '099' TO #PREFIX-SPECIAL(6)
+MOVE '100' TO #PREFIX-SPECIAL(7)
+MOVE '999' TO #PREFIX-SPECIAL(8)
 *
 INPUT 'SIFAP - DOCUMENT VALIDATION' /
       '===========================' /
       'CPF...........:' #CPF /
       'NIS/PIS.......:' #NIS /
       'RG............:' #RG /
-      'VOTER ID......:' #TITULO /
+      'VOTER ID......:' #TITLE /
       'CTPS..........:' #CTPS
 *
 * ============================================
 * CPF VALIDATION
 * ============================================
-PERFORM VALIDA-CPF-DOC
+PERFORM VALID-CPF-DOC
 IF NOT #CPF-OK
-  ADD 1 TO #QTD-ERROS
-  MOVE 'INVALID CPF' TO #MSG(#QTD-ERROS)
-  MOVE 'I' TO #RESULTADO
+  ADD 1 TO #QTY-ERRS
+  MOVE 'INVALID CPF' TO #MSG(#QTY-ERRS)
+  MOVE 'I' TO #RESULT
 END-IF
 *
 * ============================================
 * RG VALIDATION
 * ============================================
-PERFORM VALIDA-RG
+PERFORM VALID-RG
 IF NOT #RG-OK
-  ADD 1 TO #QTD-ERROS
-  MOVE 'INVALID RG OR INCORRECT FORMAT' TO #MSG(#QTD-ERROS)
-  MOVE 'I' TO #RESULTADO
+  ADD 1 TO #QTY-ERRS
+  MOVE 'INVALID RG OR INCORRECT FORMAT' TO #MSG(#QTY-ERRS)
+  MOVE 'I' TO #RESULT
 END-IF
 *
 * ============================================
 * SPECIAL DOCUMENT CHECK
 * ============================================
-PERFORM CHECK-DOC-ESPECIAL
+PERFORM CHECK-DOC-SPECIAL
 *
 * ============================================
 * NIS/PIS VALIDATION - TICKET 6621/2011
 * UNTIL 2011 NIS WAS NOT VALIDATED ANYWHERE.
-* CHECK PERFORMED AFTER CHECK-DOC-ESPECIAL BY DECISION
+* CHECK PERFORMED AFTER CHECK-DOC-SPECIAL BY DECISION
 * OF THE BENEFITS DEPARTMENT - SEE TICKET 6621/2011.
 * ============================================
-MOVE 'N' TO #PV-TIPO-DOC
+MOVE 'N' TO #PV-TYPE-DOC
 RESET #PV-CPF
 MOVE EDITED #NIS (EM=99999999999) TO #PV-NIS
-CALLNAT 'SUBVALNI' #PV-TIPO-DOC #PV-CPF #PV-NIS
-                   #PV-COD-RETORNO #PV-MSG
-                   #PV-IND-ESPECIAL
-IF #PV-COD-RETORNO NE 0
-  ADD 1 TO #QTD-ERROS
-  MOVE #PV-MSG TO #MSG(#QTD-ERROS)
-  MOVE 'I' TO #RESULTADO
+CALLNAT 'SUBVALNI' #PV-TYPE-DOC #PV-CPF #PV-NIS
+                   #PV-COD-RETURN #PV-MSG
+                   #PV-IND-SPECIAL
+IF #PV-COD-RETURN NE 0
+  ADD 1 TO #QTY-ERRS
+  MOVE #PV-MSG TO #MSG(#QTY-ERRS)
+  MOVE 'I' TO #RESULT
 END-IF
 *
 * RESULT
-WRITE 'DOCUMENT VALIDATION RESULT:' #RESULTADO
-FOR #I = 1 TO #QTD-ERROS
+WRITE 'DOCUMENT VALIDATION RESULT:' #RESULT
+FOR #I = 1 TO #QTY-ERRS
   WRITE #I ':' #MSG(#I)
 END-FOR
-IF #DOC-ESP-OK
+IF #DOC-SPECIAL-OK
   WRITE '** SPECIAL DOCUMENT VALIDATED **'
 END-IF
 *
@@ -129,12 +129,12 @@ ON ERROR
   WRITE 'NATURAL ERROR' *ERROR-NR
         'LINE' *ERROR-LINE
         'PGM' *PROGRAM
-  MOVE 'I' TO #RESULTADO
+  MOVE 'I' TO #RESULT
   TERMINATE 12
 END-ERROR
 *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-DEFINE SUBROUTINE VALIDA-CPF-DOC
+DEFINE SUBROUTINE VALID-CPF-DOC
   MOVE TRUE TO #CPF-OK
   IF #CPF = 0
     MOVE FALSE TO #CPF-OK
@@ -145,34 +145,34 @@ DEFINE SUBROUTINE VALIDA-CPF-DOC
     MOVE SUBSTR(#CPF-STR,#I,1) TO #DIG(#I)
   END-FOR
 * FIRST CHECK DIGIT
-  MOVE 0 TO #SOMA
-  MOVE 10 TO #PESO
+  MOVE 0 TO #SUM
+  MOVE 10 TO #WEIGHT
   FOR #I = 1 TO 9
-    COMPUTE #SOMA = #SOMA + (#DIG(#I) * #PESO)
-    SUBTRACT 1 FROM #PESO
+    COMPUTE #SUM = #SUM + (#DIG(#I) * #WEIGHT)
+    SUBTRACT 1 FROM #WEIGHT
   END-FOR
-  COMPUTE #RESTO = #SOMA - ((#SOMA / 11) * 11)
-  IF #RESTO < 2
+  COMPUTE #REMAIN = #SUM - ((#SUM / 11) * 11)
+  IF #REMAIN < 2
     MOVE 0 TO #DV1
   ELSE
-    COMPUTE #DV1 = 11 - #RESTO
+    COMPUTE #DV1 = 11 - #REMAIN
   END-IF
   IF #DV1 NE #DIG(10)
     MOVE FALSE TO #CPF-OK
     ESCAPE ROUTINE
   END-IF
 * SECOND CHECK DIGIT
-  MOVE 0 TO #SOMA
-  MOVE 11 TO #PESO
+  MOVE 0 TO #SUM
+  MOVE 11 TO #WEIGHT
   FOR #I = 1 TO 10
-    COMPUTE #SOMA = #SOMA + (#DIG(#I) * #PESO)
-    SUBTRACT 1 FROM #PESO
+    COMPUTE #SUM = #SUM + (#DIG(#I) * #WEIGHT)
+    SUBTRACT 1 FROM #WEIGHT
   END-FOR
-  COMPUTE #RESTO = #SOMA - ((#SOMA / 11) * 11)
-  IF #RESTO < 2
+  COMPUTE #REMAIN = #SUM - ((#SUM / 11) * 11)
+  IF #REMAIN < 2
     MOVE 0 TO #DV2
   ELSE
-    COMPUTE #DV2 = 11 - #RESTO
+    COMPUTE #DV2 = 11 - #REMAIN
   END-IF
   IF #DV2 NE #DIG(11)
     MOVE FALSE TO #CPF-OK
@@ -180,7 +180,7 @@ DEFINE SUBROUTINE VALIDA-CPF-DOC
 END-SUBROUTINE
 *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-DEFINE SUBROUTINE VALIDA-RG
+DEFINE SUBROUTINE VALID-RG
   MOVE TRUE TO #RG-OK
   IF #RG = ' '
     MOVE FALSE TO #RG-OK
@@ -201,16 +201,16 @@ END-SUBROUTINE
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 * CHECK SPECIAL DOCUMENTS - GOVERNMENT/TEST PREFIXES
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-DEFINE SUBROUTINE CHECK-DOC-ESPECIAL
-  MOVE FALSE TO #DOC-ESP-OK
+DEFINE SUBROUTINE CHECK-DOC-SPECIAL
+  MOVE FALSE TO #DOC-SPECIAL-OK
   MOVE #CPF TO #CPF-STR
-  MOVE SUBSTR(#CPF-STR,1,3) TO #PREF-CPF
+  MOVE SUBSTR(#CPF-STR,1,3) TO #PREFIX-CPF
   FOR #I = 1 TO 8
-    IF #PREF-CPF = #PREF-ESP(#I)
-      MOVE TRUE TO #DOC-ESP-OK
+    IF #PREFIX-CPF = #PREFIX-SPECIAL(#I)
+      MOVE TRUE TO #DOC-SPECIAL-OK
       MOVE TRUE TO #CPF-OK
-      MOVE 'V' TO #RESULTADO
-      MOVE 0 TO #QTD-ERROS
+      MOVE 'V' TO #RESULT
+      MOVE 0 TO #QTY-ERRS
       ESCAPE BOTTOM
     END-IF
   END-FOR

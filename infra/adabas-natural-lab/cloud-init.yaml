@@ -3,8 +3,9 @@
 # SIFAP legacy lab: Adabas Community Edition + Natural Community Edition
 #
 # Rendered by Terraform (templatefile). The ONLY interpolations in this file are
-# the five template variables passed from main.tf:
-#   adabas_image, natural_image, adabas_dbid, key_vault_uri, secret_name
+# the nine template variables passed from main.tf:
+#   adabas_image, natural_image, caddy_image, adabas_dbid, key_vault_uri,
+#   secret_name, demo_fqdn, caddy_global_options, caddy_tls_directive
 # Every other dollar sign belongs to shell and is written as $VAR or $(...),
 # never as $${VAR}, so Terraform's template engine cannot eat it. If you ever
 # need a literal dollar-brace in shell here, you MUST escape it as $${...}
@@ -58,12 +59,52 @@ write_files:
       This directory is mounted read-only into the Natural container as /corpus.
 
       It is intentionally empty: copy the SIFAP legacy sources here from your
-      workstation, from the repository folder 01-arqueologia/legado-sifap/
+      workstation, from the repository folder 01-archaeology/legacy-sifap/
 
-        scp -r 01-arqueologia/legado-sifap/natural-programs/* \
+        scp -r 01-archaeology/legacy-sifap/natural-programs/* \
             <admin>@<lab-public-ip>:/opt/sifap/corpus/
 
       Then load them into Natural (library SIFAP) from inside the container.
+
+  # Caddy reverse proxy configuration: the whole reason the demo has an https:// URL.
+  #
+  # The Adabas administration console speaks plaintext HTTP on 8190 and has no TLS of its
+  # own. Rather than publish that port and hand participants a http:// link, Caddy terminates
+  # TLS on 443 for the Azure-issued FQDN and proxies to the console over the container
+  # network, which never leaves the VM.
+  #
+  # Which certificate it serves is decided by Terraform, not here - see
+  # var.enable_public_acme:
+  #   tls internal  -> Caddy's own local CA. Works behind the NSG allow-list, browser warns.
+  #   (no directive) -> automatic Let's Encrypt. Needs 80/443 reachable from the internet,
+  #                     because ACME HTTP-01 validation comes from arbitrary addresses.
+  - path: /opt/sifap/Caddyfile
+    owner: root:root
+    permissions: '0644'
+    content: |
+      {
+      	${caddy_global_options}
+      	admin off
+      }
+
+      # Container-internal readiness endpoint. NOT published to the host, so it is
+      # unreachable from outside the VM; it exists so the healthcheck can tell
+      # "Caddy is up" apart from "the certificate is not ready yet".
+      :8081 {
+      	respond /healthz "ok" 200
+      }
+
+      ${demo_fqdn} {
+      	${caddy_tls_directive}
+      	encode gzip
+
+      	# Public readiness probe: curl -sSf https://${demo_fqdn}/healthz
+      	# Answers even while Adabas is still building the demo database, which
+      	# separates "the URL is live" from "the database is ready".
+      	respond /healthz "ok" 200
+
+      	reverse_proxy adabas-db:8190
+      }
 
   - path: /opt/sifap/docker-compose.yml
     owner: root:root
@@ -81,6 +122,11 @@ write_files:
         # sagadmin (uid 1724) ownership; a bind mount over an empty host
         # directory would hide all of it.
         natural-fuser:
+        # Issued certificates and ACME account keys. Named volumes so a
+        # `docker compose down && up` does not re-request a certificate and
+        # burn Let's Encrypt rate limits.
+        caddy-data:
+        caddy-config:
 
       services:
         adabas-db:
@@ -135,6 +181,34 @@ write_files:
             # minutes to create the demo database on first boot and gating on
             # health here would abort the whole bootstrap.
             - adabas-db
+          networks:
+            - sifap-lab
+
+        # TLS termination for the public demo URL. The only container publishing
+        # 80/443; everything it proxies stays on the internal bridge network.
+        caddy:
+          image: ${caddy_image}
+          container_name: caddy
+          restart: unless-stopped
+          ports:
+            - "80:80"
+            - "443:443"
+            # HTTP/3. Harmless when the NSG blocks UDP: clients fall back to TCP.
+            - "443:443/udp"
+          volumes:
+            - /opt/sifap/Caddyfile:/etc/caddy/Caddyfile:ro
+            - caddy-data:/data
+            - caddy-config:/config
+          depends_on:
+            - adabas-db
+          # Probes the container-internal :8081 endpoint, not the public site, so a
+          # certificate that is still being issued does not read as a dead proxy.
+          healthcheck:
+            test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/healthz"]
+            interval: 15s
+            timeout: 10s
+            retries: 5
+            start_period: 60s
           networks:
             - sifap-lab
 
@@ -208,13 +282,21 @@ write_files:
 
       # Single, unambiguous success/failure marker for a human over SSH.
       # outputs.tf points at $LOG; these markers are the machine-readable half.
+      #
+      # The `logger` calls put the same marker on syslog, which the Azure Monitor
+      # agent ships to Log Analytics. That is what
+      # azurerm_monitor_scheduled_query_rules_alert_v2.bootstrap_failed queries,
+      # so a first boot that dies at 02:00 raises an alert instead of waiting for
+      # someone to SSH in and notice. Keep the string in sync with the KQL in main.tf.
       on_exit() {
         rc=$?
         if [ "$rc" -eq 0 ]; then
           echo "BOOTSTRAP RESULT: SUCCESS"
+          logger -t sifap-bootstrap -p user.notice "SIFAP-BOOTSTRAP RESULT: SUCCESS" || true
           date -Is > /opt/sifap/READY
         else
           echo "BOOTSTRAP RESULT: FAILED (exit $rc at line $BOOTSTRAP_LINE)"
+          logger -t sifap-bootstrap -p user.err "SIFAP-BOOTSTRAP RESULT: FAILED (exit $rc at line $BOOTSTRAP_LINE)" || true
           echo "Inspect $LOG, fix the cause, then re-run: sudo /opt/sifap/bootstrap.sh"
           printf 'failed at %s (exit %s, line %s)\n' "$(date -Is)" "$rc" "$BOOTSTRAP_LINE" \
             > /opt/sifap/FAILED
@@ -405,10 +487,36 @@ write_files:
       echo "--- container state ---"
       docker compose ps
       echo "-----------------------"
+
+      # --- demo url --------------------------------------------------------
+      # Bounded and NOT fatal, same reasoning as the Adabas probe above. With
+      # Caddy's internal CA the certificate is ready in seconds; with Let's
+      # Encrypt it waits on an ACME round trip that can take a minute.
+      echo "checking the demo URL: https://${demo_fqdn}/healthz"
+      DEMO_OK=0
+      for attempt in $(seq 1 20); do
+        # -k because the internal-CA certificate is not in the VM's trust store.
+        # This only proves the proxy is answering over TLS, not that the chain is
+        # publicly trusted - a browser is the judge of that.
+        if curl -sSk --max-time 10 -o /dev/null "https://${demo_fqdn}/healthz"; then
+          DEMO_OK=1
+          echo "demo URL answered after $((attempt * 10))s"
+          break
+        fi
+        sleep 10
+      done
+      if [ "$DEMO_OK" -ne 1 ]; then
+        echo "WARNING: https://${demo_fqdn}/healthz did not answer yet."
+        echo "WARNING: check 'docker compose logs caddy'. If it is failing ACME,"
+        echo "WARNING: Let's Encrypt cannot reach port 80 from the internet -"
+        echo "WARNING: that needs enable_public_acme = true in terraform.tfvars."
+      fi
+
       if [ "$FALLBACK" -eq 1 ]; then
         echo "NOTE: started with the LOCAL fallback password, not the Key Vault one."
       fi
       echo "Legacy sources go in /opt/sifap/corpus (mounted read-only as /corpus)."
+      echo "Demo URL: https://${demo_fqdn}"
       echo "=== SIFAP lab bootstrap finished at $(date -Is) ==="
 
 runcmd:

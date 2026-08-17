@@ -19,88 +19,88 @@ DEFINE DATA
 LOCAL USING PDAVALID
 LOCAL USING LDASIFAP
 LOCAL
-  1 BENEFICIARIO-V VIEW OF BENEFICIARIO
-    2 NUM-CPF            (A11)
-    2 NOME-COMPLETO      (A60)
-    2 DT-NASCIMENTO      (N8)
-    2 SEXO               (A1)
-    2 GRP-ENDERECO
-      3 LOGRADOURO       (A60)
-      3 NUMERO           (A10)
-      3 BAIRRO           (A40)
-      3 MUNICIPIO        (A40)
-      3 UF               (A2)
-      3 CEP              (N8)
-      3 COD-REGIAO       (A2)
-    2 SIT-BENEFICIARIO   (A1)
-    2 COD-PROGRAMA       (A4)
-    2 VLR-RENDA-FAMILIAR (P9,2)
-    2 QTD-DEPENDENTES    (N2)
-    2 NUM-NIS            (N11)
-    2 DT-CADASTRO        (N8)
+  1 BENEFICIARY-V VIEW OF BENEFICIARY
+    2 NUM-CPF             (A11)
+    2 FULL-NAME           (A60)
+    2 DT-BIRTH            (N8)
+    2 SEX                 (A1)
+    2 GRP-ADDRESS
+      3 STREET-ADDRESS    (A60)
+      3 NUMBER            (A10)
+      3 DISTRICT          (A40)
+      3 CITY              (A40)
+      3 UF                (A2)
+      3 CEP               (N8)
+      3 COD-REGION        (A2)
+    2 STAT-BENEFICIARY    (A1)
+    2 COD-PROGRAM         (A4)
+    2 AMT-FAMILY-INCOME   (P9,2)
+    2 QTY-DEPEND          (N2)
+    2 NUM-NIS             (N11)
+    2 DT-REGISTRATION     (N8)
 *
-  1 PAGAMENTO-V VIEW OF PAGAMENTO
-    2 NUM-PAGAMENTO      (N15)
-    2 NUM-CPF            (A11)
-    2 ANO-MES-REF        (N6)
-    2 VLR-BRUTO          (P9,2)
-    2 VLR-DESCONTO-TOTAL (P7,2)
-    2 VLR-LIQUIDO        (P9,2)
-    2 SIT-PAGAMENTO      (A1)
-    2 TIPO-PAGAMENTO     (A1)
-    2 DT-GERACAO         (N8)
+  1 PAYMENT-V VIEW OF PAYMENT
+    2 NUM-PAYMENT         (N15)
+    2 NUM-CPF             (A11)
+    2 YEAR-MONTH-REF      (N6)
+    2 AMT-GROSS           (P9,2)
+    2 AMT-DISC-TOTAL      (P7,2)
+    2 AMT-NET             (P9,2)
+    2 STAT-PAYMENT        (A1)
+    2 TYPE-PAYMENT        (A1)
+    2 DT-GENERATION       (N8)
 *
 * AUDIT TRAIL - FILE 153 - SEE COPYCODE CCAUDIT
-  1 AUDITORIA-V VIEW OF AUDITORIA
-    2 NUM-AUDITORIA      (N15)
-    2 DT-EVENTO          (N8)
-    2 HR-EVENTO          (N6)
-    2 TS-EVENTO          (N14)
-    2 COD-ACAO           (A2)
-    2 COD-MODULO         (A8)
-    2 DES-ACAO           (A80)
-    2 TIPO-ENTIDADE      (A4)
-    2 ID-ENTIDADE        (A15)
-    2 NUM-CPF-AFETADO    (A11)
-    2 USR-EVENTO         (A8)
-    2 NOM-JOB-BATCH      (A16)
-    2 SIT-BATCH          (A1)
+  1 AUDIT-V VIEW OF AUDIT
+    2 NUM-AUDIT           (N15)
+    2 DT-EVENT            (N8)
+    2 HR-EVENT            (N6)
+    2 TS-EVENT            (N14)
+    2 COD-ACTION          (A2)
+    2 COD-MODULE          (A8)
+    2 DESCR-ACTION        (A80)
+    2 TYPE-ENTITY         (A4)
+    2 ID-ENTITY           (A15)
+    2 NUM-CPF-AFFECTED    (A11)
+    2 USR-EVENT           (A8)
+    2 NAME-JOB-BATCH      (A16)
+    2 STAT-BATCH          (A1)
 *
-  1 #CPF-BUSCA           (N11)
-  1 #NIS-BUSCA           (N11)
-  1 #TIPO-BUSCA          (A1)    /* C=CPF N=NIS */
-  1 #CPF-A11             (A11)   /* FILE 150 KEY - DDM AB
-  1 #CPF-MASK            (A14)
-  1 #CPF-STR             (A11)
-  1 #CPF-NUM             (N11)   /* CPF IN NUMERIC FORMAT
-  1 #ENDERECO            (A80)
-  1 #MSG                 (A60)
-  1 #STATUS-DESC         (A15)
-  1 #I                   (N3)
-  1 #MAX-HIST            (N3)    /* OBSOLETE FIELD - UNTIL 2004
+  1 #CPF-SEARCH           (N11)
+  1 #NIS-SEARCH           (N11)
+  1 #TYPE-SEARCH          (A1)    /* C=CPF N=NIS */
+  1 #CPF-A11              (A11)   /* FILE 150 KEY - DDM AB
+  1 #CPF-MASK             (A14)
+  1 #CPF-STR              (A11)
+  1 #CPF-NUM              (N11)   /* CPF IN NUMERIC FORMAT
+  1 #ADDRESS              (A80)
+  1 #MSG                  (A60)
+  1 #STATUS-DESCR         (A15)
+  1 #I                    (N3)
+  1 #MAX-HIST             (N3)    /* OBSOLETE FIELD - UNTIL 2004
 *
 * AUDIT TRAIL FIELDS - REQUIRED BY CCAUDIT
-  1 #AUD-ACAO            (A2)
-  1 #AUD-ENTIDADE        (A4)
-  1 #AUD-ID              (A15)
-  1 #AUD-CPF             (A11)
-  1 #AUD-DESCRICAO       (A80)
-  1 #AUD-SEQ             (N15)
-  1 #AUD-TIMN            (N7)
+  1 #AUD-ACTION           (A2)
+  1 #AUD-ENTITY           (A4)
+  1 #AUD-ID               (A15)
+  1 #AUD-CPF              (A11)
+  1 #AUD-DESCR            (A80)
+  1 #AUD-SEQ              (N15)
+  1 #AUD-TIMN             (N7)
 *
 * PAYMENT HISTORY
-  1 #HIST-COMP           (N6/1:12)
-  1 #HIST-BRUTO          (P9,2/1:12)
-  1 #HIST-LIQ            (P9,2/1:12)
-  1 #HIST-STS            (A1/1:12)
-  1 #HIST-TIPO           (A1/1:12)
-  1 #QTD-HIST            (N3)
+  1 #HIST-PERIOD          (N6/1:12)
+  1 #HIST-GROSS           (P9,2/1:12)
+  1 #HIST-NET             (P9,2/1:12)
+  1 #HIST-STS             (A1/1:12)
+  1 #HIST-TYPE            (A1/1:12)
+  1 #QTY-HIST             (N3)
 *
 * CPF MASK
-  1 #CPF-P1              (A3)
-  1 #CPF-P2              (A3)
-  1 #CPF-P3              (A3)
-  1 #CPF-P4              (A2)
+  1 #CPF-P1               (A3)
+  1 #CPF-P2               (A3)
+  1 #CPF-P3               (A3)
+  1 #CPF-P4               (A2)
 END-DEFINE
 *
 * ============================================
@@ -116,17 +116,17 @@ REPEAT
   IF *ERROR-NR NE 0
     INPUT 'SIFAP - BENEFICIARY QUERY' /
           '==========================' /
-          'SEARCH TYPE (C=CPF / N=NIS):' #TIPO-BUSCA /
-          'CPF..........:' #CPF-BUSCA /
-          'NIS..........:' #NIS-BUSCA
+          'SEARCH TYPE (C=CPF / N=NIS):' #TYPE-SEARCH /
+          'CPF..........:' #CPF-SEARCH /
+          'NIS..........:' #NIS-SEARCH
   END-IF
 *
   IF *PF-KEY = 'PF3'
     ESCAPE BOTTOM
   END-IF
 *
-  IF #TIPO-BUSCA = ' '
-    MOVE 'C' TO #TIPO-BUSCA
+  IF #TYPE-SEARCH = ' '
+    MOVE 'C' TO #TYPE-SEARCH
   END-IF
 *
 * ============================================
@@ -134,53 +134,53 @@ REPEAT
 * TICKET 6620/2011 - SUBVALCP IS THE ONLY CPF CHECK
 * ON THIS SCREEN. THERE IS NO INLINE ROUTINE HERE.
 * ============================================
-  IF #TIPO-BUSCA = 'C'
-    MOVE 'C' TO #PV-TIPO-DOC
-    MOVE EDITED #CPF-BUSCA (EM=99999999999) TO #PV-CPF
+  IF #TYPE-SEARCH = 'C'
+    MOVE 'C' TO #PV-TYPE-DOC
+    MOVE EDITED #CPF-SEARCH (EM=99999999999) TO #PV-CPF
     RESET #PV-NIS
-    CALLNAT 'SUBVALCP' #PV-TIPO-DOC #PV-CPF #PV-NIS
-                       #PV-COD-RETORNO #PV-MSG
-                       #PV-IND-ESPECIAL
-    IF #PV-COD-RETORNO NE 0
+    CALLNAT 'SUBVALCP' #PV-TYPE-DOC #PV-CPF #PV-NIS
+                       #PV-COD-RETURN #PV-MSG
+                       #PV-IND-SPECIAL
+    IF #PV-COD-RETURN NE 0
       MOVE #PV-MSG TO #MSG
-      REINPUT #MSG MARK *#CPF-BUSCA
+      REINPUT #MSG MARK *#CPF-SEARCH
     END-IF
     MOVE #PV-CPF TO #CPF-A11
   END-IF
 *
 * FIND BENEFICIARY - FILE 150
-  DECIDE ON FIRST VALUE OF #TIPO-BUSCA
+  DECIDE ON FIRST VALUE OF #TYPE-SEARCH
     VALUE 'C'
-      FIND BENEFICIARIO-V WITH NUM-CPF = #CPF-A11
+      FIND BENEFICIARY-V WITH NUM-CPF = #CPF-A11
         IF NO RECORDS FOUND
           REINPUT 'BENEFICIARY NOT FOUND'
-                  MARK *#CPF-BUSCA
+                  MARK *#CPF-SEARCH
         END-NOREC
-        PERFORM EXIBE-BENEFICIARIO
+        PERFORM SHOW-BENEFICIARY
       END-FIND
     VALUE 'N'
-      FIND BENEFICIARIO-V WITH NUM-NIS = #NIS-BUSCA
+      FIND BENEFICIARY-V WITH NUM-NIS = #NIS-SEARCH
         IF NO RECORDS FOUND
           REINPUT 'BENEFICIARY NOT FOUND'
-                  MARK *#NIS-BUSCA
+                  MARK *#NIS-SEARCH
         END-NOREC
-        PERFORM EXIBE-BENEFICIARIO
+        PERFORM SHOW-BENEFICIARY
       END-FIND
     NONE
-      REINPUT 'INVALID SEARCH TYPE' MARK *#TIPO-BUSCA
+      REINPUT 'INVALID SEARCH TYPE' MARK *#TYPE-SEARCH
   END-DECIDE
 *
 * ============================================
 * PERSONAL DATA ACCESS TRAIL
 * IN-TCU 63/2010 - TICKET 8842/2016
 * ============================================
-  MOVE 'CO'     TO #AUD-ACAO
-  MOVE 'BENF'   TO #AUD-ENTIDADE
+  MOVE 'CO'     TO #AUD-ACTION
+  MOVE 'BENF'   TO #AUD-ENTITY
   MOVE #CPF-A11 TO #AUD-ID
   MOVE #CPF-A11 TO #AUD-CPF
   MOVE 'BENEFICIARY REGISTRATION QUERY - CONSBENF'
-       TO #AUD-DESCRICAO
-  PERFORM GRAVA-AUDITORIA
+       TO #AUD-DESCR
+  PERFORM WRITE-AUDIT
   END TRANSACTION
 *
 END-REPEAT
@@ -201,18 +201,18 @@ END-ERROR
 * DISPLAY REGISTRATION AND HISTORY. RUN INSIDE THE FIND
 * BLOCK, WHERE THE FILE 150 RECORD BUFFER IS GUARANTEED.
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-DEFINE SUBROUTINE EXIBE-BENEFICIARIO
+DEFINE SUBROUTINE SHOW-BENEFICIARY
 *
 * CPF MASK - HIDE SENSITIVE DATA
-  MOVE BENEFICIARIO-V.NUM-CPF TO #CPF-A11
-  MOVE BENEFICIARIO-V.NUM-CPF TO #CPF-STR
+  MOVE BENEFICIARY-V.NUM-CPF TO #CPF-A11
+  MOVE BENEFICIARY-V.NUM-CPF TO #CPF-STR
   MOVE EDITED #CPF-STR TO #CPF-NUM (EM=99999999999)
-  PERFORM MASCARA-CPF
+  PERFORM MASK-CPF
 *
 * ADDRESS - BUILT FROM THE BA GROUP IN FILE 150
-  COMPRESS BENEFICIARIO-V.LOGRADOURO ','
-           BENEFICIARIO-V.NUMERO '-'
-           BENEFICIARIO-V.BAIRRO INTO #ENDERECO
+  COMPRESS BENEFICIARY-V.STREET ','
+           BENEFICIARY-V.NUMBER '-'
+           BENEFICIARY-V.DISTRICT INTO #ADDRESS
 *
 * ============================================
 * Y2K - REMEDIATION 08/1998 - BUG2000 PROJECT
@@ -221,49 +221,49 @@ DEFINE SUBROUTINE EXIBE-BENEFICIARIO
 * WAS EXPANDED BY THE CENTURY WINDOW BELOW. THE FIELD
 * CHANGED TO YYYYMMDD IN FILE 150 AND THE BLOCK WAS
 * DISABLED - DO NOT REMOVE (HISTORICAL).
-*   MOVE #L-AA-CURTO TO #L-ANO-EXPANDIDO
-*   IF #L-AA-CURTO < #L-SEC-JANELA
-*     COMPUTE #L-ANO-EXPANDIDO = 2000 + #L-AA-CURTO
+*   MOVE #L-AA-SHORT TO #L-EXPANDED-YEAR
+*   IF #L-AA-SHORT < #L-CENTURY-WINDOW
+*     COMPUTE #L-EXPANDED-YEAR = 2000 + #L-AA-SHORT
 *   ELSE
-*     COMPUTE #L-ANO-EXPANDIDO = 1900 + #L-AA-CURTO
+*     COMPUTE #L-EXPANDED-YEAR = 1900 + #L-AA-SHORT
 *   END-IF
 * ============================================
 *
 * STATUS DESCRIPTION
-  DECIDE ON FIRST VALUE OF BENEFICIARIO-V.SIT-BENEFICIARIO
+  DECIDE ON FIRST VALUE OF BENEFICIARY-V.STAT-BENEFICIARY
     VALUE 'A'
-      MOVE 'ACTIVE' TO #STATUS-DESC
+      MOVE 'ACTIVE' TO #STATUS-DESCR
     VALUE 'S'
-      MOVE 'SUSPENDED' TO #STATUS-DESC
+      MOVE 'SUSPENDED' TO #STATUS-DESCR
     VALUE 'C'
-      MOVE 'CANCELED' TO #STATUS-DESC
+      MOVE 'CANCELED' TO #STATUS-DESCR
     VALUE 'I'
-      MOVE 'INACTIVE' TO #STATUS-DESC
+      MOVE 'INACTIVE' TO #STATUS-DESCR
     VALUE 'D'
-      MOVE 'TERMINATED' TO #STATUS-DESC
+      MOVE 'TERMINATED' TO #STATUS-DESCR
     NONE
-      MOVE 'UNKNOWN' TO #STATUS-DESC
+      MOVE 'UNKNOWN' TO #STATUS-DESCR
   END-DECIDE
 *
 * DISPLAY REGISTRATION DATA
   WRITE 'SIFAP - BENEFICIARY INFORMATION' /
         '================================' /
         'CPF...........:' #CPF-MASK /
-        'NAME..........:' BENEFICIARIO-V.NOME-COMPLETO /
-        'BIRTH DATE....:' BENEFICIARIO-V.DT-NASCIMENTO /
-        'SEX...........:' BENEFICIARIO-V.SEXO /
-        'ADDRESS.......:' #ENDERECO /
-        'CITY/STATE....:' BENEFICIARIO-V.MUNICIPIO
-                      '/' BENEFICIARIO-V.UF /
-        'ZIP CODE......:' BENEFICIARIO-V.CEP /
-        'STATUS........:' BENEFICIARIO-V.SIT-BENEFICIARIO
-                      '-' #STATUS-DESC /
-        'PROGRAM CODE..:' BENEFICIARIO-V.COD-PROGRAMA /
-        'FAMILY INCOME.:' BENEFICIARIO-V.VLR-RENDA-FAMILIAR /
-        'DEPENDENTS....:' BENEFICIARIO-V.QTD-DEPENDENTES /
-        'REGION........:' BENEFICIARIO-V.COD-REGIAO /
-        'NIS...........:' BENEFICIARIO-V.NUM-NIS /
-        'REGISTRATION..:' BENEFICIARIO-V.DT-CADASTRO
+        'NAME..........:' BENEFICIARY-V.FULL-NAME /
+        'BIRTH DATE....:' BENEFICIARY-V.DT-BIRTH /
+        'SEX...........:' BENEFICIARY-V.SEX /
+        'ADDRESS.......:' #ADDRESS /
+        'CITY/STATE....:' BENEFICIARY-V.CITY
+                      '/' BENEFICIARY-V.UF /
+        'ZIP CODE......:' BENEFICIARY-V.CEP /
+        'STATUS........:' BENEFICIARY-V.STAT-BENEFICIARY
+                      '-' #STATUS-DESCR /
+        'PROGRAM CODE..:' BENEFICIARY-V.COD-PROGRAM /
+        'FAMILY INCOME.:' BENEFICIARY-V.AMT-FAMILY-INCOME /
+        'DEPENDENTS....:' BENEFICIARY-V.QTY-DEPEND /
+        'REGION........:' BENEFICIARY-V.COD-REGION /
+        'NIS...........:' BENEFICIARY-V.NUM-NIS /
+        'REGISTRATION..:' BENEFICIARY-V.DT-REGISTRATION
 *
 * PAYMENT HISTORY - LAST 12
   WRITE ' ' /
@@ -272,23 +272,23 @@ DEFINE SUBROUTINE EXIBE-BENEFICIARIO
   WRITE 'PERIOD        GROSS        NET          STS  TYPE'
   WRITE '----------    -----------  -----------  ---  ----'
 *
-  MOVE 0 TO #QTD-HIST
-  READ PAGAMENTO-V BY NUM-CPF = BENEFICIARIO-V.NUM-CPF
-    IF PAGAMENTO-V.NUM-CPF NE BENEFICIARIO-V.NUM-CPF
+  MOVE 0 TO #QTY-HIST
+  READ PAYMENT-V BY NUM-CPF = BENEFICIARY-V.NUM-CPF
+    IF PAYMENT-V.NUM-CPF NE BENEFICIARY-V.NUM-CPF
       ESCAPE BOTTOM
     END-IF
-    ADD 1 TO #QTD-HIST
-    IF #QTD-HIST > 12
+    ADD 1 TO #QTY-HIST
+    IF #QTY-HIST > 12
       ESCAPE BOTTOM
     END-IF
-    WRITE PAGAMENTO-V.ANO-MES-REF '    '
-          PAGAMENTO-V.VLR-BRUTO '  '
-          PAGAMENTO-V.VLR-LIQUIDO '  '
-          PAGAMENTO-V.SIT-PAGAMENTO '    '
-          PAGAMENTO-V.TIPO-PAGAMENTO
+    WRITE PAYMENT-V.YEAR-MONTH-REF '    '
+          PAYMENT-V.AMT-GROSS '  '
+          PAYMENT-V.AMT-NET '  '
+          PAYMENT-V.STAT-PAYMENT '    '
+          PAYMENT-V.TYPE-PAYMENT
   END-READ
 *
-  IF #QTD-HIST = 0
+  IF #QTY-HIST = 0
     WRITE 'NO PAYMENTS FOUND'
   END-IF
 *
@@ -300,7 +300,7 @@ END-SUBROUTINE
 *       INSTEAD OF THE LAST ONES. DEPENDS ON THE STORED CPF LENGTH.
 *       DO NOT CORRECT WITHOUT AUDIT APPROVAL.
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-DEFINE SUBROUTINE MASCARA-CPF
+DEFINE SUBROUTINE MASK-CPF
   IF #CPF-NUM < 10000000000
 * CPF WITH FEWER THAN 11 DIGITS (LEFT-PADDED WITH ZEROS)
     MOVE SUBSTR(#CPF-STR,1,3) TO #CPF-P1

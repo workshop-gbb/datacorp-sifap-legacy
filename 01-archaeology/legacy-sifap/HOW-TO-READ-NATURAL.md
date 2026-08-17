@@ -32,19 +32,19 @@
 DEFINE DATA                                                          <- DATA DECLARATION
 LOCAL USING LDASIFAP                                                   External areas first
 LOCAL                                                                  (LDA/PDA), then local fields.
-  1 PAGAMENTO-V VIEW OF PAGAMENTO                                      You can skip this—just note
-    2 NUM-PAGAMENTO      (N15)                                         fields that come from a table
-    2 VLR-BRUTO          (P9,2)                                        (VIEW OF = DDM).
-    2 VLR-DESCONTO-TOTAL (P7,2)
-  1 #VLR-MAX-DSCT        (P9,2)
+  1 PAYMENT-V VIEW OF PAYMENT                                      You can skip this—just note
+    2 NUM-PAYMENT      (N15)                                         fields that come from a table
+    2 AMT-GROSS          (P9,2)                                        (VIEW OF = DDM).
+    2 AMT-DISC-TOTAL (P7,2)
+  1 #AMT-MAX-DISC        (P9,2)
 END-DEFINE
 *
-MOVE *DATN TO #DT-HOJE                                                <- PROGRAM BODY
+MOVE *DATN TO #DT-TODAY                                                <- PROGRAM BODY
 *                                                                       The logic lives here.
 * CHECK DEDUCTION CAP                                                   FOCUS HERE.
-IF #TIPO-DSCT NE 'J'
-  IF #VLR-TOTAL-DSCT > (#VLR-BRUTO * 0.30)
-    COMPUTE #VLR-TOTAL-DSCT = #VLR-BRUTO * 0.30
+IF #TYPE-DISC NE 'J'
+  IF #AMT-TOTAL-DISC > (#AMT-GROSS * 0.30)
+    COMPUTE #AMT-TOTAL-DISC = #AMT-GROSS * 0.30
   END-IF
 END-IF
 *
@@ -91,9 +91,9 @@ LOCAL
   1 #MSG               (A60)
 END-DEFINE
 *
-CALLNAT 'SUBVALCP' #PV-TIPO-DOC #PV-CPF #PV-NIS
-                   #PV-COD-RETORNO #PV-MSG
-                   #PV-IND-ESPECIAL       /* CALLS ANOTHER MODULE (.NSN)
+CALLNAT 'SUBVALCP' #PV-TYPE-DOC #PV-CPF #PV-NIS
+                   #PV-COD-RETURN #PV-MSG
+                   #PV-IND-SPECIAL       /* CALLS ANOTHER MODULE (.NSN)
 *
 INCLUDE CCAUDIT             /* INSERTS A CODE BLOCK HERE         (.NSC)
 END
@@ -133,9 +133,9 @@ Meaning: "The program checks the deduction cap here."
 This is the most important construct. **Every business rule is inside an `IF`.**
 
 ```natural
-IF #TIPO-DSCT NE 'J'
-  IF #VLR-TOTAL-DSCT > (#VLR-BRUTO * 0.30)
-    COMPUTE #VLR-TOTAL-DSCT = #VLR-BRUTO * 0.30
+IF #TYPE-DISC NE 'J'
+  IF #AMT-TOTAL-DISC > (#AMT-GROSS * 0.30)
+    COMPUTE #AMT-TOTAL-DISC = #AMT-GROSS * 0.30
   END-IF
 END-IF
 ```
@@ -162,9 +162,9 @@ Rule extracted from the example: *"Non-judicial deductions (type other than J) a
 `MOVE` copies a value to a variable. `COMPUTE` performs a calculation.
 
 ```natural
-MOVE *DATN TO #DT-HOJE               /* ASSIGNS TODAY'S DATE TO #DT-HOJE
-MOVE 500.00 TO #FAIXA-CONTRIB(1)     /* ASSIGNS 500 TO THE FIRST RANGE
-COMPUTE #VLR-MAX = #VLR-BRUTO * 0.30 /* CALCULATES 30% OF THE GROSS AMOUNT
+MOVE *DATN TO #DT-TODAY               /* ASSIGNS TODAY'S DATE TO #DT-TODAY
+MOVE 500.00 TO #BAND-CONTRIB(1)     /* ASSIGNS 500 TO THE FIRST RANGE
+COMPUTE #VLR-MAX = #AMT-GROSS * 0.30 /* CALCULATES 30% OF THE GROSS AMOUNT
 ```
 
 Everything after `/*` on the same line is also a comment—the second way to write comments in Natural, often used to annotate fields in `DEFINE DATA`.
@@ -177,25 +177,25 @@ Everything after `/*` on the same line is also a comment—the second way to wri
 `CALLNAT` invokes a subprogram, equivalent to a function call. Parameters follow the order defined by the PDA and may span several lines.
 
 ```natural
-CALLNAT 'SUBVALCP' #PV-TIPO-DOC #PV-CPF #PV-NIS
-                   #PV-COD-RETORNO #PV-MSG
-                   #PV-IND-ESPECIAL
+CALLNAT 'SUBVALCP' #PV-TYPE-DOC #PV-CPF #PV-NIS
+                   #PV-COD-RETURN #PV-MSG
+                   #PV-IND-SPECIAL
 ```
 
-Meaning: "This module delegates CPF validation to the `SUBVALCP.NSN` subprogram and receives the result in `#PV-COD-RETORNO` and `#PV-MSG`."
+Meaning: "This module delegates CPF validation to the `SUBVALCP.NSN` subprogram and receives the result in `#PV-COD-RETURN` and `#PV-MSG`."
 
 Record every `CALLNAT`, `INCLUDE`, and `USING` in [`dependency-map.md`](../dependency-map.md).
 
 ### 3.5. Data access—`FIND` … `END-FIND`
 
 ```natural
-FIND BENEFICIARIO-V WITH NUM-CPF = #CPF-STR
+FIND BENEFICIARY-V WITH NUM-CPF = #CPF-STR
   IF NO RECORDS FOUND
     MOVE 'BENEFICIARY NOT FOUND' TO #MSG
-    MOVE 2001 TO #COD-RETORNO
+    MOVE 2001 TO #COD-RETURNORNO
   END-NOREC
-  MOVE BENEFICIARIO-V.SIT-BENEFICIARIO   TO #SIT
-  MOVE BENEFICIARIO-V.VLR-RENDA-FAMILIAR TO #RENDA
+  MOVE BENEFICIARY-V.STAT-BENEFICIARY   TO #SIT
+  MOVE BENEFICIARY-V.AMT-FAMILY-INCOME TO #INCOME
 END-FIND
 ```
 
@@ -204,8 +204,8 @@ Read aloud: "Find the beneficiary with this CPF; if none is found, record the er
 Three key points:
 
 - **`IF NO RECORDS FOUND` … `END-NOREC` is the idiomatic way to handle "not found."** The block runs once when the search returns no records.
-- **View fields (`BENEFICIARIO-V.xxx`) are valid only within the `FIND` block.** This is why the usual pattern copies them to `#variables` before `END-FIND`.
-- Older modules use variations with the same intent: `IF *NUMBER(BENEFICIARIO-V) = 0`, or a logical flag (`1 #FOUND-B (L)`) set inside the `FIND` and tested afterward. Style differences often indicate different maintenance periods—note the header date.
+- **View fields (`BENEFICIARY-V.xxx`) are valid only within the `FIND` block.** This is why the usual pattern copies them to `#variables` before `END-FIND`.
+- Older modules use variations with the same intent: `IF *NUMBER(BENEFICIARY-V) = 0`, or a logical flag (`1 #FOUND-B (L)`) set inside the `FIND` and tested afterward. Style differences often indicate different maintenance periods—note the header date.
 
 ---
 
@@ -244,7 +244,7 @@ Record in `business-rules-catalog.md`: "CALCDSCT calculates deductions. Changed 
 
 ### Step 2—Scan `DEFINE DATA` (30 sec)
 
-Note two things: the `USING` and `VIEW OF` lines (where the data comes from), and variable names that suggest values (`VLR-BRUTO`, `TIPO-DSCT`).
+Note two things: the `USING` and `VIEW OF` lines (where the data comes from), and variable names that suggest values (`AMT-GROSS`, `TIPO-DSCT`).
 
 ### Step 3—Find the `IF` statements (3–5 min)
 
@@ -252,8 +252,8 @@ Use Ctrl+F in VS Code and enter `IF`. Each `IF` is a candidate rule.
 
 | Line | Condition | Possible rule |
 |---|---|---|
-| L142 | `IF #TIPO-DSCT NE 'J'` | Special handling for judicial deductions |
-| L143 | `IF #VLR-TOTAL-DSCT > (#VLR-BRUTO * 0.30)` | 30% deduction cap |
+| L142 | `IF #TYPE-DISC NE 'J'` | Special handling for judicial deductions |
+| L143 | `IF #AMT-TOTAL-DISC > (#AMT-GROSS * 0.30)` | 30% deduction cap |
 
 ### Step 4—Find numeric constants (2 min)
 
@@ -284,7 +284,7 @@ An ambiguous condition should be recorded as an open question in [`mysteries-fou
 > [!IMPORTANT]
 > **In a format specification, the decimal separator is a COMMA.** `(N9,2)` means nine digits, two of which are decimal places. The form `(N9.2)`, with a period, **does not exist in Natural**—it does not compile. If you see a period inside format parentheses, it is a transcription error, not an old dialect.
 >
-> The comma applies **only to the format**. In literal values within code, the separator remains a period: `MOVE 1.3500 TO #FATOR-REAJ` and `COMPUTE #VLR = #BRUTO * 0.30`.
+> The comma applies **only to the format**. In literal values within code, the separator remains a period: `MOVE 1.3500 TO #FACTOR-ADJUST` and `COMPUTE #VLR = #BRUTO * 0.30`.
 
 ### 6.1. Formats you will encounter
 
@@ -309,7 +309,7 @@ An ambiguous condition should be recorded as an open question in [`mysteries-fou
 | Cost | more space | less space, faster arithmetic |
 | Typical SIFAP use | counters, codes, `AAAAMMDD` dates, loop indexes | **monetary values and calculation factors** |
 
-On the mainframe, money is *packed*. That is what the DDM says—`CH VLR-RENDA-FAMILIAR P 9,2`—and what the programs declare. When you find `(P9,2)`, `(P7,2)`, or `(P13,2)`, you are looking at a value field.
+On the mainframe, money is *packed*. That is what the DDM says—`CH AMT-FAMILY-INCOME P 9,2`—and what the programs declare. When you find `(P9,2)`, `(P7,2)`, or `(P13,2)`, you are looking at a value field.
 
 > [!TIP]
 > During modernization, decimal `P` and `N` values become `BigDecimal` in Java and `NUMERIC(p,s)` in PostgreSQL. **Never** use `double` or `float`: the legacy system calculates exact decimals, and differences appear at the cent level.
@@ -345,10 +345,10 @@ The `.ddm` files are listings from the `LISTDDM` utility—machine output, not e
  T L DB Name                     F Leng  S D Remark
  - - -- ------------------------ - ----  - - ---------------------------
    1 AB NUM-CPF                  A   11    U UNFORMATTED CPF
-   1 CH VLR-RENDA-FAMILIAR       P  9,2  N   DECLARED INCOME
- P 1 DA GRP-DEPENDENTE                        (1:10) PERIODIC GROUP
-   2 DC NOME-DEPENDENTE          A   60  N
- S   S2 SUPER-UF-SIT             A    3    S
+   1 CH AMT-FAMILY-INCOME       P  9,2  N   DECLARED INCOME
+ P 1 DA GRP-DEPEND                        (1:10) PERIODIC GROUP
+   2 DC NAME-DEPEND          A   60  N
+ S   S2 SUPER-UF-STAT             A    3    S
         /* BG(1-2), CE(1-1)
 ```
 
@@ -363,18 +363,18 @@ The `.ddm` files are listings from the `LISTDDM` utility—machine output, not e
 | `S` | Storage: `N` *null suppression* · `F` *fixed storage* |
 | `D` | Index: `D` descriptor · `U` unique · `S` super · `H` hyper · `P` phonetic · *(blank)* not indexed |
 
-The line beginning with `/*` immediately below a derived descriptor lists **the fields that compose it**. In the example, `SUPER-UF-SIT` concatenates the first two bytes of `BG` (UF) with the first byte of `CE` (status)—equivalent to a composite index.
+The line beginning with `/*` immediately below a derived descriptor lists **the fields that compose it**. In the example, `SUPER-UF-STAT` concatenates the first two bytes of `BG` (UF) with the first byte of `CE` (status)—equivalent to a composite index.
 
 ### 7.1. `FIND ... WITH` is legal only on a descriptor
 
 `FIND` searches through an Adabas index. Therefore, `FIND <view> WITH <field>` **works only if the field has a value in column `D`** (`D`, `U`, `S`, `H`, or `P`). A field without an index cannot be searched.
 
-| Field in `BENEFICIARIO.ddm` | Column `D` | Is `FIND ... WITH` legal? |
+| Field in `BENEFICIARY.ddm` | Column `D` | Is `FIND ... WITH` legal? |
 |---|---|---|
 | `AB NUM-CPF` | `U` | yes |
-| `CE SIT-BENEFICIARIO` | `D` | yes |
-| `CH VLR-RENDA-FAMILIAR` | *(blank)* | **no** |
-| `AD NOME-MAE` | *(blank)* | **no** |
+| `CE STAT-BENEFICIARY` | `D` | yes |
+| `CH AMT-FAMILY-INCOME` | *(blank)* | **no** |
+| `AD MOTHER-NAME` | *(blank)* | **no** |
 
 Without a descriptor, the program needs another path—typically `READ <view> BY <descriptor>` with an `IF` filtering inside the loop.
 
@@ -424,7 +424,7 @@ The complete column legend is in the footer of each `.ddm` and in the [DDM READM
 |---|---|
 | Trying to understand every line | Focus only on `IF`, `COMPUTE` with constants, and comments. |
 | Reading in file order | Go directly to the `IF` statements using Ctrl+F. |
-| Confusing a variable (`#VLR`) with a DDM field (`VLR-BRUTO`) | Leading `#` = local variable. No `#` = database field. |
+| Confusing a variable (`#VLR`) with a DDM field (`AMT-GROSS`) | Leading `#` = local variable. No `#` = database field. |
 | Assuming every `MOVE` is a rule | `MOVE` is assignment. The rule is the `IF` that selected the `MOVE`. |
 | Copying a period-based format (`(N9.2)`) into documentation | The format decimal separator is a comma: `(N9,2)`, `(P13,2)`. |
 | Treating `(P9,2)` as something other than money | `P` is *packed decimal*: the mainframe monetary format. |

@@ -2,7 +2,66 @@ locals {
   # Convention from .github/instructions/infrastructure.instructions.md:
   # {project}-{env}-{resource}-{region}
   name_prefix = "${var.project}-${var.environment}"
-  suffix      = var.location_short
+
+  # The region suffix is DERIVED, not a second independent variable. The old module carried
+  # `location = brazilsouth` and `location_short = brs` as separate defaults, so changing one
+  # and forgetting the other produced resources named for a region they were not in.
+  # var.location_short still exists as an escape hatch for regions not in this map.
+  location_short_map = {
+    eastus2        = "eus2"
+    eastus         = "eus"
+    westus2        = "wus2"
+    westus3        = "wus3"
+    centralus      = "cus"
+    southcentralus = "scus"
+    brazilsouth    = "brs"
+    northeurope    = "neu"
+    westeurope     = "weu"
+    uksouth        = "uks"
+    swedencentral  = "sec"
+  }
+
+  suffix = var.location_short != "" ? var.location_short : lookup(
+    local.location_short_map,
+    var.location,
+    substr(replace(lower(var.location), "/[^a-z0-9]/", ""), 0, 6)
+  )
+
+  # One random suffix, three jobs: it makes the Key Vault name globally unique, the public
+  # DNS label unique inside the region, and the two traceably part of the same deployment.
+  unique_suffix = random_string.unique.result
+
+  # Azure rule for domain_name_label: 3-63 chars, lowercase letters, digits and hyphens,
+  # must start with a letter. "sifap-lab-a1b2c3" satisfies all of it.
+  dns_label = var.dns_label_prefix != "" ? var.dns_label_prefix : "${local.name_prefix}-${local.unique_suffix}"
+
+  # Azure issues exactly this FQDN for a public IP carrying a DNS label. Computed here rather
+  # than read back from the resource so cloud-init can be rendered without a dependency cycle
+  # through the VM that consumes it.
+  demo_fqdn = "${local.dns_label}.${var.location}.cloudapp.azure.com"
+  demo_url  = "https://${local.demo_fqdn}"
+
+  # --- TLS mode -------------------------------------------------------------
+  # Let's Encrypt validates the HTTP-01 challenge from arbitrary addresses worldwide. An
+  # NSG allow-list that excludes them also excludes the challenge, so a publicly trusted
+  # certificate is only possible with 80/443 reachable from the internet. That is the whole
+  # reason enable_public_acme exists as an explicit, default-off opt-in instead of being
+  # silently baked in. See var.enable_public_acme and README.md -> "TLS on the demo URL".
+  caddy_global_options = var.enable_public_acme ? "email ${var.acme_contact_email}" : "# ACME disabled: certificates are signed by Caddy's local CA"
+  caddy_tls_directive  = var.enable_public_acme ? "# tls: automatic Let's Encrypt for ${local.demo_fqdn}" : "tls internal"
+
+  # Only 80/443 ever widen, and only when ACME is explicitly enabled. "Internet" is Azure's
+  # service tag for public address space; it is narrower than 0.0.0.0/0, which would also
+  # match VNet and Azure-internal sources.
+  web_source_prefix   = var.enable_public_acme ? "Internet" : null
+  web_source_prefixes = var.enable_public_acme ? null : var.allowed_source_cidrs
+
+  # Azure refuses a budget that starts anywhere but the first of a month, and refuses a start
+  # date in the past at creation time. Deriving it keeps the module applying cleanly next
+  # quarter; ignore_changes on the budget stops the derived value churning every plan.
+  budget_start_date = var.budget_start_date != "" ? var.budget_start_date : formatdate("YYYY-MM-01'T'00:00:00'Z'", timestamp())
+
+  alert_emails = var.auto_shutdown_notification_email != "" ? [var.auto_shutdown_notification_email] : []
 
   tags = {
     project     = var.project
@@ -61,7 +120,8 @@ resource "azurerm_network_security_group" "lab" {
     destination_address_prefix = "*"
   }
 
-  # Natural Development Server: this is the port NaturalONE attaches to.
+  # Natural Development Server: this is the port NaturalONE attaches to. Raw TCP, not HTTP,
+  # so it cannot be moved behind the TLS reverse proxy - it stays on the allow-list.
   security_rule {
     name                       = "AllowNaturalDevelopmentServer"
     priority                   = 110
@@ -87,17 +147,50 @@ resource "azurerm_network_security_group" "lab" {
     destination_address_prefix = "*"
   }
 
-  # Adabas REST administration UI.
+  # --- the demo URL ---------------------------------------------------------
+  # 80 exists for two reasons: Caddy's HTTP -> HTTPS redirect, and the ACME HTTP-01
+  # challenge. Both terminate at Caddy; nothing is served in plaintext.
   security_rule {
-    name                       = "AllowAdabasRestAdmin"
-    priority                   = 130
+    name                       = "AllowHttpRedirectAndAcme"
+    priority                   = 140
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = "8190"
-    source_address_prefixes    = var.allowed_source_cidrs
+    destination_port_range     = "80"
+    source_address_prefix      = local.web_source_prefix
+    source_address_prefixes    = local.web_source_prefixes
     destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "AllowHttpsDemo"
+    priority                   = 150
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = local.web_source_prefix
+    source_address_prefixes    = local.web_source_prefixes
+    destination_address_prefix = "*"
+  }
+
+  # Plaintext Adabas REST administration, off by default. The console is reachable over TLS
+  # at the demo URL; this direct port is a fallback for when the proxy is the broken part.
+  dynamic "security_rule" {
+    for_each = var.expose_adabas_admin_port ? [1] : []
+    content {
+      name                       = "AllowAdabasRestAdmin"
+      priority                   = 130
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "8190"
+      source_address_prefixes    = var.allowed_source_cidrs
+      destination_address_prefix = "*"
+    }
   }
 
   # Explicit deny backstop. 4096 is the last usable priority, so it sits after every rule
@@ -117,12 +210,17 @@ resource "azurerm_network_security_group" "lab" {
   }
 }
 
+# Static + Standard so the address survives a stop/start, and a DNS label so the demo has a
+# stable name instead of an IP that participants have to retype. Azure publishes
+# <label>.<region>.cloudapp.azure.com for free; the label must be unique within the region,
+# which is what local.unique_suffix buys.
 resource "azurerm_public_ip" "lab" {
   name                = "${local.name_prefix}-pip-${local.suffix}"
   location            = azurerm_resource_group.lab.location
   resource_group_name = azurerm_resource_group.lab.name
   allocation_method   = "Static"
   sku                 = "Standard"
+  domain_name_label   = local.dns_label
   tags                = local.tags
 }
 
@@ -147,6 +245,189 @@ resource "azurerm_network_interface_security_group_association" "lab" {
 }
 
 # ---------------------------------------------------------------------------
+# Observability
+#
+# Wired in at provisioning time, not deferred: the failure this lab actually suffers is a
+# bootstrap that dies silently on a VM nobody is watching. The workspace collects syslog
+# through the Azure Monitor agent, the diagnostic settings capture Key Vault and NSG
+# activity, and two alerts turn both into something that pages a human.
+# ---------------------------------------------------------------------------
+
+resource "azurerm_log_analytics_workspace" "lab" {
+  name                = "${local.name_prefix}-law-${local.suffix}"
+  location            = azurerm_resource_group.lab.location
+  resource_group_name = azurerm_resource_group.lab.name
+  sku                 = "PerGB2018"
+  retention_in_days   = var.log_retention_days
+  # Cost guard: observability must not become the biggest line on a lab bill.
+  daily_quota_gb = var.log_daily_quota_gb
+  tags           = local.tags
+}
+
+# Who read which secret, and when. The lab holds exactly one credential, so this is small
+# and genuinely readable.
+resource "azurerm_monitor_diagnostic_setting" "key_vault" {
+  name                       = "${local.name_prefix}-diag-kv"
+  target_resource_id         = azurerm_key_vault.lab.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.lab.id
+
+  enabled_log {
+    category = "AuditEvent"
+  }
+
+  metric {
+    category = "AllMetrics"
+    enabled  = true
+  }
+}
+
+# NSG rule counters answer "is the allow-list actually the thing blocking me?", which is the
+# single most common lab support question.
+resource "azurerm_monitor_diagnostic_setting" "nsg" {
+  name                       = "${local.name_prefix}-diag-nsg"
+  target_resource_id         = azurerm_network_security_group.lab.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.lab.id
+
+  enabled_log {
+    category = "NetworkSecurityGroupEvent"
+  }
+
+  enabled_log {
+    category = "NetworkSecurityGroupRuleCounter"
+  }
+}
+
+# The agent ships nothing on its own; the data collection rule below tells it what to send.
+resource "azurerm_virtual_machine_extension" "monitor_agent" {
+  name                       = "AzureMonitorLinuxAgent"
+  virtual_machine_id         = azurerm_linux_virtual_machine.lab.id
+  publisher                  = "Microsoft.Azure.Monitor"
+  type                       = "AzureMonitorLinuxAgent"
+  type_handler_version       = "1.29"
+  auto_upgrade_minor_version = true
+  automatic_upgrade_enabled  = true
+  tags                       = local.tags
+}
+
+resource "azurerm_monitor_data_collection_rule" "lab" {
+  name                = "${local.name_prefix}-dcr-${local.suffix}"
+  location            = azurerm_resource_group.lab.location
+  resource_group_name = azurerm_resource_group.lab.name
+  tags                = local.tags
+
+  destinations {
+    log_analytics {
+      workspace_resource_id = azurerm_log_analytics_workspace.lab.id
+      name                  = "lab-workspace"
+    }
+  }
+
+  data_flow {
+    streams      = ["Microsoft-Syslog"]
+    destinations = ["lab-workspace"]
+  }
+
+  # bootstrap.sh calls `logger -t sifap-bootstrap`, so its success and failure markers land
+  # in the user facility and become queryable - which is what the alert below depends on.
+  data_sources {
+    syslog {
+      name           = "lab-syslog"
+      streams        = ["Microsoft-Syslog"]
+      facility_names = ["auth", "authpriv", "cron", "daemon", "kern", "syslog", "user"]
+      log_levels     = ["Notice", "Warning", "Error", "Critical", "Alert", "Emergency"]
+    }
+  }
+}
+
+# Associations are links, not taggable objects; the DCR and the VM both carry local.tags.
+resource "azurerm_monitor_data_collection_rule_association" "lab" {
+  name                    = "${local.name_prefix}-dcra"
+  target_resource_id      = azurerm_linux_virtual_machine.lab.id
+  data_collection_rule_id = azurerm_monitor_data_collection_rule.lab.id
+
+  depends_on = [azurerm_virtual_machine_extension.monitor_agent]
+}
+
+resource "azurerm_monitor_action_group" "lab" {
+  name                = "${local.name_prefix}-ag-${local.suffix}"
+  resource_group_name = azurerm_resource_group.lab.name
+  # Azure caps short_name at 12 characters; it is what appears in the SMS/e-mail subject.
+  short_name = substr("${var.project}${var.environment}", 0, 12)
+  tags       = local.tags
+
+  # An action group with no receiver is valid and still records the alert in Azure Monitor.
+  # Set auto_shutdown_notification_email to actually be told about it.
+  dynamic "email_receiver" {
+    for_each = local.alert_emails
+    content {
+      name                    = "lab-owner"
+      email_address           = email_receiver.value
+      use_common_alert_schema = true
+    }
+  }
+}
+
+# "Is the VM up?" - Azure's own platform-level heartbeat, which keeps working even when the
+# guest OS or the agent is the thing that broke.
+resource "azurerm_monitor_metric_alert" "vm_availability" {
+  name                = "${local.name_prefix}-alert-vm-availability"
+  resource_group_name = azurerm_resource_group.lab.name
+  scopes              = [azurerm_linux_virtual_machine.lab.id]
+  description         = "Lab VM is not available. Expected daily between the auto-shutdown time and the next manual start."
+  severity            = 2
+  frequency           = "PT5M"
+  window_size         = "PT15M"
+  tags                = local.tags
+
+  criteria {
+    metric_namespace = "Microsoft.Compute/virtualMachines"
+    metric_name      = "VmAvailabilityMetric"
+    aggregation      = "Average"
+    operator         = "LessThan"
+    threshold        = 1
+  }
+
+  action {
+    action_group_id = azurerm_monitor_action_group.lab.id
+  }
+}
+
+# "Did first boot actually work?" - the failure mode that produced a half-applied lab in the
+# first place. bootstrap.sh emits the marker to syslog; this turns it into an alert instead
+# of something discovered by SSHing in an hour later.
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "bootstrap_failed" {
+  name                = "${local.name_prefix}-alert-bootstrap-failed"
+  location            = azurerm_resource_group.lab.location
+  resource_group_name = azurerm_resource_group.lab.name
+  scopes              = [azurerm_log_analytics_workspace.lab.id]
+  description         = "cloud-init bootstrap reported FAILED on the lab VM. Read /var/log/sifap-bootstrap.log and re-run /opt/sifap/bootstrap.sh."
+  severity            = 1
+  tags                = local.tags
+
+  evaluation_frequency = "PT10M"
+  window_duration      = "PT30M"
+
+  criteria {
+    query                   = <<-KQL
+      Syslog
+      | where SyslogMessage has "SIFAP-BOOTSTRAP RESULT: FAILED"
+    KQL
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.lab.id]
+  }
+}
+
+# ---------------------------------------------------------------------------
 # Secrets
 #
 # Repository rule: secrets live in Key Vault, never in locals or variables.
@@ -164,14 +445,21 @@ resource "random_password" "adabas_admin" {
   override_special = "-_.~"
 }
 
-resource "random_string" "kv_suffix" {
+# Was random_string.kv_suffix. Renamed because it now also seeds the public DNS label; the
+# `moved` block keeps any existing state importable without a destroy/create cycle.
+resource "random_string" "unique" {
   length  = 6
   special = false
   upper   = false
   numeric = true
 }
 
-# Key Vault posture — deliberate choices for a DISPOSABLE workshop lab, not a template for prod:
+moved {
+  from = random_string.kv_suffix
+  to   = random_string.unique
+}
+
+# Key Vault posture - deliberate choices for a DISPOSABLE workshop lab, not a template for prod:
 #
 #   soft_delete_retention_days = 7   Azure minimum. The vault holds one generated lab password
 #                                    with no recovery value; a long window only blocks name reuse.
@@ -183,7 +471,7 @@ resource "random_string" "kv_suffix" {
 #   enable_rbac_authorization  = false  Access-policy model keeps the grant to the VM's managed
 #                                    identity inside this state, with no dependency on the
 #                                    deployer holding "User Access Administrator" to create
-#                                    role assignments — a common blocker on workshop tenants.
+#                                    role assignments - a common blocker on workshop tenants.
 #
 # Network exposure: the vault is left on its public endpoint (no network_acls) because the VM
 # reads its secret over the public endpoint via its own egress IP, and the workshop operator
@@ -191,7 +479,7 @@ resource "random_string" "kv_suffix" {
 # IP allow-list covering both; see the residual risk noted in the module review before reusing
 # this pattern outside a throwaway lab.
 resource "azurerm_key_vault" "lab" {
-  name                       = "${var.project}${var.environment}kv${random_string.kv_suffix.result}"
+  name                       = "${var.project}${var.environment}kv${local.unique_suffix}"
   location                   = azurerm_resource_group.lab.location
   resource_group_name        = azurerm_resource_group.lab.name
   tenant_id                  = data.azurerm_client_config.current.tenant_id
@@ -200,6 +488,17 @@ resource "azurerm_key_vault" "lab" {
   purge_protection_enabled   = false
   enable_rbac_authorization  = false
   tags                       = local.tags
+
+  lifecycle {
+    # The one resource here holding a credential. `terraform destroy` stops at this guard on
+    # purpose, so tearing down the lab is a deliberate act rather than a stray command.
+    # Lifting it is a documented two-step, see README.md -> "Destroy the environment".
+    #
+    # The VM, its disks, the public IP and the network are INTENTIONAL EXCEPTIONS: this lab
+    # is disposable by design and adding the same guard there would make the documented
+    # destroy-and-forget teardown impossible.
+    prevent_destroy = true
+  }
 }
 
 # Access policies carry no tags argument; the vault they attach to is tagged.
@@ -243,6 +542,21 @@ resource "azurerm_managed_disk" "adabas_data" {
   tags                 = local.tags
 }
 
+# On-demand backup of the Adabas containers. Incremental, so a second snapshot of a mostly
+# unchanged disk costs almost nothing. Created only when var.data_disk_snapshot_label is set,
+# which makes "snapshot before I try something destructive" a one-flag apply.
+resource "azurerm_snapshot" "adabas_data" {
+  count = var.data_disk_snapshot_label != "" ? 1 : 0
+
+  name                = "${local.name_prefix}-snap-adabasdata-${var.data_disk_snapshot_label}"
+  location            = azurerm_resource_group.lab.location
+  resource_group_name = azurerm_resource_group.lab.name
+  create_option       = "Copy"
+  source_uri          = azurerm_managed_disk.adabas_data.id
+  incremental_enabled = true
+  tags                = local.tags
+}
+
 resource "azurerm_linux_virtual_machine" "lab" {
   name                = "${local.name_prefix}-vm-${local.suffix}"
   location            = azurerm_resource_group.lab.location
@@ -275,17 +589,21 @@ resource "azurerm_linux_virtual_machine" "lab" {
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-jammy"
     sku       = "22_04-lts-gen2"
-    version   = "latest"
+    version   = var.source_image_version
   }
 
   boot_diagnostics {}
 
   custom_data = base64encode(templatefile("${path.module}/cloud-init.yaml", {
-    adabas_image  = var.adabas_image
-    natural_image = var.natural_image
-    adabas_dbid   = var.adabas_dbid
-    key_vault_uri = azurerm_key_vault.lab.vault_uri
-    secret_name   = "adabas-admin-password"
+    adabas_image         = var.adabas_image
+    natural_image        = var.natural_image
+    caddy_image          = var.caddy_image
+    adabas_dbid          = var.adabas_dbid
+    key_vault_uri        = azurerm_key_vault.lab.vault_uri
+    secret_name          = "adabas-admin-password"
+    demo_fqdn            = local.demo_fqdn
+    caddy_global_options = local.caddy_global_options
+    caddy_tls_directive  = local.caddy_tls_directive
   }))
 
   lifecycle {
@@ -301,6 +619,10 @@ resource "azurerm_virtual_machine_data_disk_attachment" "adabas_data" {
   caching            = "None"
 }
 
+# ---------------------------------------------------------------------------
+# Cost control
+# ---------------------------------------------------------------------------
+
 # Cost guard: an idle lab VM is the most common way a workshop bill escapes.
 resource "azurerm_dev_test_global_vm_shutdown_schedule" "lab" {
   virtual_machine_id    = azurerm_linux_virtual_machine.lab.id
@@ -314,5 +636,56 @@ resource "azurerm_dev_test_global_vm_shutdown_schedule" "lab" {
     enabled         = var.auto_shutdown_notification_email != ""
     email           = var.auto_shutdown_notification_email != "" ? var.auto_shutdown_notification_email : null
     time_in_minutes = 30
+  }
+}
+
+# The shutdown schedule above hangs off the VM, so a run that dies before the VM exists -
+# exactly what happened on the first brazilsouth attempt - leaves NO cost control at all.
+# This budget hangs off the resource group instead, so it survives a partial apply.
+#
+# azurerm_consumption_budget_resource_group exposes no tags argument (it is not a tracked ARM
+# resource); the tagged object is the resource group it scopes.
+resource "azurerm_consumption_budget_resource_group" "lab" {
+  name              = "${local.name_prefix}-budget-${local.suffix}"
+  resource_group_id = azurerm_resource_group.lab.id
+  amount            = var.monthly_budget_amount
+  time_grain        = "Monthly"
+
+  time_period {
+    start_date = local.budget_start_date
+  }
+
+  notification {
+    enabled        = true
+    threshold      = 50
+    operator       = "GreaterThan"
+    threshold_type = "Actual"
+    contact_emails = local.alert_emails
+    contact_roles  = ["Owner"]
+  }
+
+  notification {
+    enabled        = true
+    threshold      = 80
+    operator       = "GreaterThan"
+    threshold_type = "Actual"
+    contact_emails = local.alert_emails
+    contact_roles  = ["Owner"]
+  }
+
+  # Forecast, not actual: at 100% of actual spend the money is already gone.
+  notification {
+    enabled        = true
+    threshold      = 100
+    operator       = "GreaterThan"
+    threshold_type = "Forecasted"
+    contact_emails = local.alert_emails
+    contact_roles  = ["Owner"]
+  }
+
+  lifecycle {
+    # local.budget_start_date is derived from timestamp() when the variable is empty, which
+    # would otherwise show a diff on every plan.
+    ignore_changes = [time_period]
   }
 }

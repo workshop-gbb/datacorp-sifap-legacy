@@ -42,14 +42,14 @@ Everything is kept in one directory because a Natural library is **flat**: `CALL
 | | `BATCHREL.NSP` | José A. Lima | 1999 | Batch report—produces management reports |
 | | `BATCHCON.NSP` | Patrícia H. Moura | 2002 | Batch reconciliation—reconciles payments with SIAFI |
 | **3 · Implementation** (TL + Dev)—calculation | `CALCBENF.NSN` | Roberto Meirelles | 1998 | Calculates the benefit amount by program and range |
-| | `CALCCORR.NSP` | Marcos A. Ferreira | 2005 | Calculates corrections and adjustments using annual indexes |
-| | `CALCDSCT.NSP` | Marcos A. Ferreira | 2015 | Calculates legal deductions (payroll deductions, income tax) |
+| | `CALCCORR.NSP` | Patricia Gomes de Souza | 2001 | Calculates retroactive payment corrections using IPCA indexes |
+| | `CALCDSCT.NSP` | Roberto Mendes Junior | 1999 | Calculates mandatory deductions and discount caps |
 | **4 · Quality** (DBA + QA)—validation | `VALBENEF.NSN` | Roberto Meirelles | 1997 | Validates registration data (CPF, NIS) |
-| | `VALDOCS.NSP` | Patrícia H. Moura | 2003 | Validates supporting documentation |
+| | `VALDOCS.NSP` | Ana Lucia Pereira | 1998 | Validates CPF, NIS/PIS, RG, CTPS and supporting documents |
 | | `VALELEG.NSN` | Fernanda C. Oliveira | 1999 | Validates eligibility against program rules |
-| **5 · Operations** (DevOps + TW)—query and reporting | `CONSBENF.NSP` | Roberto Meirelles | 1997 | Queries beneficiaries using multiple criteria (3270 screen) |
-| | `RELPGT.NSP` | Patrícia H. Moura | 2003 | Payment report by period, program, and UF |
-| | `RELAUDIT.NSP` | Marcos A. Ferreira | 2005 | Audit report—events and discrepancies |
+| **5 · Operations** (DevOps + TW)—query and reporting | `CONSBENF.NSP` | Marcia Helena Oliveira | 1998 | Queries beneficiary data by CPF or NIS (3270 screen) |
+| | `RELPGT.NSP` | Ana Lucia Pereira | 1999 | Payment detail report by period and program |
+| | `RELAUDIT.NSP` | Roberto Mendes Junior | 2002 | Audit trail report with period/action filters |
 
 ---
 
@@ -62,8 +62,8 @@ None of these members belongs to a pair, and none counts as assigned reading.
 | `PDAVALID.NSA` | PDA | `PARAMETER USING PDAVALID` / `LOCAL USING PDAVALID` | Parameter contract for the document-validation family: CPF and NIS are inputs; return code and message are outputs |
 | `PDACALC.NSA` | PDA | `PARAMETER USING PDACALC` / `LOCAL USING PDACALC` | Parameter contract for the payment chain: beneficiary key and context are inputs; calculated amounts are outputs |
 | `LDASIFAP.NSL` | LDA | `LOCAL USING LDASIFAP` | Shared parameter tables: regional factor, income ranges, rates, UF, dates, and the century window (Y2K) |
-| `CCVALCPF.NSC` | Copycode | `INCLUDE CCVALCPF` + `PERFORM VALIDA-CPF-PADRAO` | CPF mod-11 routine inserted at compile time—the **old** validation path |
-| `CCAUDIT.NSC` | Copycode | `INCLUDE CCAUDIT` + `PERFORM GRAVA-AUDITORIA` | Standard block for writing the audit trail to ARQ 153 |
+| `CCVALCPF.NSC` | Copycode | `INCLUDE CCVALCPF` + `PERFORM VALID-CPF-STANDARD` | CPF mod-11 routine inserted at compile time—the **old** validation path |
+| `CCAUDIT.NSC` | Copycode | `INCLUDE CCAUDIT` + `PERFORM GRAVA-AUDIT` | Standard block for writing the audit trail to file 153 |
 | `SUBVALCP.NSN` | Subprogram | `CALLNAT 'SUBVALCP' ...` | Callable CPF validation (mod-11)—the **new** validation path |
 | `SUBVALNI.NSN` | Subprogram | `CALLNAT 'SUBVALNI' ...` | Callable NIS/PIS/PASEP validation (mod-11) |
 | `SIFAPJ01.jcl` | JCL z/OS | outside Natural | **Monthly payroll** job—runs `BATCHPGT` through `NATBATCH` |

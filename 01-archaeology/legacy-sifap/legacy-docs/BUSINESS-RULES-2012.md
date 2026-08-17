@@ -73,7 +73,7 @@ revision_history:
 
 **RN-002** - It is not permitted to include a beneficiary with CPF already in the registry in active status (BN-CD-SIT = 'A'). Logically excluded beneficiaries (BN-CD-SIT = 'E') can be re-included upon new registration.
 
-**RN-003** - The beneficiary must be linked to at least one active social program (field BN-CD-PROG referencing valid registration in DDM PROGRAMA-SOCIAL with PS-IN-ATIVO = 'S').
+**RN-003** - The beneficiary must be linked to at least one active social program (field BN-CD-PROG referencing valid registration in DDM SOCIAL-PROGRAM with PS-IN-ATIVO = 'S').
 
 **RN-004** - The maximum number of dependents per beneficiary is **3** (field BN-QT-DEPEND, values ​​from 0 to 3). For programs that require a higher number, request authorization from the CGPB via form FR-SIFAP-012.
 
@@ -102,7 +102,7 @@ revision_history:
 
 ### 1.3. Exclusion Rules
 
-**RN-011** - Beneficiary exclusion is always logical (BN-CD-SIT changed from 'A' to 'E'). There is no physical deletion of records in DDM BENEFICIARIO.
+**RN-011** - Beneficiary exclusion is always logical (BN-CD-SIT changed from 'A' to 'E'). There is no physical deletion of records in DDM BENEFICIARY.
 
 **RN-012** - Deletion of beneficiaries with pending payments (PG-CD-STATUS = 'P') is blocked by the system. The operator must wait for settlement or cancel payments before deletion.
 
@@ -120,7 +120,7 @@ VALOR-BENEFICIO = VALOR-BASE(program, bracket) + (ACRESCIMO-DEPEND * QT-DEPEND)
 
 Where:
 
-- `VALOR-BASE` is obtained from DDM PROGRAMA-SOCIAL according to the beneficiary's declared income range;
+- `VALOR-BASE` is obtained from DDM SOCIAL-PROGRAM according to the beneficiary's declared income range;
 - `ACRESCIMO-DEPEND` is the additional amount per dependent, defined by program;
 - `QT-DEPEND` is the number of active dependents linked to the primary beneficiary.
 
@@ -129,7 +129,7 @@ Where:
 <!-- NOTE: The above formula is the BASIC formula. Marcos Antônio mentioned that
  there are "at least 3 more variations" in the CALCBENF code, including
  a special calculation for December (13th benefit / year-end bonus)
- and a multiplier called "FATOR-K" that he could not explain. It was
+ and a multiplier called "FACTOR-K" that he could not explain. It was
  not possible to validate this with the team.
 
  The proportional calculation rule for benefits starting mid-month
@@ -137,7 +137,7 @@ Where:
 
 ### 2.2. Value Ranges
 
-**RN-017** - The value ranges are parameterized in DDM PROGRAMA-SOCIAL, using PE (periodic group) fields indexed by fiscal year. Each social program can have up to 10 defined value ranges.
+**RN-017** - The value ranges are parameterized in DDM SOCIAL-PROGRAM, using PE (periodic group) fields indexed by fiscal year. Each social program can have up to 10 defined value ranges.
 
 **RN-018** - The range applicable to the beneficiary is determined by the declared per capita family income (field BN-VL-RENDA-PC). The band assignment follows ascending order of income, with the first band whose upper limit is greater than or equal to the declared income being applied.
 
@@ -192,7 +192,7 @@ The following eligibility rules have been identified in program code VALELEG:
 - The declared per capita family income must be within the ranges defined for the program;
 - The beneficiary cannot be enrolled in more than 2 social programs simultaneously (field BN-QT-PROG, maximum = 2);
 - The date of the last registration update cannot be more than 24 months ago (field BN-DT-ULT-ATUAL);
-- The beneficiary cannot have an unresolved audit occurrence of type 'B' (blocking) in DDM AUDITORIA.
+- The beneficiary cannot have an unresolved audit occurrence of type 'B' (blocking) in DDM AUDIT.
 
 > **Note:** The rules above were extracted by reading the VALELEG source code and may not represent all of the checks performed. The program has approximately 1,200 lines of code with complex conditional logic.
 
@@ -216,7 +216,7 @@ Monthly batch processing (program BATCHPGT) follows the following rules:
 - Processing occurs in **standard ordering** (according to file descriptor Adabas);
 - For each beneficiary, the benefit value is recalculated by invoking CALCBENF;
 - After calculation, discounts are applied by invoking CALCDSCT (from version 4.0);
-- The payment record is recorded in the DDM PAGAMENTO with status 'P' (pending);
+- The payment record is recorded in the DDM PAYMENT with status 'P' (pending);
 - At the end of processing, the delivery file CNAB 240 is generated.
 
 <!-- NOTE: The "default ordering" mentioned above is, in practice, the
@@ -230,7 +230,7 @@ Monthly batch processing (program BATCHPGT) follows the following rules:
 ### 5.2. Error Handling
 
 - Calculation errors for an individual beneficiary do not interrupt processing;
-- Beneficiaries with errors are marked with status 'E' (error) in DDM PAGAMENTO;
+- Beneficiaries with errors are marked with status 'E' (error) in DDM PAYMENT;
 - An error report is generated at the end of processing;
 - If the number of errors exceeds the parameter MAX-ERROS (default: 100), processing is stopped with ABEND U4038;
 - [TO BE COMPLETED] - Document procedure for reprocessing beneficiaries with errors.
