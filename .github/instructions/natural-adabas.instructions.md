@@ -1,11 +1,11 @@
 ---
-description: "Reading guide for Natural/Adabas legacy code — language patterns, FDT structure, naming conventions, batch flows"
+description: "Use when reading Natural/Adabas legacy code, language patterns, FDT structure, naming conventions, and batch flows."
 applyTo: "01-arqueologia/legado-sifap/**,**/*.NSP,**/*.nsp,**/*.NSN,**/*.nsn,**/*.NSS,**/*.nss,**/*.NSA,**/*.nsa,**/*.NSL,**/*.nsl,**/*.NSC,**/*.nsc,**/*.NSM,**/*.nsm,**/*.NSD,**/*.nsd,**/*.NAT,**/*.nat,**/*.CPY,**/*.cpy,**/*.DDM,**/*.ddm,**/*.jcl,**/*.JCL"
 ---
 
 # Natural/Adabas Legacy Code — Reading Guide
 
-This file is activated when you open Natural programs, Adabas DDMs, or any file within the `01-arqueologia/legado-sifap/` directory. It teaches you how to read legacy code — it does not interpret any specific system for you.
+This file activates when you open Natural programs, Adabas DDMs, JCL, copycodes, or any file within the `01-arqueologia/legado-sifap/` directory. It teaches how to read legacy code for SIFAP (Payment Inspection and Administration System): Natural program structure, CALLNAT and INCLUDE dependencies, Adabas FDTs, legacy naming, batch patterns, packed decimals, and first-pass reading strategy. It does **not** decide modern module boundaries or JPA mappings, which belong to [`modular-monolith.instructions.md`](modular-monolith.instructions.md), and it does not write EARS requirements or traceability records, which belong to [`requirements.instructions.md`](requirements.instructions.md).
 
 ## Natural Program Structure
 
@@ -163,3 +163,34 @@ When approaching a legacy program for the first time:
 6. **Note every ESCAPE or ON ERROR** — these are error-handling paths
 7. **Check `IF NO RECORDS FOUND`** — the `FIND ... IF NO RECORDS FOUND ... END-NOREC` block defines what happens when the search returns nothing; this is where silent defaults hide. Remember that view fields have values only **inside** the `FIND`/`READ` block.
 8. **Check `FIND ... WITH` against the DDM** — searches are possible only on fields marked as descriptors (`D`, `S`, or `H`) in the DDM listing. A search on a non-descriptor field does not compile.
+
+## Conventions
+
+| Rule | Rationale |
+|---|---|
+| Natural declarations use comma decimal notation such as `(P9,2)` | Period notation in declarations does not compile |
+| Trace `CALLNAT`, `INCLUDE`, `PARAMETER USING`, and `LOCAL USING` | A Natural member read in isolation is incomplete |
+| Compare program field formats with the matching DDM | Type and size mismatches can cause silent truncation or overflow |
+| Map packed money fields to `BigDecimal` | `double` and `float` lose financial precision |
+| Verify descriptors before interpreting `FIND ... WITH` | Searches compile only on descriptor fields in the DDM |
+| Treat prefixes as clues, not proof | Legacy naming conventions vary and must be verified in code |
+
+## Do / Do Not
+
+| Do | Do not |
+|---|---|
+| Start with `DEFINE DATA` to understand variables and types | Interpret business rules before knowing the data layout |
+| Find the main `READ` or `FIND` to identify processed data | Assume the program's primary file from its name alone |
+| Trace every `CALLNAT` dependency and `INCLUDE` copycode | Ignore external subprograms, PDAs, LDAs, copycodes, or maps |
+| Check `AT BREAK`, `AT END OF DATA`, `ESCAPE`, and `ON ERROR` paths | Read only the happy path through the program |
+| Check `IF NO RECORDS FOUND` and view-field scope inside `FIND`/`READ` blocks | Assume missing records and view fields behave like normal variables |
+| Check `FIND ... WITH` against DDM descriptors | Assume a non-descriptor field can be searched |
+
+## Checklist Before Opening a PR
+
+- [ ] `DEFINE DATA` variables, arrays, parameters, and relevant formats were captured before summarizing behavior
+- [ ] Main `READ`, `FIND`, work-file, report, and control-break paths were identified
+- [ ] Every `CALLNAT`, `INCLUDE`, `PARAMETER USING`, `LOCAL USING`, map, and JCL dependency was traced or noted as open
+- [ ] Program field formats were compared with the DDM for type, size, descriptor, MU, PE, and super-descriptor semantics
+- [ ] Packed decimal and monetary values were mapped or documented as `BigDecimal` candidates, never floating-point values
+- [ ] Error, escape, no-records, end-of-data, and silent-default paths were included in the extracted business rules

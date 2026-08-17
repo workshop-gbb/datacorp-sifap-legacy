@@ -1,348 +1,348 @@
 <!-- markdownlint-disable MD013 MD033 MD041 -->
 
 ---
-title: "Manual Técnico do SIFAP - Sistema de Fiscalização e Administração de Pagamentos"
+title: "SIFAP Technical Manual - Payment Inspection and Administration System"
 author: "Fernanda Lucia de Oliveira - SUPDE/DESIF"
 date: "2008-11-20"
 version: "2.3.1"
-classification: "RESTRITO"
+classification: "RESTRICTED"
 distribution: "SUPDE/DESIF, CGTI/MDAS, SENARC/CGPB"
 revision_history:
 
 - version: "1.0.0"
  date: "2006-03-10"
  author: "Fernanda Lucia de Oliveira"
- description: "Versão inicial - módulo de cadastro"
+ description: "Initial version - registration module"
 - version: "2.0.0"
  date: "2007-08-22"
  author: "Fernanda Lucia de Oliveira"
- description: "Inclusão dos módulos de cálculo e batch"
+ description: "Inclusion of calculation and batch modules"
 - version: "2.3.0"
  date: "2008-09-15"
  author: "Fernanda Lucia de Oliveira"
- description: "Revisão geral, inclusão do módulo de auditoria"
+ description: "General review, inclusion of audit module"
 - version: "2.3.1"
  date: "2008-11-20"
  author: "Fernanda Lucia de Oliveira"
- description: "Correções textuais e inclusão de contatos atualizados"
+ description: "Textual corrections and inclusion of updated contacts"
 approval:
 - name: "Roberto Carlos Meirelles"
- role: "Analista de Sistemas Sênior - SUPDE/DESIF"
+ role: "Senior Systems Analyst - SUPDE/DESIF"
  date: "2008-11-25"
 - name: "Maria Helena Costa"
- role: "Coordenadora DESIF"
+ role: "DESIF Coordinator"
  date: "2008-12-02"
 
 ---
 
 > [!NOTE]
-> Este é um documento histórico reconstituído para fins do exercício de arqueologia do workshop SIFAP 2.0. O documento simula o Manual Técnico versão 2.3.1 (2008), tal como teria sido produzido pela equipe da SUPDE/DESIF. A linguagem de época, os nomes de pessoas, unidades e procedimentos foram preservados intencionalmente. **Este documento não deve ser usado como especificação atual do sistema.** As seções marcadas `[A COMPLETAR]` e os comentários internos sobre desatualizações fazem parte do exercício — eles representam lacunas reais de documentação que a equipe deve investigar.
+> This is a reconstructed historical document for the SIFAP 2.0 workshop archaeology exercise. It simulates Technical Manual version 2.3.1 (2008), as it would have been produced by the SUPDE/DESIF team. Period language and the names of people, units, and procedures have been intentionally preserved. **This document must not be used as the system's current specification.** Sections marked `[TO BE COMPLETED]` and internal comments about outdated information are part of the exercise—they represent real documentation gaps the team must investigate.
 
 <!-- ====================================================================== -->
-<!-- MANUAL TÉCNICO DO SIFAP - VERSÃO 2.3 -->
-<!-- Sistema de Fiscalização e Administração de Pagamentos -->
-<!-- a organização - a federal data processing organization -->
-<!-- Superintendência de Desenvolvimento - SUPDE / DESIF -->
+<!-- SIFAP TECHNICAL MANUAL - VERSION 2.3 -->
+<!-- Payment Inspection and Administration System -->
+<!-- the organization - the federal data processing organization -->
+<!-- Development Superintendency - SUPDE / DESIF -->
 <!-- ====================================================================== -->
 
-# MANUAL TÉCNICO DO SIFAP - VERSÃO 2.3
+# SIFAP TECHNICAL MANUAL - VERSION 2.3
 
-**SISTEMA DE FISCALIZAÇÃO E ADMINISTRAÇÃO DE PAGAMENTOS**
+**PAYMENT INSPECTION AND ADMINISTRATION SYSTEM**
 
 ---
 
 |                                |                                            |
 | ------------------------------ | ------------------------------------------ |
-| **Documento:**                 | MT-SIFAP-2008-v2.3.1                       |
-| **Classificação:**             | RESTRITO                                   |
-| **Versão do sistema coberta:** | 2.3.1                                      |
-| **Data de emissão:**           | 20/11/2008                                 |
-| **Responsável:**               | Fernanda Lucia de Oliveira - SUPDE/DESIF   |
-| **Aprovação técnica:**         | Roberto Carlos Meirelles - Analista Sênior |
-| **Aprovação gerencial:**       | Maria Helena Costa - Coord. DESIF          |
+| **Document:** | MT-SIFAP-2008-v2.3.1 |
+| **Classification:** | RESTRICTED |
+| **System version covered:** | 2.3.1 |
+| **Issue date:** | 20/11/2008 |
+| **Responsible:** | Fernanda Lucia de Oliveira - SUPDE/DESIF |
+| **Technical approval:** | Roberto Carlos Meirelles - Senior Analyst |
+| **Management approval:** | Maria Helena Costa - Coord. DESIF |
 
 ---
 
-> **AVISO:** Este manual refere-se à versão 2.3.1 do SIFAP. Para informações sobre versões posteriores, consultar os adendos publicados pela SUPDE/DESIF ou contatar a equipe técnica responsável.
+> **WARNING:** This manual refers to version 2.3.1 of the SIFAP. For information on subsequent versions, consult the addenda published by SUPDE/DESIF or contact the responsible technical team.
 
 ---
 
-## 1. Introdução
+## 1. Introduction
 
-### 1.1. Objetivo do Documento
+### 1.1. Purpose of the Document
 
-O presente manual tem por objetivo documentar os aspectos técnicos do **SIFAP - Sistema de Fiscalização e Administração de Pagamentos**, de forma a subsidiar as atividades de manutenção, operação e sustentação do sistema.
+This manual aims to document the technical aspects of **SIFAP - Payment Inspection and Administration System**, in order to support the system's maintenance, operation and support activities.
 
-Este documento destina-se a:
+This document is intended to:
 
-- Analistas de sistemas da SUPDE/DESIF alocados ao projeto SIFAP;
-- Equipe de operação de mainframe do a organização - Regional Brasília;
-- Analistas de negócio da SENARC/CGPB, para fins de referência técnica;
-- Equipe de DBA Adabas responsável pelo ambiente de produção.
+- SUPDE/DESIF systems analysts allocated to the SIFAP project;
+- Organization mainframe operation team - Brasília Regional;
+- SENARC/CGPB business analysts, for technical reference purposes;
+- Adabas DBA team responsible for the production environment.
 
-### 1.2. Escopo
+### 1.2. Scope
 
-<!-- NOTA: Esta seção não foi atualizada desde 2008 -->
+<!-- NOTE: This section has not been updated since 2008 -->
 
-Este manual cobre os seguintes aspectos do SIFAP versão 2.3.1:
+This manual covers the following aspects of SIFAP version 2.3.1:
 
-- Arquitetura geral do sistema;
-- Descrição dos módulos e programas;
-- Fluxo de processamento mensal;
-- Procedimentos de contingência;
-- Contatos da equipe técnica.
+- General system architecture;
+- Description of modules and programs;
+- Monthly processing flow;
+- Contingency procedures;
+- Technical team contacts.
 
-**Não estão no escopo deste documento:**
+**Not within the scope of this document:**
 
-- Regras de negócio detalhadas (ver Manual de Regras de Negócio - em elaboração pela SENARC);
-- Procedimentos de backup e recovery Adabas (ver Manual de Operação DBA - Cláudia Regina dos Santos, 2007);
-- Manual do usuário operacional (ver Manual ITSM-SIFAP vol. 2).
+- Detailed business rules (see Business Rules Manual - being prepared by SENARC);
+- Adabas backup and recovery procedures (see DBA Operation Manual - Cláudia Regina dos Santos, 2007);
+- Operational user manual (see Manual ITSM-SIFAP vol. 2).
 
-### 1.3. Documentos Relacionados
+### 1.3. Related Documents
 
-| Código            | Título                              | Autor          | Status        |
+| Code | Title | Author | Status |
 | ----------------- | ----------------------------------- | -------------- | ------------- |
-| MT-SIFAP-2008     | Este documento                      | F. L. Oliveira | Vigente       |
-| MO-SIFAP-DBA-2007 | Manual de Operação DBA Adabas       | C. R. Santos   | Vigente       |
-| MU-SIFAP-2006     | Manual do Usuário - Módulo Cadastro | F. L. Oliveira | Vigente       |
-| ITSM-SIFAP-vol1   | Procedimentos ITSM - Incidentes     | A. C. Ribeiro  | Vigente       |
-| ITSM-SIFAP-vol2   | Procedimentos ITSM - Operação       | A. C. Ribeiro  | Vigente       |
-| ITSM-SIFAP-vol3   | Procedimentos ITSM - Mudanças       | [A COMPLETAR]  | Em elaboração |
-| RN-SIFAP          | Manual de Regras de Negócio         | SENARC/CGPB    | Não iniciado  |
+| MT-SIFAP-2008 | This document | F. L. Oliveira | Current |
+| MO-SIFAP-DBA-2007 | DBA Operation Manual Adabas | C.R. Santos | Current |
+| MU-SIFAP-2006 | User Manual - Registration Module | F. L. Oliveira | Current |
+| ITSM-SIFAP-vol1 | ITSM Procedures - Incidents | A. C. Ribeiro | Current |
+| ITSM-SIFAP-vol2 | ITSM Procedures - Operation | A. C. Ribeiro | Current |
+| ITSM-SIFAP-vol3 | ITSM Procedures - Changes | [TO BE COMPLETED] | In preparation |
+| RN-SIFAP | Business Rules Manual | SENARC/CGPB | Not started |
 
-> **Nota:** O Manual ITSM-SIFAP vol. 3 (Procedimentos de Mudança) está em fase de elaboração desde junho de 2008. Previsão de conclusão: março/2009.
+> **Note:** The ITSM-SIFAP Manual vol. 3 (Change Procedures) has been in the preparation phase since June 2008. Expected completion: March/2009.
 
 ---
 
-## 2. Arquitetura do Sistema
+## 2. System Architecture
 
-<!-- NOTA: Esta seção não foi atualizada desde 2008 -->
+<!-- NOTE: This section has not been updated since 2008 -->
 
-### 2.1. Plataforma Tecnológica
+### 2.1. Technological Platform
 
-O SIFAP é desenvolvido e executado no ambiente de mainframe do a organização, utilizando a seguinte plataforma:
+The SIFAP is developed and run in the organization's mainframe environment, using the following platform:
 
-| Componente     | Versão   | Observações                                                                      |
+| Component | Version | Observations |
 | -------------- | -------- | -------------------------------------------------------------------------------- |
-| **Natural**    | 6.3.12   | Linguagem de desenvolvimento - atualizada em 2005 (migração da v4.2)             |
-| **Adabas**     | 7.4.3    | SGBD - atualizado em 2005 (migração da v6.1)                                     |
-| **Com\*plete** | 6.3.1    | Monitor de teleprocessamento para telas 3270                                     |
-| **JES2**       | z/OS 1.8 | Subsistema de entrada de jobs batch                                              |
-| **CICS**       | TS 3.1   | Utilizado apenas para integração com transação de consulta CPF (Receita Federal) |
-| **z/OS**       | 1.8      | Sistema operacional do mainframe                                                 |
+| **Natural** | 6.3.12 | Development language - updated in 2005 (migration from v4.2) |
+| **Adabas** | 7.4.3 | DBMS - updated in 2005 (migration from v6.1) |
+| **Com\*plete** | 6.3.1 | Teleprocessing monitor for 3270 screens |
+| **JES2** | z/OS 1.8 | Batch job entry subsystem |
+| **CICS** | TS 3.1 | Used only for integration with query transaction CPF (Federal Revenue) |
+| **z/OS** | 1.8 | Mainframe Operating System |
 
-### 2.2. Estrutura de Bibliotecas Natural
+### 2.2. Natural Library Structure
 
-Os objetos do SIFAP estão organizados na biblioteca Natural **SIFAP**, conforme abaixo:
+The SIFAP objects are organized in the Natural **SIFAP** library, as follows:
 
 ```
-Biblioteca SIFAP
-├── Programs (programas executáveis)
-├── Subprograms (rotinas chamadas por CALLNAT)
-├── Copycodes (blocos de código incluídos via INCLUDE)
-├── Maps (telas 3270 - mapas de entrada/saída)
-├── DDMs (Data Definition Modules - acesso ao Adabas)
+SIFAP Library
+├── Programs (executable programs)
+├── Subprograms (routines called by CALLNAT)
+├── Copycodes (code blocks included via INCLUDE)
+├── Maps (3270 screens - input/output maps)
+├── DDMs (Data Definition Modules - access to Adabas)
 ├── LDAs (Local Data Areas)
 └── GDAs (Global Data Areas)
 ```
 
-### 2.3. Modelo de Dados
+### 2.3. Data Model
 
-O SIFAP utiliza **3 DDMs** principais no Adabas:
+The SIFAP uses **3 main DDMs** in the Adabas:
 
-| DDM             | Arquivo (FNR) | Descrição                        |
+| DDM | File (FNR) | Description |
 | --------------- | ------------- | -------------------------------- |
-| BENEFICIARIO    | FNR 150       | Cadastro de beneficiários        |
-| PROGRAMA-SOCIAL | FNR 151       | Parâmetros dos programas sociais |
-| PAGAMENTO       | FNR 152       | Registros de pagamento           |
+| BENEFICIARIO | FNR 150 | Beneficiary registration |
+| PROGRAMA-SOCIAL | FNR 151 | Parameters of social programs |
+| PAGAMENTO | FNR 152 | Payment records |
 
-<!-- NOTA: O DDM AUDITORIA (FNR 153), criado em 2005 durante a migração para
- Natural 6.3, não consta nesta seção pois foi adicionado após a redação
- inicial deste capítulo. Verificar com Roberto Carlos para atualização. -->
+<!-- NOTE: The DDM AUDITORIA (FNR 153), created in 2005 during the migration to
+ Natural 6.3, not included in this section as it was added after writing
+ beginning of this chapter. Check with Roberto Carlos for update. -->
 
-> **Nota técnica:** A descrição detalhada dos campos de cada DDM encontra-se no Manual de Operação DBA (MO-SIFAP-DBA-2007). As FDTs (Field Definition Tables) estão sob responsabilidade da DBA Cláudia Regina dos Santos.
+> **Technical note:** The detailed description of the fields of each DDM can be found in the DBA Operation Manual (MO-SIFAP-DBA-2007). The FDTs (Field Definition Tables) are under the responsibility of DBA Cláudia Regina dos Santos.
 
-### 2.4. Diagrama de Componentes
+### 2.4. Component Diagram
 
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
-flowchart TB
+TB flowchart
     classDef step fill:#F5F5F5,stroke:#171717,color:#171717
     classDef artifact fill:#FAFAFA,stroke:#A3A3A3,color:#404040
     classDef external fill:#FFFFFF,stroke:#525252,color:#171717
 
-    subgraph MAIN["Ambiente Mainframe — a organização"]
-        NAT["Natural 6.3.12<br/>8 programas online"]:::step
+    subgraph MAIN["Mainframe environment — the organization"]
+        NAT["Natural 6.3.12<br/>8 online programs"]:::step
         ADA["Adabas 7.4.3<br/>3 DDMs"]:::step
         JES["JES2 / z/OS 1.8<br/>Jobs Batch"]:::step
         NAT <--> ADA
         JES --> ADA
 
-        COMPLETE["Com*plete<br/>Telas 3270"]:::step
+        COMPLETE["Comp*plete<br/>Telas 3270"]:::step
         BATCH["BATCHPGT<br/>BATCHREL<br/>BATCHCON"]:::step
         NAT --> COMPLETE
         JES --> BATCH
     end
 
-    TERM["Terminais 3270<br/>Operadores"]:::external
-    EXTFILES["Arquivos Externos<br/>CNAB 240 / TXT<br/>BB / SIAFI"]:::external
+    TERM["3270 Terminals<br/>Operators"]:::external
+    EXTFILES["External Files<br/>CNAB 240 / TXT<br/>BB / SIAFI"]:::external
 
-    COMPLETE --> TERM
+    COMPLETE --> END
     BATCH --> EXTFILES
 ```
 
-<!-- NOTA: Este diagrama não reflete os programas adicionados em 2005
- (RELAUDIT, CALCCORR) nem o DDM AUDITORIA. Solicitar atualização
- ao analista responsável. -->
+<!-- NOTE: This diagram does not reflect programs added in 2005
+ (RELAUDIT, CALCCORR) nor the DDM AUDITORIA. Request update
+ to the responsible analyst. -->
 
 ---
 
-## 3. Módulos do Sistema
+## 3. System Modules
 
-<!-- NOTA: Esta seção não foi atualizada desde 2008 -->
+<!-- NOTE: This section has not been updated since 2008 -->
 
-### 3.1. Visão Geral dos Programas
+### 3.1. Program Overview
 
-O SIFAP é composto por **12 programas** principais, organizados nos seguintes módulos:
+The SIFAP is made up of **12 main programs**, organized into the following modules:
 
-| No  | Programa  | Módulo    | Tipo         | Descrição                                                 |
+| No | Program | Module | Type | Description |
 | --- | --------- | --------- | ------------ | --------------------------------------------------------- |
-| 01  | CADBENEF  | Cadastro  | Online       | Cadastro de beneficiários - inclusão, alteração, exclusão |
-| 02  | CADDEPEND | Cadastro  | Online       | Cadastro de dependentes do beneficiário titular           |
-| 03  | CADPROG   | Cadastro  | Online       | Cadastro de programas sociais e parâmetros                |
-| 04  | CALCBENF  | Cálculo   | Batch/Online | Cálculo do valor do benefício por faixa/programa          |
-| 05  | CALCCORR  | Cálculo   | Batch        | Cálculo de correções e reajustes anuais                   |
-| 06  | VALBENEF  | Validação | Online       | Validação cadastral (CPF, NIS, duplicidade)               |
-| 07  | VALELEG   | Validação | Online       | Validação de elegibilidade por regras do programa         |
-| 08  | VALDOCS   | Validação | Online       | Validação de documentação comprobatória                   |
-| 09  | BATCHPGT  | Batch     | Batch        | Processamento da folha de pagamento mensal                |
-| 10  | BATCHREL  | Batch     | Batch        | Geração de relatórios batch                               |
-| 11  | BATCHCON  | Batch     | Batch        | Conciliação financeira com SIAFI                          |
-| 12  | CONSBENF  | Consulta  | Online       | Consulta de beneficiários - tela com filtros              |
+| 01 | CADBENEF | Registration | Online | Beneficiary registration - inclusion, alteration, exclusion |
+| 02 | CADDEPEND | Registration | Online | Registration of dependents of the beneficiary |
+| 03 | CADPROG | Registration | Online | Registration of social programs and parameters |
+| 04 | CALCBENF | Calculation | Batch/Online | Calculation of benefit value by band/program |
+| 05 | CALCCORR | Calculation | Batch | Calculation of annual corrections and adjustments |
+| 06 | VALBENEF | Validation | Online | Registration validation (CPF, NIS, duplicity) |
+| 07 | VALELEG | Validation | Online | Validation of eligibility per program rules |
+| 08 | VALDOCS | Validation | Online | Validation of supporting documentation |
+| 09 | BATCHPGT | Batch | Batch | Monthly Payroll Processing |
+| 10 | BATCHREL | Batch | Batch | Batch report generation |
+| 11 | BATCHCON | Batch | Batch | Financial reconciliation with SIAFI |
+| 12 | CONSBENF | Consultation | Online | Beneficiary consultation - screen with filters |
 
-<!-- NOTA: Esta lista não inclui os programas CALCDSCT, RELPGT e RELAUDIT,
- que foram adicionados ao sistema após a elaboração deste manual.
- CALCDSCT foi incluído na versão 4.0 (2015).
- RELPGT e RELAUDIT foram reestruturados/incluídos na versão 3.0 (2005).
- Este manual cobre apenas a versão 2.3.1 do sistema. -->
+<!-- NOTE: This list does not include programs CALCDSCT, RELPGT and RELAUDIT,
+ which were added to the system after the preparation of this manual.
+ CALCDSCT was included in version 4.0 (2015).
+ RELPGT and RELAUDIT were restructured/included in version 3.0 (2005).
+ This manual only covers system version 2.3.1. -->
 
-### 3.2. Módulo de Cadastro
+### 3.2. Registration Module
 
-#### 3.2.1. CADBENEF - Cadastro de Beneficiários
+#### 3.2.1. CADBENEF - Beneficiary Registration
 
-**Descrição:** Programa online para manutenção do cadastro de beneficiários. Permite inclusão, alteração e exclusão lógica de registros no DDM BENEFICIARIO.
+**Description:** Online program for maintaining beneficiary registration. Allows logical inclusion, alteration and deletion of records in the DDM BENEFICIARIO.
 
-**Transação:** SF01 (inclusão), SF02 (alteração), SF03 (exclusão)
+**Transaction:** SF01 (inclusion), SF02 (change), SF03 (deletion)
 
-**Funcionalidades:**
+**Features:**
 
-- Inclusão de novo beneficiário com validação de CPF (chama subprograma VALCPF);
-- Alteração de dados cadastrais (endereço, dados bancários, situação);
-- Exclusão lógica (campo BN-CD-SIT alterado para 'E');
-- Registro de auditoria para todas as operações (chama subprograma LOGAUDIT);
-- Vinculação ao programa social (chave: BN-CD-PROG → PS-CD-PROG).
+- Inclusion of a new beneficiary with validation of CPF (called subprogram VALCPF);
+- Change of registration data (address, bank details, status);
+- Logical deletion (field BN-CD-SIT changed to 'E');
+- Audit log for all operations (called subprogram LOGAUDIT);
+- Link to the social program (key: BN-CD-PROG → PS-CD-PROG).
 
-**Observações:**
+**Observations:**
 
-- O campo BN-QT-DEPEND (quantidade de dependentes) aceita valores de 0 a 3.
-- [A COMPLETAR] - Detalhar regras de validação para alteração de dados bancários.
-- [A COMPLETAR] - Documentar tratamento de beneficiário com múltiplos programas.
+- The BN-QT-DEPEND field (number of dependents) accepts values ​​from 0 to 3.
+- [TO BE COMPLETED] - Detail validation rules for changing bank details.
+- [TO BE COMPLETED] - Document beneficiary treatment with multiple programs.
 
-<!-- NOTA: O limite de dependentes foi alterado para 5 em algum momento entre
- 2010 e 2015, conforme demanda da SENARC. Esta alteração não está refletida
- neste documento. Verificar no código-fonte de CADBENEF. -->
+<!-- NOTE: The dependent limit was changed to 5 sometime between
+ 2010 and 2015, as required by SENARC. This change is not reflected
+ in this document. Check in the source code of CADBENEF. -->
 
-#### 3.2.2. CADDEPEND - Cadastro de Dependentes
+#### 3.2.2. CADDEPEND - Dependent Registration
 
-**Descrição:** Programa online para cadastro de dependentes vinculados ao beneficiário titular.
+**Description:** Online program for registering dependents linked to the titular beneficiary.
 
-**Transação:** SF04
+**Transaction:** SF04
 
-**Funcionalidades:**
+**Features:**
 
-- Inclusão de dependente com validação de CPF e data de nascimento;
-- Vinculação ao beneficiário titular (chave: BN-NR-CPF);
-- Verificação de limite de dependentes (máximo: 3 por titular);
-- Controle de tipo de dependente (cônjuge, filho, outro).
+- Inclusion of dependent with validation of CPF and date of birth;
+- Link to the titular beneficiary (key: BN-NR-CPF);
+- Verification of dependent limit (maximum: 3 per holder);
+- Control of type of dependent (spouse, child, other).
 
-**Observações:**
+**Observations:**
 
-- A validação de idade mínima/máxima de dependentes segue regras do programa social. Ver código CADBENEF para detalhes.
-- [A COMPLETAR] - Documentar regras de desvinculação de dependente.
+- Validation of the minimum/maximum age of dependents follows the rules of the social program. See code CADBENEF for details.
+- [TO BE COMPLETED] - Document dependent separation rules.
 
-#### 3.2.3. CADPROG - Cadastro de Programas Sociais
+#### 3.2.3. CADPROG - Social Programs Registration
 
-**Descrição:** Programa online para manutenção dos parâmetros dos programas sociais.
+**Description:** Online program for maintaining the parameters of social programs.
 
-**Transação:** SF06
+**Transaction:** SF06
 
-**Funcionalidades:**
+**Features:**
 
-- Inclusão e alteração de programas sociais;
-- Parametrização de faixas de valores (campos MU no DDM PROGRAMA-SOCIAL);
-- Definição de regras de elegibilidade por programa;
-- Controle de vigência (data início/fim).
+- Inclusion and alteration of social programs;
+- Parameterization of value ranges (fields MU in DDM PROGRAMA-SOCIAL);
+- Definition of eligibility rules per program;
+- Validity control (start/end date).
 
-**Observações:**
+**Observations:**
 
-- Acesso restrito a perfil ADMIN (verificação via GDA de sessão).
-- [A COMPLETAR] - Detalhar procedimento de inclusão de novo programa social.
+- Restricted access to the ADMIN profile (check via session GDA).
+- [TO BE COMPLETED] - Detail the procedure for including a new social program.
 
-### 3.3. Módulo de Cálculo
+### 3.3. Calculation Module
 
-#### 3.3.1. CALCBENF - Cálculo de Benefícios
+#### 3.3.1. CALCBENF - Benefits Calculation
 
-**Descrição:** Programa para cálculo do valor do benefício a ser pago ao beneficiário, com base nas faixas e regras definidas no DDM PROGRAMA-SOCIAL.
+**Description:** Program for calculating the value of the benefit to be paid to the beneficiary, based on the ranges and rules defined in DDM PROGRAMA-SOCIAL.
 
-**Funcionalidades:**
+**Features:**
 
-- Cálculo do valor base conforme faixa do programa;
-- Aplicação de acréscimos por dependente;
-- Cálculo proporcional para benefícios com início no meio do mês;
-- [A COMPLETAR] - Regras de cálculo do 13o benefício (abono natalino).
+- Calculation of the base value according to the program range;
+- Application of increases per dependent;
+- Proportional calculation for benefits starting in the middle of the month;
+- [TO BE COMPLETED] - Rules for calculating the 13th benefit (Christmas bonus).
 
-**Observações:**
+**Observations:**
 
-- Este programa é invocado tanto online (simulação) quanto batch (processamento mensal).
-- A lógica de cálculo está inteiramente no código Natural, sem parametrização externa.
-- Conferir com Sr. Roberto Carlos para detalhar a fórmula de cálculo da faixa complementar.
+- This program is invoked both online (simulation) and batch (monthly processing).
+- The calculation logic is entirely in the Natural code, without external parameterization.
+- Consult with Mr. Roberto Carlos to detail the formula for calculating the additional band.
 
-#### 3.3.2. CALCCORR - Cálculo de Correções
+#### 3.3.2. CALCCORR - Corrections Calculation
 
-**Descrição:** Programa batch para aplicação de índices de correção e reajuste sobre valores de benefícios.
+**Description:** Batch program for applying correction indices and adjustments to benefit values.
 
-**Funcionalidades:**
+**Features:**
 
-- Leitura de tabela interna de índices (subprograma CALCIDX);
-- Aplicação de índice sobre valor base;
-- Geração de log de reajuste para auditoria.
+- Reading of internal index table (subprogram CALCIDX);
+- Application of index on base value;
+- Generation of readjustment log for auditing.
 
-**Observações:**
+**Observations:**
 
-- Executado anualmente em janeiro ou quando houver decreto de reajuste.
-- [A COMPLETAR] - Documentar formato da tabela de índices e procedimento de atualização.
+- Executed annually in January or when there is an adjustment decree.
+- [TO BE COMPLETED] - Document index table format and update procedure.
 
-### 3.4. Módulo de Validação
+### 3.4. Validation Module
 
-[A COMPLETAR] - Seção pendente de detalhamento. Os programas VALBENEF, VALELEG e VALDOCS possuem funcionalidades auto-explicativas. Para detalhes, consultar o código-fonte ou contatar Roberto Carlos Meirelles.
+[TO BE COMPLETED] - Section pending details. The VALBENEF, VALELEG and VALDOCS programs have self-explanatory features. For details, consult the source code or contact Roberto Carlos Meirelles.
 
-### 3.5. Módulo Batch
+### 3.5. Batch Module
 
-#### 3.5.1. BATCHPGT - Processamento de Pagamento
+#### 3.5.1. BATCHPGT - Payment Processing
 
-**Descrição:** Programa batch principal do SIFAP. Responsável pelo processamento mensal da folha de pagamento.
+**Description:** SIFAP main batch program. Responsible for monthly payroll processing.
 
-**Agendamento:** 1o dia útil do mês, 22:00h (horário de Brasília)
+**Scheduling:** 1st business day of the month, 10:00 pm (Brasília time)
 
-**Fluxo de execução:**
+**Execution flow:**
 
-1. Leitura sequencial do DDM BENEFICIARIO (registros ativos, BN-CD-SIT = 'A');
-2. Para cada beneficiário, invocação do CALCBENF para obter valor do benefício;
-3. Gravação de registro no DDM PAGAMENTO com status 'P' (pendente);
-4. Geração do arquivo de remessa CNAB 240 para Banco do Brasil;
-5. Totalização e gravação de log de processamento.
+1. Sequential reading of DDM BENEFICIARIO (active registers, BN-CD-SIT = 'A');
+2. For each beneficiary, invoke CALCBENF to obtain the benefit value;
+3. Record recording on DDM PAGAMENTO with status 'P' (pending);
+4. Generation of the remittance file CNAB 240 for Banco do Brasil;
+5. Totalization and recording of processing logs.
 
-**Parâmetros JCL:**
+**JCL Parameters:**
 
 ```
 //SIFAPPGT JOB (SIFAP,BATCH),'FOLHA MENSAL',
@@ -355,264 +355,264 @@ O SIFAP é composto por **12 programas** principais, organizados nos seguintes m
 /*
 ```
 
-**Observações:**
+**Observations:**
 
-- Tempo médio de execução: 2h45min (referência: out/2008, ~3.200.000 registros).
-- O processamento é **sequencial por ordem alfabética** do nome do beneficiário (campo BN-NM-BENEF). Esta ordem é determinada pelo descritor Adabas configurado no FNR 150.
-- Em caso de ABEND, ver procedimento de restart na seção 5 deste manual.
+- Average execution time: 2h45min (reference: Oct/2008, ~3,200,000 records).
+- Processing is **sequential in alphabetical order** of the beneficiary's name (field BN-NM-BENEF). This order is determined by the Adabas descriptor configured on the FNR 150.
+- In case of ABEND, see restart procedure in section 5 of this manual.
 
-<!-- NOTA: O tempo de execução aumentou consideravelmente desde 2008 devido ao
- crescimento da base. Em 2016, reportou-se um incidente de timeout com
- processamento de 4,1 milhões de registros. -->
+<!-- NOTE: Runtime has increased considerably since 2008 due to
+ base growth. In 2016, a timeout incident was reported with
+ processing 4.1 million records. -->
 
-#### 3.5.2. BATCHREL - Relatórios Batch
+#### 3.5.2. BATCHREL - Batch Reports
 
-**Descrição:** Geração de relatórios totalizadores pós-processamento.
+**Description:** Generation of post-processing totalizing reports.
 
-**Observações:**
+**Observations:**
 
-- Executado após conclusão bem-sucedida do BATCHPGT.
-- Gera relatórios em formato texto (132 colunas) para impressora.
-- [A COMPLETAR] - Listar relatórios gerados e destinatários.
+- Executed upon successful completion of BATCHPGT.
+- Generates reports in text format (132 columns) for printer.
+- [TO BE COMPLETED] - List reports generated and recipients.
 
-#### 3.5.3. BATCHCON - Conciliação Financeira
+#### 3.5.3. BATCHCON - Financial Reconciliation
 
-**Descrição:** Programa de conciliação entre os pagamentos processados pelo SIFAP e as confirmações recebidas do SIAFI e dos bancos pagadores.
+**Description:** Conciliation program between payments processed by SIFAP and confirmations received from SIAFI and paying banks.
 
-**Observações:**
+**Observations:**
 
-- Executado após recebimento dos arquivos de retorno (D+2 após remessa).
-- [A COMPLETAR] - Documentar formato dos arquivos de retorno e regras de conciliação.
-- Para procedimentos de operação, ver Manual ITSM-SIFAP vol. 3.
+- Executed upon receipt of return files (D+2 after shipment).
+- [TO BE COMPLETED] - Document format of return files and reconciliation rules.
+- For operating procedures, see Manual ITSM-SIFAP vol. 3.
 
 ---
 
-## 4. Fluxo de Processamento Mensal
+## 4. Monthly Processing Flow
 
-### 4.1. Calendário Padrão
+### 4.1. Standard Calendar
 
-O ciclo mensal de processamento do SIFAP segue o seguinte calendário:
+The monthly processing cycle for the SIFAP follows the following calendar:
 
-| Dia Útil  | Atividade                                              | Responsável               | Sistema/Programa           |
+| Business Day | Activity | Responsible | System/Program |
 | --------- | ------------------------------------------------------ | ------------------------- | -------------------------- |
-| D-5       | Atualização de tabelas de parâmetros (faixas, índices) | SENARC/CGPB               | CADPROG (online)           |
-| D-3       | Fechamento de cadastro - bloqueio de alterações        | Operação a organização | Procedimento manual        |
-| D-2       | Validação batch de elegibilidade                       | Operação a organização | VALELEG (batch)            |
-| D-1       | Conferência de totalizadores - relatório prévio        | CGPB                      | BATCHREL (modo prévio)     |
-| D (1o DU) | **Processamento da folha de pagamento**                | Operação a organização | BATCHPGT                   |
-| D+1       | Envio de arquivo CNAB 240 ao Banco do Brasil           | Operação a organização | Transferência manual (FTP) |
-| D+2       | Envio de ordens bancárias ao SIAFI                     | Operação a organização | Procedimento SIAFI         |
-| D+3       | Recebimento de arquivo de retorno bancário             | Operação a organização | Recepção FTP               |
-| D+4       | Conciliação financeira                                 | Operação a organização | BATCHCON                   |
-| D+5       | Geração de relatórios finais                           | CGPB                      | BATCHREL                   |
-| D+10      | Fechamento do ciclo - arquivamento                     | CGPB                      | Procedimento manual        |
+| D-5 | Update of parameter tables (ranges, indices) | SENARC/CGPB | CADPROG (online) |
+| D-3 | Closing registration - blocking changes | Operation the organization | Manual procedure |
+| D-2 | Batch eligibility validation | Operation the organization | VALELEG (batch) |
+| D-1 | Totalizers conference - preview report | CGPB | BATCHREL (previous mode) |
+| D (1st DU) | **Payroll processing** | Operation the organization | BATCHPGT |
+| D+1 | Sending file CNAB 240 to Banco do Brasil | Operation the organization | Manual Transfer (FTP) |
+| D+2 | Sending bank orders to SIAFI | Operation the organization | Procedure SIAFI |
+| D+3 | Receipt of bank return file | Operation the organization | Reception FTP |
+| D+4 | Financial reconciliation | Operation the organization | BATCHCON |
+| D+5 | Generation of final reports | CGPB | BATCHREL |
+| D+10 | Closing the cycle - archiving | CGPB | Manual procedure |
 
-### 4.2. Diagrama de Fluxo
+### 4.2. Flow Diagram
 
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
-flowchart TB
+TB flowchart
     classDef step fill:#F5F5F5,stroke:#171717,color:#171717
     classDef artifact fill:#FAFAFA,stroke:#A3A3A3,color:#404040
 
-    CADPROG["CADPROG<br/>(D-5)<br/>Atualização de parâmetros"]:::step
-    VALELEG_PRE["VALELEG<br/>(D-2)<br/>Validação de elegibilidade"]:::step
-    BATCHREL_PRE["BATCHREL<br/>(D-1)<br/>Relatório prévio"]:::step
-    BATCHPGT["BATCHPGT<br/>(D = 1o DU)<br/>Folha de pagamento"]:::step
-    CNAB["Arquivo CNAB<br/>BB"]:::artifact
+    CADPROG["CADPROG<br/>(D-5)<br/>Parameter update"]:::step
+    VALELEG_PRE["VALELEG<br/>(D-2)<br/>Eligibility Validation"]:::step
+    BATCHREL_PRE["BATCHREL<br/>(D-1)<br/>Preview"]:::step
+    BATCHPGT["BATCHPGT<br/>(D = 1st DU)<br/>Payroll"]:::step
+    CNAB["File CNAB<br/>BB"]:::artifact
     DDM_PAGTO["DDM PAGAMENTO<br/>(Adabas)"]:::artifact
-    LOG["Log de<br/>processamento"]:::artifact
-    RETORNO["Retorno bancário<br/>(D+3)"]:::artifact
-    BATCHCON["BATCHCON<br/>(D+4)<br/>Conciliação"]:::step
-    BATCHREL_POS["BATCHREL<br/>(D+5)<br/>Relatórios finais"]:::step
+    LOG["Processing Log"]:::artifact
+    RETURN["Bank Return<br/>(D+3)"]:::artifact
+    BATCHCON["BATCHCON<br/>(D+4)<br/>Reconciliation"]:::step
+    BATCHREL_POS["BATCHREL<br/>(D+5)<br/>Final reports"]:::step
 
     CADPROG --> VALELEG_PRE --> BATCHREL_PRE --> BATCHPGT
     BATCHPGT --> CNAB
     BATCHPGT --> DDM_PAGTO
     BATCHPGT --> LOG
-    CNAB --> RETORNO
-    RETORNO --> BATCHCON
+    CNAB --> RETURN
+    RETURN --> BATCHCON
     BATCHCON --> BATCHREL_POS
 ```
 
-### 4.3. Tratamento de Exceções
+### 4.3. Exception Handling
 
-<!-- NOTA: Esta seção não foi atualizada desde 2008 -->
+<!-- NOTE: This section has not been updated since 2008 -->
 
-| Situação                       | Procedimento                                                                   | Responsável               |
+| Situation | Procedure | Responsible |
 | ------------------------------ | ------------------------------------------------------------------------------ | ------------------------- |
-| ABEND no BATCHPGT              | Restart a partir do último checkpoint (ver seção 5.2)                          | Operação a organização |
-| Arquivo CNAB rejeitado pelo BB | Correção manual e reenvio. Contatar Antônio Carlos Ribeiro.                    | Operação a organização |
-| Divergência na conciliação     | Análise manual pelo CGPB. Registrar incidente no ITSM.                         | CGPB + a organização   |
-| Atraso no retorno bancário     | Aguardar até D+5. Se não recebido, contatar BB via canal dedicado.             | Operação a organização |
-| Solicitação de reprocessamento | Aprovação do CGPB. Procedimento de rollback conforme Manual ITSM-SIFAP vol. 3. | CGPB                      |
+| ABEND on BATCHPGT | Restart from last checkpoint (see section 5.2) | Operation the organization |
+| File CNAB rejected by BB | Manual correction and resubmission. Contact Antônio Carlos Ribeiro.                    | Operation the organization |
+| Divergence in conciliation | Manual analysis by CGPB. Register incident in ITSM.                         | CGPB + the organization |
+| Delay in bank returns | Wait until D+5. If not received, contact BB via dedicated channel.             | Operation the organization |
+| Reprocessing Request | CGPB approval. Rollback procedure according to Manual ITSM-SIFAP vol. 3. | CGPB |
 
-> **IMPORTANTE:** Para procedimentos detalhados de rollback e reprocessamento, consultar o **Manual ITSM-SIFAP vol. 3** (em elaboração - previsão: março/2009).
+> **IMPORTANT:** For detailed rollback and reprocessing procedures, see **Manual ITSM-SIFAP vol. 3** (in preparation - forecast: March/2009).
 
 ---
 
-## 5. Procedimentos de Contingência
+## 5. Contingency Procedures
 
-### 5.1. Plano de Contingência - Visão Geral
+### 5.1. Contingency Plan - Overview
 
-<!-- NOTA: Esta seção não foi atualizada desde 2008 -->
+<!-- NOTE: This section has not been updated since 2008 -->
 
-O plano de contingência do SIFAP contempla os seguintes cenários:
+The SIFAP contingency plan covers the following scenarios:
 
-| Cenário                               | Nível | Procedimento                                                                                           |
+| Scenario | Level | Procedure |
 | ------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------ |
-| Indisponibilidade do mainframe (< 4h) | 1     | Aguardar restabelecimento. Reagendar batch se necessário.                                              |
-| Indisponibilidade do mainframe (> 4h) | 2     | Acionar processamento no site de contingência (a organização-RSA). Contatar Antônio Carlos Ribeiro. |
-| Corrupção de dados Adabas             | 3     | Recovery via ADASAV (último backup íntegro). Contatar Cláudia Regina dos Santos (DBA).                 |
-| Falha na integração SIAFI             | 2     | Processamento manual de ordens bancárias pela CGPB. Procedimento descrito no Manual ITSM-SIFAP vol. 2. |
-| Falha na transmissão CNAB             | 1     | Retransmissão manual via canal alternativo (SFTP). Contatar operação BB.                               |
+| Mainframe unavailability (< 4h) | 1 | Wait for recovery. Reschedule batch if necessary.                                              |
+| Mainframe unavailability (> 4h) | 2 | Trigger processing at the contingency site (the organization-RSA). Contact Antônio Carlos Ribeiro. |
+| Data corruption Adabas | 3 | Recovery via ADASAV (last healthy backup). Contact Cláudia Regina dos Santos (DBA).                 |
+| Integration failure SIAFI | 2 | Manual processing of bank orders by CGPB. Procedure described in Manual ITSM-SIFAP vol. 2. |
+| Transmission failure CNAB | 1 | Manual retransmission via alternate channel (SFTP). Contact operation BB.                               |
 
-### 5.2. Procedimento de Restart - BATCHPGT
+### 5.2. Restart Procedure - BATCHPGT
 
-Em caso de ABEND durante a execução do BATCHPGT, seguir os passos abaixo:
+In case of ABEND while running BATCHPGT, follow the steps below:
 
-1. Verificar o código de ABEND no log do JES2 (JESMSGLG);
-2. Identificar o último checkpoint gravado (campo CKPT-NR no SYSOUT);
-3. Corrigir a condição de erro conforme tabela de ABENDs conhecidos (ver seção 5.3);
-4. Reiniciar o job com parâmetro `RESTART=CKPT-nnn` (onde nnn = número do último checkpoint);
-5. Monitorar a execução até conclusão normal (COND CODE = 0000);
-6. Verificar totalizadores finais contra relatório prévio (D-1).
+1. Check the ABEND code in the JES2 (JESMSGLG) log;
+2. Identify the last recorded checkpoint (field CKPT-NR in SYSOUT);
+3. Correct the error condition according to the table of known ABENDs (see section 5.3);
+4. Restart the job with parameter `RESTART=CKPT-nnn` (where nnn = number of the last checkpoint);
+5. Monitor execution until normal completion (COND CODE = 0000);
+6. Check final totals against previous report (D-1).
 
-### 5.3. Tabela de ABENDs Conhecidos
+### 5.3. Table of Known ABENDs
 
-| Código      | Descrição                | Causa Provável                              | Ação                                                             |
+| Code | Description | Probable Cause | Action |
 | ----------- | ------------------------ | ------------------------------------------- | ---------------------------------------------------------------- |
-| S0C7        | Data exception           | Campo numérico com valor inválido no Adabas | Identificar registro corrompido via ADAORD. Corrigir ou excluir. |
-| S878        | Virtual storage exceeded | Volume de processamento acima do previsto   | Aumentar REGION no JCL. Contatar operação.                       |
-| S0C4        | Protection exception     | Erro de endereçamento em subprograma        | Contatar Roberto Carlos Meirelles para análise.                  |
-| U4038       | Natural runtime error    | Erro de overflow em cálculo                 | Verificar valores no DDM PROGRAMA-SOCIAL (faixas).               |
-| ADA-RSP 148 | Adabas timeout           | Tempo de resposta excedido                  | Verificar contenção no Adabas. Contatar DBA.                     |
+| S0C7 | Data exception | Numeric field with invalid value in Adabas | Identify corrupt registry via ADAORD. Correct or delete. |
+| S878 | Virtual storage exceeded | Processing volume above forecast | Increase REGION on JCL. Contact operation.                       |
+| S0C4 | Protection exception | Addressing error in subprogram | Contact Roberto Carlos Meirelles for analysis.                  |
+| U4038 | Natural runtime error | Overflow error in calculation | Check values ​​in DDM PROGRAMA-SOCIAL (ranges).               |
+| ADA-RSP 148 | Adabas timeout | Response time exceeded | Check containment on Adabas. Contact DBA.                     |
 
-### 5.4. Procedimento de Rollback
+### 5.4. Rollback Procedure
 
-[A COMPLETAR] - Procedimento de rollback completo será documentado no Manual ITSM-SIFAP vol. 3. Enquanto isso, contatar Roberto Carlos Meirelles para orientação.
+[TO BE COMPLETED] - Complete rollback procedure will be documented in Manual ITSM-SIFAP vol. 3. In the meantime, contact Roberto Carlos Meirelles for guidance.
 
 ---
 
-## 6. Contatos da Equipe Técnica
+## 6. Technical Team Contacts
 
-<!-- NOTA: Esta seção não foi atualizada desde 2008 -->
-<!-- Vários dos contatos abaixo podem não estar mais válidos. -->
-<!-- Verificar lotação atual dos servidores no sistema RH/a organização. -->
+<!-- NOTE: This section has not been updated since 2008 -->
+<!-- Several of the contacts below may no longer be valid. -->
+<!-- Check current server capacity in the HR system/organization. -->
 
-### 6.1. Equipe a organização - SUPDE/DESIF
+### 6.1. Organization Team - SUPDE/DESIF
 
-| Nome                       | Função                           | Ramal | E-mail                          | Observação                                |
+| Name | Function | Extension | Email | Note |
 | -------------------------- | -------------------------------- | ----- | ------------------------------- | ----------------------------------------- |
-| Roberto Carlos Meirelles   | Analista Sênior / Coord. Técnico | 3411  | <roberto.meirelles@client.gov.br> | Arquitetura e decisões técnicas           |
-| Fernanda Lucia de Oliveira | Analista de Negócios             | 3415  | <fernanda.oliveira@client.gov.br> | Documentação e regras de negócio          |
-| Marcos Antônio Ferreira    | Programador Natural Sênior       | 3418  | <marcos.ferreira@client.gov.br>   | Manutenção de código - módulos de cálculo |
-| Cláudia Regina dos Santos  | DBA Adabas                       | 3422  | <claudia.santos@client.gov.br>    | Administração de banco de dados           |
-| José Aparecido Lima        | Programador Natural              | -     | -                               | Aposentado desde 2005                     |
-| Patrícia Helena Moura      | Analista de Sistemas             | 3419  | <patricia.moura@client.gov.br>    | Integração SIAFI e auditoria              |
-| Antônio Carlos Ribeiro     | Analista de Suporte / Operação   | 3430  | <antonio.ribeiro@client.gov.br>   | Operação batch e monitoração              |
+| Roberto Carlos Meirelles | Senior Analyst / Coord. Technical | 3411 | <roberto.meirelles@client.gov.br> | Architecture and technical decisions |
+| Fernanda Lucia de Oliveira | Business Analyst | 3415 | <fernanda.oliveira@client.gov.br> | Documentation and business rules |
+| Marcos Antônio Ferreira | Senior Natural Programmer | 3418 | <marcos.ferreira@client.gov.br> | Code maintenance - calculation modules |
+| Cláudia Regina dos Santos | DBA Adabas | 3422 | <claudia.santos@client.gov.br> | Database Administration |
+| José Aparecido Lima | Natural Programmer | - | - | Retired since 2005 |
+| Patrícia Helena Moura | Systems Analyst | 3419 | <patricia.moura@client.gov.br> | SIAFI Integration and Auditing |
+| Antônio Carlos Ribeiro | Support/Operation Analyst | 3430 | <antonio.ribeiro@client.gov.br> | Batch operation and monitoring |
 
-### 6.2. Equipe SENARC / CGPB
+### 6.2. SENARC / CGPB team
 
-| Nome                  | Função                      | Telefone       | E-mail                   |
+| Name | Function | Telephone | Email |
 | --------------------- | --------------------------- | -------------- | ------------------------ |
-| Ana Cristina Barros   | Analista de Negócios SENARC | (61) 2030-XXXX | <ana.barros@mds.gov.br>    |
-| Carlos Eduardo Mendes | Coord. CGPB                 | (61) 2030-XXXX | <carlos.mendes@mds.gov.br> |
+| Ana Cristina Barros | SENARC Business Analyst | (61) 2030-XXXX | <ana.barros@mds.gov.br> |
+| Carlos Eduardo Mendes | Coord. CGPB | (61) 2030-XXXX | <carlos.mendes@mds.gov.br> |
 
-### 6.3. Suporte de Infraestrutura
+### 6.3. Infrastructure Support
 
-| Área                          | Contato              | Ramal | Responsabilidade                        |
+| Area | Contact | Extension | Responsibility |
 | ----------------------------- | -------------------- | ----- | --------------------------------------- |
-| Operação Mainframe - Brasília | Central de Operações | 3500  | Agendamento e monitoração batch         |
-| DBA Adabas - Equipe Central   | Coordenação DBA      | 3510  | Suporte a incidentes Adabas             |
-| Rede / Comunicação            | NOC a organização | 3600  | Conectividade e transmissão de arquivos |
+| Mainframe Operation - Brasília | Operations Center | 3500 | Batch scheduling and monitoring |
+| DBA Adabas - Central Team | DBA Coordination | 3510 | Incident Support Adabas |
+| Network / Communication | NOC the organization | 3600 | Connectivity and file transmission |
 
-> **Nota:** Os ramais e e-mails acima referem-se à estrutura organizacional vigente em novembro de 2008. Em caso de alteração, consultar o catálogo telefônico interno do a organização (intranet: <http://intranet.client.gov.br/catalogo>).
+> **Note:** The extensions and emails above refer to the organizational structure in force in November 2008. In case of change, consult the organization's internal telephone directory (intranet: <http://intranet.client.gov.br/catalogo>).
 
 ---
 
-## 7. Glossário
+## 7. Glossary
 
-| Sigla  | Significado                                                    |
+| Acronym | Meaning |
 | ------ | -------------------------------------------------------------- |
-| CGPB   | Coordenação-Geral de Processamento de Benefícios               |
-| CNAB   | Centro Nacional de Automação Bancária (padrão de arquivo)      |
-| DDM    | Data Definition Module (definição de acesso Adabas no Natural) |
-| DESIF  | Divisão de Desenvolvimento de Sistemas Fiscais                 |
-| FDT    | Field Definition Table (definição de campos Adabas)            |
-| FNR    | File Number (número do arquivo Adabas)                         |
-| GDA    | Global Data Area                                               |
-| ITSM   | IT Service Management                                          |
-| JCL    | Job Control Language                                           |
-| JES2   | Job Entry Subsystem 2                                          |
-| LDA    | Local Data Area                                                |
-| SENARC | Secretaria Nacional de Renda de Cidadania                      |
-| SIAFI  | Sistema Integrado de Administração Financeira                  |
-| SIFAP  | Sistema de Fiscalização e Administração de Pagamentos          |
-| SUPDE  | Superintendência de Desenvolvimento                            |
+| CGPB | General Coordination of Benefits Processing |
+| CNAB | National Banking Automation Center (file standard) |
+| DDM | Data Definition Module (access definition Adabas in Natural) |
+| DESIF | Tax Systems Development Division |
+| FDT | Field Definition Table (field definition Adabas) |
+| FNR | File Number (file number Adabas) |
+| GDA | Global Data Area |
+| ITSM | IT Service Management |
+| JCL | Job Control Language |
+| JES2 | Job Entry Subsystem 2 |
+| LDA | Local Data Area |
+| SENARC | National Secretariat for Citizenship Income |
+| SIAFI | Integrated Financial Administration System |
+| SIFAP | Payment Inspection and Administration System |
+| SUPDE | Development Superintendence |
 
 ---
 
-## 8. Histórico de Revisões
+## 8. Revision History
 
-| Versão | Data       | Autor          | Alterações                                                   |
+| Version | Date | Author | Changes |
 | ------ | ---------- | -------------- | ------------------------------------------------------------ |
-| 1.0.0  | 10/03/2006 | F. L. Oliveira | Versão inicial - apenas módulo de cadastro                   |
-| 1.1.0  | 15/07/2006 | F. L. Oliveira | Inclusão do módulo de validação                              |
-| 2.0.0  | 22/08/2007 | F. L. Oliveira | Inclusão dos módulos batch e cálculo                         |
-| 2.1.0  | 10/01/2008 | F. L. Oliveira | Revisão dos procedimentos de contingência                    |
-| 2.2.0  | 05/06/2008 | F. L. Oliveira | Inclusão do fluxo de processamento mensal                    |
-| 2.3.0  | 15/09/2008 | F. L. Oliveira | Revisão geral; inclusão de referência ao módulo de auditoria |
-| 2.3.1  | 20/11/2008 | F. L. Oliveira | Correções textuais; atualização de contatos                  |
+| 1.0.0 | 10/03/2006 | F. L. Oliveira | Initial version - registration module only |
+| 1.1.0 | 15/07/2006 | F. L. Oliveira | Inclusion of the validation module |
+| 2.0.0 | 22/08/2007 | F. L. Oliveira | Inclusion of batch and calculation modules |
+| 2.1.0 | 10/01/2008 | F. L. Oliveira | Review of contingency procedures |
+| 2.2.0 | 05/06/2008 | F. L. Oliveira | Inclusion of monthly processing flow |
+| 2.3.0 | 15/09/2008 | F. L. Oliveira | General review; inclusion of reference to the audit module |
+| 2.3.1 | 20/11/2008 | F. L. Oliveira | Textual corrections; contact update |
 
-> **Nota:** Não houve revisões deste documento após novembro de 2008.
+> **Note:** There were no revisions to this document after November 2008.
 
 ---
 
-## Anexo A - Mapa de Transações
+## Annex A - Transaction Map
 
-| Transação | Programa      | Descrição                       |
+| Transaction | Program | Description |
 | --------- | ------------- | ------------------------------- |
-| SF01      | CADBENEF      | Inclusão de beneficiário        |
-| SF02      | CADBENEF      | Alteração de beneficiário       |
-| SF03      | CADBENEF      | Exclusão lógica de beneficiário |
-| SF04      | CADDEPEND     | Cadastro de dependentes         |
-| SF05      | CONSBENF      | Consulta de beneficiário        |
-| SF06      | CADPROG       | Manutenção de programas sociais |
-| SF10      | [A COMPLETAR] | Relatório de auditoria (?)      |
-| SF11      | [A COMPLETAR] | [A COMPLETAR]                   |
+| SF01 | CADBENEF | Inclusion of beneficiary |
+| SF02 | CADBENEF | Change of beneficiary |
+| SF03 | CADBENEF | Logical exclusion of beneficiary |
+| SF04 | CADDEPEND | Dependent registration |
+| SF05 | CONSBENF | Beneficiary inquiry |
+| SF06 | CADPROG | Maintenance of social programs |
+| SF10 | [TO BE COMPLETED] | Audit report (?) |
+| SF11 | [TO BE COMPLETED] | [TO BE COMPLETED] |
 
-<!-- NOTA: As transações SF10 e SF11 foram mencionadas em reunião de
- setembro/2008, mas não foi possível confirmar com a equipe técnica.
- Pendente verificação. -->
-
----
-
-## Anexo B - Pendências deste Documento
-
-As seguintes seções e informações permanecem pendentes de documentação:
-
-1. Detalhamento das regras de validação do CADBENEF (seção 3.2.1)
-2. Documentação completa do módulo de validação (seção 3.4)
-3. Lista de relatórios do BATCHREL (seção 3.5.2)
-4. Regras de conciliação do BATCHCON (seção 3.5.3)
-5. Procedimento de rollback completo (seção 5.4)
-6. Mapa completo de transações (Anexo A)
-7. Inclusão do DDM AUDITORIA na seção de modelo de dados (seção 2.3)
-8. Regras de cálculo do 13o benefício - abono natalino (seção 3.3.1)
-
-> **Previsão de atualização:** 1o trimestre de 2009 (sujeito a disponibilidade da equipe).
-
-<!-- Esta atualização nunca foi realizada. -->
+<!-- NOTE: Transactions SF10 and SF11 were mentioned at a meeting
+ September/2008, but it was not possible to confirm with the technical team.
+ Pending verification. -->
 
 ---
 
-**Documento interno a organização - Classificação: RESTRITO - Reprodução proibida**
+## Annex B - Pending Issues of this Document
 
-**a organização - a federal data processing organization**
-**Superintendência de Desenvolvimento - SUPDE**
-**Divisão de Desenvolvimento de Sistemas Fiscais - DESIF**
+The following sections and information remain pending documentation:
+
+1. Details of CADBENEF validation rules (section 3.2.1)
+2. Complete validation module documentation (section 3.4)
+3. BATCHREL Report List (Section 3.5.2)
+4. BATCHCON reconciliation rules (section 3.5.3)
+5. Complete rollback procedure (section 5.4)
+6. Complete transaction map (Annex A)
+7. Inclusion of DDM AUDITORIA in the data model section (section 2.3)
+8. Rules for calculating the 13th benefit - Christmas bonus (section 3.3.1)
+
+> **Expected update:** 1st quarter of 2009 (subject to team availability).
+
+<!-- This update was never performed. -->
 
 ---
 
-[Voltar ao cenário legado](../README.md)
+**Document internal to the organization - Classification: RESTRICTED - Reproduction prohibited**
+
+**the organization - the federal data processing organization**
+**Development Superintendence - SUPDE**
+**Tax Systems Development Division - DESIF**
+
+---
+
+[Back to legacy scenario](../README.md)

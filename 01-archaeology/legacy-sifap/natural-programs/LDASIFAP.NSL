@@ -77,11 +77,11 @@ DEFINE DATA LOCAL
 *
 * --- DATE AND PERIOD WORK FIELDS ---
 *
-1 #L-DT-HOJE         (N8)             /* AAAAMMDD
+1 #L-DT-HOJE         (N8)             /* YYYYMMDD
 1 #L-ANO             (N4)
 1 #L-MES             (N2)
 1 #L-DIA             (N2)
-1 #L-COMPETENCIA     (N6)             /* AAAAMM
+1 #L-COMPETENCIA     (N6)             /* YYYYMM
 1 #L-COMP-ANO        (N4)
 1 #L-COMP-MES        (N2)
 *

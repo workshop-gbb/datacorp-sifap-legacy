@@ -1,5 +1,3 @@
-<!-- markdownlint-disable MD013 MD033 MD041 -->
-
 # How to Read a Natural Program Without Knowing Natural
 
 > **Path:** [Team Kit](../../README.md) › [Stage 1](../README.md) › [SIFAP Legacy](README.md) › **How to read Natural**
@@ -174,7 +172,7 @@ Everything after `/*` on the same line is also a comment—the second way to wri
 > [!IMPORTANT]
 > Numeric literals (`500.00`, `0.30`, `0.075`) almost always represent rules: ranges, rates, or percentages. Record every one you find.
 
-### 3.4. Calling another module—`CALLNAT '<subprogram>'`
+### 3.4. Calling another module—`CALLNAT '<subprograma>'`
 
 `CALLNAT` invokes a subprogram, equivalent to a function call. Parameters follow the order defined by the PDA and may span several lines.
 
@@ -184,16 +182,16 @@ CALLNAT 'SUBVALCP' #PV-TIPO-DOC #PV-CPF #PV-NIS
                    #PV-IND-ESPECIAL
 ```
 
-Tradução: "este módulo delega a validação de CPF ao subprograma `SUBVALCP.NSN` e recebe o resultado de volta em `#PV-COD-RETORNO` e `#PV-MSG`."
+Meaning: "This module delegates CPF validation to the `SUBVALCP.NSN` subprogram and receives the result in `#PV-COD-RETORNO` and `#PV-MSG`."
 
-Registre cada `CALLNAT`, `INCLUDE` e `USING` no [`dependency-map.md`](../dependency-map.md).
+Record every `CALLNAT`, `INCLUDE`, and `USING` in [`dependency-map.md`](../dependency-map.md).
 
-### 3.5. Acesso a dados — `FIND` … `END-FIND`
+### 3.5. Data access—`FIND` … `END-FIND`
 
 ```natural
 FIND BENEFICIARIO-V WITH NUM-CPF = #CPF-STR
   IF NO RECORDS FOUND
-    MOVE 'BENEFICIARIO NAO ENCONTRADO' TO #MSG
+    MOVE 'BENEFICIARY NOT FOUND' TO #MSG
     MOVE 2001 TO #COD-RETORNO
   END-NOREC
   MOVE BENEFICIARIO-V.SIT-BENEFICIARIO   TO #SIT
@@ -201,254 +199,254 @@ FIND BENEFICIARIO-V WITH NUM-CPF = #CPF-STR
 END-FIND
 ```
 
-Leitura em voz alta: "procure o beneficiário com este CPF; se não encontrar, registre o erro; se encontrar, copie situação e renda para variáveis de trabalho."
+Read aloud: "Find the beneficiary with this CPF; if none is found, record the error; if found, copy status and income to working variables."
 
-Três coisas para levar:
+Three key points:
 
-- **`IF NO RECORDS FOUND` … `END-NOREC` é a forma idiomática de tratar "não achei".** O bloco executa uma única vez, quando a busca não retorna nenhum registro.
-- **Os campos da view (`BENEFICIARIO-V.xxx`) só valem dentro do bloco `FIND`.** Por isso o padrão é copiá-los para `#variáveis` antes do `END-FIND`.
-- Em módulos mais antigos aparecem variações com a mesma intenção: `IF *NUMBER(BENEFICIARIO-V) = 0`, ou uma flag lógica (`1 #FOUND-B (L)`) marcada dentro do `FIND` e testada depois. A diferença de estilo costuma indicar épocas diferentes de manutenção — anote a data do cabeçalho.
+- **`IF NO RECORDS FOUND` … `END-NOREC` is the idiomatic way to handle "not found."** The block runs once when the search returns no records.
+- **View fields (`BENEFICIARIO-V.xxx`) are valid only within the `FIND` block.** This is why the usual pattern copies them to `#variables` before `END-FIND`.
+- Older modules use variations with the same intent: `IF *NUMBER(BENEFICIARIO-V) = 0`, or a logical flag (`1 #FOUND-B (L)`) set inside the `FIND` and tested afterward. Style differences often indicate different maintenance periods—note the header date.
 
 ---
 
-## 4. O que ignorar sem culpa
+## 4. What you can safely ignore
 
-| Construção | O que é | Por que pular |
+| Construct | What it is | Why to skip it |
 |---|---|---|
-| `READ … BY …` / `END-READ` | Loop sobre registros Adabas | A regra está no `IF` dentro do loop |
-| `WRITE` / `DISPLAY` / `PRINT` | Saída em tela ou relatório | Apresentação, não decisão |
-| `FORMAT`, `WRITE TITLE`, `AT TOP OF PAGE`, `DEFINE PRINTER` | Formatação de relatório | Cosmética |
-| `INPUT` | Leitura de terminal 3270 | Vai virar formulário web |
-| `RESET INITIAL` | Inicializa variável | Detalhe técnico |
-| `STORE` / `UPDATE` / `DELETE` | Persistência no Adabas | A regra é o `IF` antes; o `STORE` é só "salvar" |
-| `END TRANSACTION` / `BACKOUT TRANSACTION` | Controle de commit | Infraestrutura de banco |
-| `ON ERROR` / `END-ERROR` | Tratamento de erro técnico | Não é regra de negócio |
-| `END-WORK` / `AT END OF DATA` | Fim de processamento | Estrutura, não regra |
+| `READ … BY …` / `END-READ` | Loop over Adabas records | The rule is in the `IF` inside the loop |
+| `WRITE` / `DISPLAY` / `PRINT` | Screen or report output | Presentation, not a decision |
+| `FORMAT`, `WRITE TITLE`, `AT TOP OF PAGE`, `DEFINE PRINTER` | Report formatting | Cosmetic |
+| `INPUT` | Reads from a 3270 terminal | It will become a web form |
+| `RESET INITIAL` | Initializes a variable | Technical detail |
+| `STORE` / `UPDATE` / `DELETE` | Adabas persistence | The rule is the preceding `IF`; `STORE` only means "save" |
+| `END TRANSACTION` / `BACKOUT TRANSACTION` | Commit control | Database infrastructure |
+| `ON ERROR` / `END-ERROR` | Technical error handling | Not a business rule |
+| `END-WORK` / `AT END OF DATA` | End of processing | Structure, not a rule |
 
 > [!WARNING]
-> `CALLNAT`, `INCLUDE` e `USING` **não** entram nesta lista. Eles são dependências e vão para o mapa.
+> `CALLNAT`, `INCLUDE`, and `USING` are **not** on this list. They are dependencies and belong in the map.
 
 ---
 
-## 5. Extraindo uma regra em 5 passos
+## 5. Extracting a rule in five steps
 
-Use `CALCDSCT.NSP` como exemplo.
+Use `CALCDSCT.NSP` as the example.
 
-### Passo 1 — Ler o cabeçalho (1 min)
+### Step 1—Read the header (1 min)
 
 ```natural
-* PROGRAMA: CALCDSCT
-* OBJETIVO: CALCULO DESCONTOS E DEDUCOES DO BENEFICIO
-* ALTERADO: 12/04/2007 - MARCIA HELENA - INC DESC JUDICIAL
+* PROGRAM: CALCDSCT
+* PURPOSE: CALCULATE BENEFIT DEDUCTIONS
+* CHANGED: 12/04/2007 - MARCIA HELENA - ADD JUDICIAL DEDUCTION
 ```
 
-Anote no `business-rules-catalog.md`: "CALCDSCT calcula descontos. Alterado em 2007 para incluir desconto judicial — possível regra especial."
+Record in `business-rules-catalog.md`: "CALCDSCT calculates deductions. Changed in 2007 to add judicial deductions—possible special rule."
 
-### Passo 2 — Passar pelo `DEFINE DATA` (30 s)
+### Step 2—Scan `DEFINE DATA` (30 sec)
 
-Anote duas coisas: as linhas `USING` e `VIEW OF` (de onde vêm os dados) e os nomes de variáveis que sugerem valor (`VLR-BRUTO`, `TIPO-DSCT`).
+Note two things: the `USING` and `VIEW OF` lines (where the data comes from), and variable names that suggest values (`VLR-BRUTO`, `TIPO-DSCT`).
 
-### Passo 3 — Procurar os `IF` (3–5 min)
+### Step 3—Find the `IF` statements (3–5 min)
 
-Use Ctrl+F no VS Code e digite `IF`. Cada `IF` é uma regra candidata.
+Use Ctrl+F in VS Code and enter `IF`. Each `IF` is a candidate rule.
 
-| Linha | Condição | Possível regra |
+| Line | Condition | Possible rule |
 |---|---|---|
-| L142 | `IF #TIPO-DSCT NE 'J'` | Tratamento especial para descontos judiciais |
-| L143 | `IF #VLR-TOTAL-DSCT > (#VLR-BRUTO * 0.30)` | Teto de 30% no desconto |
+| L142 | `IF #TIPO-DSCT NE 'J'` | Special handling for judicial deductions |
+| L143 | `IF #VLR-TOTAL-DSCT > (#VLR-BRUTO * 0.30)` | 30% deduction cap |
 
-### Passo 4 — Procurar constantes numéricas (2 min)
+### Step 4—Find numeric constants (2 min)
 
-Use Ctrl+F com `0.` para localizar `0.30`, `0.075` etc. Cada constante sem explicação é provavelmente uma alíquota ou percentual de regra. Busque também por `INIT <`: as tabelas paramétricas carregam faixas e fatores inteiros de uma vez.
+Use Ctrl+F with `0.` to locate `0.30`, `0.075`, and similar values. Each unexplained constant is probably a rule rate or percentage. Also search for `INIT <`: parameter tables load entire ranges and factors at once.
 
-### Passo 5 — Confirmar com Copilot Chat (2 min)
+### Step 5—Confirm with Copilot Chat (2 min)
 
-Selecione um bloco de código no VS Code, abra Copilot Chat (modo Ask) e envie:
+Select a code block in VS Code, open Copilot Chat (Ask mode), and send:
 
-> "Explique este trecho Natural em português. Foque na regra de negócio. Ignore entrada e saída."
+> "Explain this Natural code in English. Focus on the business rule. Ignore input and output."
 
-Compare a explicação do Copilot com a sua interpretação. Se bater, registre no catálogo.
+Compare Copilot's explanation with your interpretation. If they match, record it in the catalog.
 
-### Do `.NSN` à linha do catálogo
+### From `.NSN` to a catalog entry
 
-Para cada condicional, descreva apenas o comportamento que a equipe confirmou. Registre a evidência sem completar intenções que não estejam explícitas no código:
+For each conditional, describe only the behavior confirmed by the team. Record the evidence without inventing intent that is not explicit in the code:
 
-| ID | Regra | Programa Fonte | Risco |
+| ID | Rule | Source Program | Risk |
 |---|---|---|---|
-| BR-XXX | Comportamento confirmado | `arquivo.NSN#L<início>-L<fim>` | Avaliar |
+| BR-XXX | Confirmed behavior | `file.NSN#L<start>-L<end>` | Assess |
 
-Uma condição ambígua deve ser registrada como pergunta em aberto em [`mysteries-found.md`](../mysteries-found.md), não convertida em regra.
+An ambiguous condition should be recorded as an open question in [`mysteries-found.md`](../mysteries-found.md), not converted into a rule.
 
 ---
 
-## 6. Tipos e formatos de campo (DDM e variáveis)
+## 6. Field types and formats (DDMs and variables)
 
 > [!IMPORTANT]
-> **Na especificação de formato, o separador decimal é a VÍRGULA.** `(N9,2)` significa 9 dígitos, dos quais 2 são decimais. A forma `(N9.2)`, com ponto, **não existe em Natural** — não compila. Se você vir um ponto dentro de um parêntese de formato, é erro de transcrição, não um dialeto antigo.
+> **In a format specification, the decimal separator is a COMMA.** `(N9,2)` means nine digits, two of which are decimal places. The form `(N9.2)`, with a period, **does not exist in Natural**—it does not compile. If you see a period inside format parentheses, it is a transcription error, not an old dialect.
 >
-> A vírgula vale **só no formato**. Em valor literal dentro do código, o separador continua sendo o ponto: `MOVE 1.3500 TO #FATOR-REAJ` e `COMPUTE #VLR = #BRUTO * 0.30`.
+> The comma applies **only to the format**. In literal values within code, the separator remains a period: `MOVE 1.3500 TO #FATOR-REAJ` and `COMPUTE #VLR = #BRUTO * 0.30`.
 
-### 6.1. Formatos que você vai encontrar
+### 6.1. Formats you will encounter
 
-| Notação | Significado | Em PostgreSQL |
+| Notation | Meaning | In PostgreSQL |
 |---|---|---|
-| `(A60)` | Alfanumérico, 60 caracteres | `VARCHAR(60)` |
-| `(A11)` | Alfanumérico, 11 caracteres — é assim que CPF e NIS são guardados (preserva zeros à esquerda) | `CHAR(11)` |
-| `(N11)` | Numérico *unpacked*, 11 dígitos, sem decimais | `NUMERIC(11)` |
-| `(N8)` | Data no formato `AAAAMMDD` — Natural não tem tipo data aqui | `DATE` |
-| `(N6)` | Competência no formato `AAAAMM`, ou hora `HHMMSS` | `INTEGER` (converter) |
-| `(N9,2)` | Numérico *unpacked*, 9 dígitos, 2 decimais | `NUMERIC(9,2)` |
-| `(P9,2)` | *Packed decimal*, 9 dígitos, 2 decimais | `NUMERIC(9,2)` |
-| `(P13,2)` | *Packed decimal*, 13 dígitos, 2 decimais — acumulador de batch | `NUMERIC(13,2)` |
-| `(N3,4)` | 3 dígitos, 4 decimais — típico de fator ou índice | `NUMERIC(3,4)` |
-| `(L)` | Lógico (`TRUE` / `FALSE`) | `BOOLEAN` |
+| `(A60)` | Alphanumeric, 60 characters | `VARCHAR(60)` |
+| `(A11)` | Alphanumeric, 11 characters—how CPF and NIS are stored (preserves leading zeros) | `CHAR(11)` |
+| `(N11)` | *Unpacked* numeric, 11 digits, no decimal places | `NUMERIC(11)` |
+| `(N8)` | Date in `AAAAMMDD` format—Natural has no date type here | `DATE` |
+| `(N6)` | Reference period in `AAAAMM` format, or time in `HHMMSS` format | `INTEGER` (convert) |
+| `(N9,2)` | *Unpacked* numeric, 9 digits, 2 decimal places | `NUMERIC(9,2)` |
+| `(P9,2)` | *Packed decimal*, 9 digits, 2 decimal places | `NUMERIC(9,2)` |
+| `(P13,2)` | *Packed decimal*, 13 digits, 2 decimal places—batch accumulator | `NUMERIC(13,2)` |
+| `(N3,4)` | 3 digits, 4 decimal places—typical for a factor or index | `NUMERIC(3,4)` |
+| `(L)` | Logical (`TRUE` / `FALSE`) | `BOOLEAN` |
 
-### 6.2. `P` (packed) × `N` (unpacked) — dinheiro é sempre `P`
+### 6.2. `P` (packed) × `N` (unpacked)—money is always `P`
 
 | | `N` — *unpacked* | `P` — *packed decimal* |
 |---|---|---|
-| Armazenamento | 1 dígito por byte | 2 dígitos por byte; o último *nibble* guarda o sinal |
-| Custo | maior espaço | menor espaço, aritmética mais rápida |
-| Uso típico no SIFAP | contadores, códigos, datas `AAAAMMDD`, índices de laço | **valores monetários e fatores de cálculo** |
+| Storage | 1 digit per byte | 2 digits per byte; the last *nibble* stores the sign |
+| Cost | more space | less space, faster arithmetic |
+| Typical SIFAP use | counters, codes, `AAAAMMDD` dates, loop indexes | **monetary values and calculation factors** |
 
-Em mainframe, dinheiro é *packed*. É o que o DDM diz — `CH VLR-RENDA-FAMILIAR P 9,2` — e é o que os programas declaram. Quando encontrar `(P9,2)`, `(P7,2)` ou `(P13,2)`, você está olhando para um campo de valor.
+On the mainframe, money is *packed*. That is what the DDM says—`CH VLR-RENDA-FAMILIAR P 9,2`—and what the programs declare. When you find `(P9,2)`, `(P7,2)`, or `(P13,2)`, you are looking at a value field.
 
 > [!TIP]
-> Na modernização, `P` e `N` com decimais viram `BigDecimal` no Java e `NUMERIC(p,s)` no PostgreSQL. **Nunca** `double` ou `float`: o legado calcula em decimal exato, e a diferença aparece no centavo.
+> During modernization, decimal `P` and `N` values become `BigDecimal` in Java and `NUMERIC(p,s)` in PostgreSQL. **Never** use `double` or `float`: the legacy system calculates exact decimals, and differences appear at the cent level.
 
-### 6.3. Arrays — a faixa de índices é explícita
+### 6.3. Arrays—the index range is explicit
 
-| Notação | Significado |
+| Notation | Meaning |
 |---|---|
-| `(A60/1:10)` | 10 ocorrências de 60 caracteres |
-| `(N3,4/1:27)` | 27 ocorrências de 3 dígitos com 4 decimais |
-| `(P9,2/1:5)` | 5 ocorrências monetárias |
-| `(N3,6/1:10,1:12)` | array bidimensional, 10 × 12 |
+| `(A60/1:10)` | 10 occurrences of 60 characters |
+| `(N3,4/1:27)` | 27 occurrences of 3 digits with 4 decimal places |
+| `(P9,2/1:5)` | 5 monetary occurrences |
+| `(N3,6/1:10,1:12)` | two-dimensional array, 10 × 12 |
 
-Os limites fazem parte da notação: escreve-se `1:27`, não apenas `27`. Arrays costumam vir acompanhados de `INIT <...>` — **cada número dessa lista é candidato a regra**. Dimensões contam história: 27 posições normalmente indexam UF, 12 indexam meses.
+The bounds are part of the notation: write `1:27`, not just `27`. Arrays often appear with `INIT <...>`—**every number in that list is a candidate rule**. Dimensions tell a story: 27 positions usually index UF, while 12 index months.
 
-### 6.4. Estruturas Adabas que não cabem em uma coluna
+### 6.4. Adabas structures that do not fit in one column
 
-| No DDM | Significado | Consequência |
+| In the DDM | Meaning | Consequence |
 |---|---|---|
-| Coluna `T` = `M` (`MU`) | Campo multivalorado: vários valores no mesmo registro | **Vira tabela filha** |
-| Coluna `T` = `P` (`PE`) | Grupo periódico: sub-registros repetidos | **Vira tabela filha** |
+| Column `T` = `M` (`MU`) | Multiple-value field: several values in one record | **Becomes a child table** |
+| Column `T` = `P` (`PE`) | Periodic group: repeated subrecords | **Becomes a child table** |
 
 > [!WARNING]
-> `MU` (multiple value) e `PE` (periodic group) são as únicas construções do Adabas que não cabem diretamente em PostgreSQL. Sempre que encontrar, marque no mapa de dependências — elas viram tabelas separadas no Estágio 3.
+> `MU` (multiple value) and `PE` (periodic group) are the only Adabas constructs that do not map directly to PostgreSQL. Whenever you find one, mark it in the dependency map—they become separate tables in Stage 3.
 
 ---
 
-## 7. Lendo a listagem de um DDM
+## 7. Reading a DDM listing
 
-Os arquivos `.ddm` são listagens do utilitário `LISTDDM` — saída de máquina, não fonte editável. A tabela central tem sempre as mesmas colunas:
+The `.ddm` files are listings from the `LISTDDM` utility—machine output, not editable source. The main table always has the same columns:
 
 ```text
  T L DB Name                     F Leng  S D Remark
  - - -- ------------------------ - ----  - - ---------------------------
-   1 AB NUM-CPF                  A   11    U CPF SEM FORMATACAO
-   1 CH VLR-RENDA-FAMILIAR       P  9,2  N   RENDA DECLARADA
- P 1 DA GRP-DEPENDENTE                        (1:10) GRUPO PERIODICO
+   1 AB NUM-CPF                  A   11    U UNFORMATTED CPF
+   1 CH VLR-RENDA-FAMILIAR       P  9,2  N   DECLARED INCOME
+ P 1 DA GRP-DEPENDENTE                        (1:10) PERIODIC GROUP
    2 DC NOME-DEPENDENTE          A   60  N
  S   S2 SUPER-UF-SIT             A    3    S
         /* BG(1-2), CE(1-1)
 ```
 
-| Coluna | Lê-se |
+| Column | Read as |
 |---|---|
-| `T` | Tipo: *(branco)* elementar · `G` grupo · `M` multivalorado (`MU`) · `P` grupo periódico (`PE`) · `S` descritor derivado |
-| `L` | Nível: `1` campo raiz · `2` campo dentro de grupo ou PE |
-| `DB` | *Short name* de 2 bytes — o nome físico que o Adabas conhece |
-| `Name` | Nome longo — é este que aparece nas `VIEW OF` dos programas |
-| `F` | Formato: `A` alfanumérico · `N` numérico *unpacked* · `P` *packed decimal* |
-| `Leng` | Comprimento em bytes; com decimais vem `dígitos,decimais` (`9,2`) |
-| `S` | Armazenamento: `N` *null suppression* · `F` *fixed storage* |
-| `D` | Índice: `D` descritor · `U` único · `S` super · `H` hyper · `P` fonético · *(branco)* não indexado |
+| `T` | Type: *(blank)* elementary · `G` group · `M` multiple-value (`MU`) · `P` periodic group (`PE`) · `S` derived descriptor |
+| `L` | Level: `1` root field · `2` field within a group or PE |
+| `DB` | 2-byte *short name*—the physical name known by Adabas |
+| `Name` | Long name—the one that appears in program `VIEW OF` declarations |
+| `F` | Format: `A` alphanumeric · `N` *unpacked* numeric · `P` *packed decimal* |
+| `Leng` | Length in bytes; decimals use `digits,decimals` (`9,2`) |
+| `S` | Storage: `N` *null suppression* · `F` *fixed storage* |
+| `D` | Index: `D` descriptor · `U` unique · `S` super · `H` hyper · `P` phonetic · *(blank)* not indexed |
 
-A linha iniciada por `/*` logo abaixo de um descritor derivado lista **os campos que o compõem**. No exemplo, `SUPER-UF-SIT` é a concatenação dos 2 primeiros bytes de `BG` (UF) com o primeiro byte de `CE` (situação) — o equivalente a um índice composto.
+The line beginning with `/*` immediately below a derived descriptor lists **the fields that compose it**. In the example, `SUPER-UF-SIT` concatenates the first two bytes of `BG` (UF) with the first byte of `CE` (status)—equivalent to a composite index.
 
-### 7.1. `FIND ... WITH` só é legal em descritor
+### 7.1. `FIND ... WITH` is legal only on a descriptor
 
-`FIND` pesquisa pelo índice do Adabas. Portanto `FIND <view> WITH <campo>` **só funciona se o campo tiver algo na coluna `D`** (`D`, `U`, `S`, `H` ou `P`). Campo sem índice não é pesquisável.
+`FIND` searches through an Adabas index. Therefore, `FIND <view> WITH <field>` **works only if the field has a value in column `D`** (`D`, `U`, `S`, `H`, or `P`). A field without an index cannot be searched.
 
-| Campo em `BENEFICIARIO.ddm` | Coluna `D` | `FIND ... WITH` é legal? |
+| Field in `BENEFICIARIO.ddm` | Column `D` | Is `FIND ... WITH` legal? |
 |---|---|---|
-| `AB NUM-CPF` | `U` | sim |
-| `CE SIT-BENEFICIARIO` | `D` | sim |
-| `CH VLR-RENDA-FAMILIAR` | *(branco)* | **não** |
-| `AD NOME-MAE` | *(branco)* | **não** |
+| `AB NUM-CPF` | `U` | yes |
+| `CE SIT-BENEFICIARIO` | `D` | yes |
+| `CH VLR-RENDA-FAMILIAR` | *(blank)* | **no** |
+| `AD NOME-MAE` | *(blank)* | **no** |
 
-Sem descritor, o programa precisa de outro caminho — tipicamente `READ <view> BY <descritor>` com um `IF` filtrando dentro do loop.
+Without a descriptor, the program needs another path—typically `READ <view> BY <descriptor>` with an `IF` filtering inside the loop.
 
-**Como conferir em 15 segundos:** abra o `.ddm`, use Ctrl+F no nome do campo e olhe a coluna imediatamente antes do `Remark`.
+**How to check in 15 seconds:** open the `.ddm`, use Ctrl+F on the field name, and inspect the column immediately before `Remark`.
 
-A legenda completa das colunas está no rodapé de cada `.ddm` e no [README dos DDMs](adabas-ddms/README.md).
+The complete column legend is in the footer of each `.ddm` and in the [DDM README](adabas-ddms/README.md).
 
 ---
 
-## 8. Atalhos do VS Code que economizam tempo
+## 8. Time-saving VS Code shortcuts
 
 <details>
-<summary><strong>Tabela de atalhos e dicas de uso do Copilot Chat</strong></summary>
+<summary><strong>Shortcut table and Copilot Chat usage tips</strong></summary>
 
-| Atalho | O que faz |
+| Shortcut | What it does |
 |---|---|
-| Ctrl+F | Buscar dentro do arquivo |
-| Ctrl+Shift+F | Buscar em todos os arquivos |
-| Ctrl+G + número | Pular para a linha N |
-| Selecionar + Copilot Chat | Enviar trecho diretamente para análise |
+| Ctrl+F | Search within the file |
+| Ctrl+Shift+F | Search across all files |
+| Ctrl+G + number | Go to line N |
+| Select + Copilot Chat | Send a snippet directly for analysis |
 
 > [!TIP]
-> Selecione o programa Natural inteiro, abra Copilot Chat e envie: "Liste todas as regras de negócio neste programa Natural. Para cada uma, indique o intervalo de linhas, a condição em português e o nível de risco (CRITICO/ALTO/MEDIO/BAIXO)." Em 30 segundos você tem 80% do trabalho feito. Confirme sempre olhando o `IF` original.
+> Select the entire Natural program, open Copilot Chat, and send: "List all business rules in this Natural program. For each one, provide the line range, the condition in English, and the risk level (CRITICAL/HIGH/MEDIUM/LOW)." In 30 seconds, 80% of the work is done. Always confirm by inspecting the original `IF`.
 
 </details>
 
 ---
 
-## 9. Mapa dos 15 programas — guia de leitura
+## 9. Map of the 15 programs—reading guide
 
-| Categoria | Programas | O que esperar |
+| Category | Programs | What to expect |
 |---|---|---|
-| Cadastro | `CADBENEF`, `CADDEPEND`, `CADPROG` | Telas de entrada. Validações de CPF, nome, datas. |
-| Cálculo | `CALCBENF`, `CALCCORR`, `CALCDSCT` | Fórmulas e constantes. Onde mora a maioria das regras financeiras. |
-| Validação | `VALBENEF`, `VALDOCS`, `VALELEG` | Sequências de `IF`. Cada um vira um teste. |
-| Batch | `BATCHPGT`, `BATCHREL`, `BATCHCON` | Vários `CALLNAT`. Revela o fluxo de negócio. |
-| Consulta e relatório | `CONSBENF`, `RELPGT`, `RELAUDIT` | Muito `READ`/`WRITE`. Poucas regras — leitura rápida. |
+| Registration | `CADBENEF`, `CADDEPEND`, `CADPROG` | Input screens. CPF, name, and date validations. |
+| Calculation | `CALCBENF`, `CALCCORR`, `CALCDSCT` | Formulas and constants. Most financial rules live here. |
+| Validation | `VALBENEF`, `VALDOCS`, `VALELEG` | Sequences of `IF` statements. Each becomes a test. |
+| Batch | `BATCHPGT`, `BATCHREL`, `BATCHCON` | Many `CALLNAT` statements. Reveals the business flow. |
+| Query and reporting | `CONSBENF`, `RELPGT`, `RELAUDIT` | Many `READ`/`WRITE` statements. Few rules—quick reading. |
 
 > [!NOTE]
-> A pasta `natural-programs/` também contém **membros de apoio** (PDA, LDA, copycode, subprograma e JCL). Eles são infraestrutura compartilhada: você os consulta quando um dos seus 3 programas faz `USING`, `INCLUDE` ou `CALLNAT`, mas **não são leitura atribuída**. O inventário completo está no [README dos programas Natural](natural-programs/README.md).
+> The `natural-programs/` folder also contains **supporting members** (PDA, LDA, copycode, subprogram, and JCL). They are shared infrastructure: consult them when one of your three programs uses `USING`, `INCLUDE`, or `CALLNAT`, but they are **not assigned reading**. The complete inventory is in the [Natural programs README](natural-programs/README.md).
 
 ---
 
-## 10. Erros comuns de leitura
+## 10. Common reading mistakes
 
-| Erro | Correção |
+| Mistake | Correction |
 |---|---|
-| Tentar entender cada linha | Focar apenas em `IF`, `COMPUTE` com constantes e comentários. |
-| Ler na ordem do arquivo | Ir direto aos `IF` via Ctrl+F. |
-| Confundir variável (`#VLR`) com campo de DDM (`VLR-BRUTO`) | `#` no início = variável local. Sem `#` = campo do banco. |
-| Achar que todo `MOVE` é regra | `MOVE` é atribuição. A regra é o `IF` que decidiu o `MOVE`. |
-| Copiar o formato com ponto (`(N9.2)`) para a documentação | O separador decimal do formato é vírgula: `(N9,2)`, `(P13,2)`. |
-| Tratar `(P9,2)` como algo diferente de dinheiro | `P` é *packed decimal*: é o formato monetário do mainframe. |
-| Anotar campo de view lido fora do bloco `FIND` | Confira se o valor foi copiado para `#variável` antes do `END-FIND`. |
-| Anotar regra sem citar linha | Sempre registrar `arquivo.NSN#L<início>-L<fim>`. Sem isso o CI rejeita. |
+| Trying to understand every line | Focus only on `IF`, `COMPUTE` with constants, and comments. |
+| Reading in file order | Go directly to the `IF` statements using Ctrl+F. |
+| Confusing a variable (`#VLR`) with a DDM field (`VLR-BRUTO`) | Leading `#` = local variable. No `#` = database field. |
+| Assuming every `MOVE` is a rule | `MOVE` is assignment. The rule is the `IF` that selected the `MOVE`. |
+| Copying a period-based format (`(N9.2)`) into documentation | The format decimal separator is a comma: `(N9,2)`, `(P13,2)`. |
+| Treating `(P9,2)` as something other than money | `P` is *packed decimal*: the mainframe monetary format. |
+| Recording a view field read outside the `FIND` block | Check whether the value was copied to a `#variable` before `END-FIND`. |
+| Recording a rule without a line citation | Always record `file.NSN#L<start>-L<end>`. CI rejects entries without it. |
 
 ---
 
-## 11. Quando pedir ajuda
+## 11. When to ask for help
 
-Se em 45 minutos você não conseguiu extrair pelo menos uma regra de um programa:
+If you cannot extract at least one rule from a program within 45 minutes:
 
-1. Sinalize ao facilitador.
-2. Mostre o programa que está lendo.
-3. Pergunte: "Que `IF` aqui é regra de negócio e qual é só técnico?"
+1. Notify the facilitator.
+2. Show the program you are reading.
+3. Ask: "Which `IF` here is a business rule, and which is only technical?"
 
 ---
 
-### Continuar a leitura
+### Continue reading
 
-| Anterior | Próximo |
+| Previous | Next |
 |---|---|
-| [Legado SIFAP — visão geral](README.md)<br/><sub>Contexto do sistema e inventário completo.</sub> | [GUIDE do Estágio 1](../GUIDE.md)<br/><sub>Roteiro cronometrado de 90 min.</sub> |
+| [SIFAP Legacy—overview](README.md)<br/><sub>System context and complete inventory.</sub> | [Stage 1 GUIDE](../GUIDE.md)<br/><sub>Timed 90-minute walkthrough.</sub> |
 
-<sub>[Voltar ao índice do kit](../README.md)</sub>
+<sub>[Back to the kit index](../README.md)</sub>

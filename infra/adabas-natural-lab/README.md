@@ -1,5 +1,3 @@
-<!-- markdownlint-disable MD013 MD033 MD041 -->
-
 # Adabas + Natural Lab — optional legacy runtime
 
 > **Track:** [Team Kit](../../README.md) › [Stage 1 — Archaeology](../../01-arqueologia/README.md) › **Adabas + Natural Lab**
@@ -202,7 +200,7 @@ terraform output -raw adabas_admin_password_command
 The printed command has this form:
 
 ```bash
-az keyvault secret show --vault-name <NOME-DO-COFRE> --name adabas-admin-password --query value -o tsv
+az keyvault secret show --vault-name <KEY-VAULT-NAME> --name adabas-admin-password --query value -o tsv
 ```
 
 > [!WARNING]
@@ -393,7 +391,7 @@ terraform destroy
 - [ ] **Step 3 — Confirm that nothing remains.** The command should fail and report that the group does not exist.
 
 ```bash
-az group show --name "<NOME-DO-GRUPO-DE-RECURSOS>"
+az group show --name "<RESOURCE-GROUP-NAME>"
 ```
 
 > [!CAUTION]
@@ -410,7 +408,7 @@ The problem occurs when `destroy` is interrupted or the account lacks purge perm
 az keyvault list-deleted --output table
 
 # Permanently remove the lab vault
-az keyvault purge --name "<NOME-DO-COFRE>" --location brazilsouth
+az keyvault purge --name "<KEY-VAULT-NAME>" --location brazilsouth
 ```
 
 ---
