@@ -5,11 +5,11 @@ applyTo: "infra/**,**/*.tf,**/*.bicep,compose*.yml,compose*.yaml,docker-compose*
 
 <!-- markdownlint-disable MD013 MD025 MD026 MD028 MD029 MD034 MD040 MD051 MD060 -->
 
-# Convenções de Infraestrutura
+# Infrastructure Conventions
 
-## IaC: Bicep/Terraform, sem mudanças manuais
+## IaC: Bicep/Terraform, no manual changes
 
-## Secrets: somente Azure Key Vault
+## Secrets: Azure Key Vault only
 
 ## Naming: {project}-{env}-{resource}-{region}
 

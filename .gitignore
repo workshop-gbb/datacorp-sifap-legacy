@@ -22,8 +22,8 @@
 # Logs
 *.log
 
-# Material de facilitador — gabaritos e respostas NUNCA entram neste repo (é público).
-# Mantenha sua cópia local; distribua aos facilitadores por canal privado.
+# Facilitator materials — answer keys and solutions must NEVER enter this repository (it is public).
+# Keep your local copy; distribute it to facilitators through a private channel.
 docs/FACILITADOR-GABARITO-MISTERIOS.md
 **/*GABARITO*.md
 **/*-RESPOSTAS.md

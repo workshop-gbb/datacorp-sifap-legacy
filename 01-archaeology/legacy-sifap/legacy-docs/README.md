@@ -2,8 +2,8 @@
 
 ---
 
-title: "Documentação Legada - SIFAP"
-description: "Documentos técnicos históricos do sistema SIFAP original (1997–2012)"
+title: "Legacy Documentation - SIFAP"
+description: "Historical technical documents for the original SIFAP system (1997–2012)"
 author: "Paula Silva, Americas Software GBB, Microsoft"
 date: "2026-04-23"
 version: "1.0.0"
@@ -11,56 +11,56 @@ status: "approved"
 tags: ["legacy", "documentation", "sifap", "architecture", "history"]
 ---
 
-# Documentação Legada — SIFAP
+# Legacy Documentation — SIFAP
 
-> **Trilha:** [Kit do Time](../../../README.md) › [Estágio 1](../../README.md) › [Legado SIFAP](../README.md) › **Documentação Legada**
+> **Path:** [Team Kit](../../../README.md) › [Stage 1](../../README.md) › [SIFAP Legacy](../README.md) › **Legacy Documentation**
 
-**Documentos técnicos históricos do sistema SIFAP original, cobrindo o período de 1997 a 2012.** Material de referência somente leitura para o exercício de arqueologia de software.
+**Historical technical documents for the original SIFAP system, covering the period from 1997 to 2012.** Read-only reference material for the software archaeology exercise.
 
-| Campo | Valor |
+| Field | Value |
 |---|---|
-| **Público-alvo** | Todos os pares durante o Estágio 1 |
-| **Pré-requisitos** | Nenhum |
-| **Estágio** | Estágio 1 — Arqueologia |
-| **Resultado esperado** | Compreensão do contexto histórico para cruzamento com o código-fonte |
+| **Target audience** | All pairs during Stage 1 |
+| **Prerequisites** | None |
+| **Stage** | Stage 1 — Archaeology |
+| **Expected outcome** | Understanding of the historical context for cross-checking against the source code |
 
 > [!IMPORTANT]
-> Os documentos desta pasta são **material de referência somente leitura**. As regras de negócio documentadas aqui devem ser cruzadas com os programas Natural para verificação de validade atual — a documentação pode estar desatualizada em relação ao código em produção.
+> The documents in this folder are **read-only reference material**. The business rules documented here must be cross-checked against the Natural programs to verify their current validity—the documentation may be outdated relative to the production code.
 
 ---
 
-## Conteúdo
+## Contents
 
-| Arquivo | Ano | Descrição |
+| File | Year | Description |
 |---|---|---|
-| `ARQUITETURA-ORIGINAL-1997.md` | 1997 | Documento de arquitetura técnica do projeto original — visão planejada antes da codificação |
-| `ARQUITETURA-ORIGINAL-1997.docx` | 1997 | Formato original (Word) |
-| `MANUAL-TECNICO-SIFAP-2008.md` | 2008 | Manual técnico de operações — cobre módulos de cadastro e parte dos módulos de cálculo e batch |
-| `MANUAL-TECNICO-SIFAP-2008.docx` | 2008 | Formato original (Word) |
-| `REGRAS-NEGOCIO-2012.md` | 2012 | Levantamento parcial de regras de negócio — interrompido; 47 páginas de um total estimado de 200+ |
-| `REGRAS-NEGOCIO-2012.docx` | 2012 | Formato original (Word) |
+| `ARQUITETURA-ORIGINAL-1997.md` | 1997 | Technical architecture document for the original project—the planned vision before coding began |
+| `ARQUITETURA-ORIGINAL-1997.docx` | 1997 | Original format (Word) |
+| `MANUAL-TECNICO-SIFAP-2008.md` | 2008 | Technical operations manual—covers registration modules and part of the calculation and batch modules |
+| `MANUAL-TECNICO-SIFAP-2008.docx` | 2008 | Original format (Word) |
+| `REGRAS-NEGOCIO-2012.md` | 2012 | Partial business-rule survey—discontinued; 47 pages out of an estimated total of 200+ |
+| `REGRAS-NEGOCIO-2012.docx` | 2012 | Original format (Word) |
 
 ---
 
-## Como usar estes documentos
+## How to Use These Documents
 
-Os arquivos `.md` são versões convertidas para facilitar a leitura no VS Code e no GitHub. Os arquivos `.docx` são o formato original.
+The `.md` files are converted versions that make the documents easier to read in VS Code and on GitHub. The `.docx` files are the original format.
 
-Durante a leitura dos programas Natural, use estes documentos para:
+When reading the Natural programs, use these documents to:
 
-1. **Confirmar** uma regra inferida do código — se o comportamento coincide com o descrito na documentação, classifique como `Confirmada` no catálogo.
-2. **Contextualizar** decisões arquiteturais que parecem arbitrárias no código — frequentemente há justificativa técnica ou normativa registrada aqui.
-3. **Identificar gaps** — o que a documentação descreve mas o código não implementa, e vice-versa.
+1. **Confirm** a rule inferred from the code—if the behavior matches the documentation, classify it as `Confirmed` in the catalog.
+2. **Contextualize** architectural decisions that appear arbitrary in the code—technical or regulatory justification is often recorded here.
+3. **Identify gaps**—what the documentation describes but the code does not implement, and vice versa.
 
 > [!WARNING]
-> Os módulos de cálculo (`CALCBENF`, `CALCCORR`, `CALCDSCT`) **não têm documentação formal nesta pasta**. As regras desses programas estão exclusivamente no código-fonte. Não assuma que o comportamento atual corresponde ao que a documentação de 2008 descreve.
+> The calculation modules (`CALCBENF`, `CALCCORR`, `CALCDSCT`) **have no formal documentation in this folder**. The rules for these programs exist exclusively in the source code. Do not assume that current behavior matches the 2008 documentation.
 
 ---
 
-### Continuar a leitura
+### Continue Reading
 
-| Anterior | Próximo |
+| Previous | Next |
 |---|---|
-| [Legado SIFAP — visão geral](../README.md)<br/><sub>Contexto do sistema e inventário completo.</sub> | [Estágio 1 — GUIDE](../../GUIDE.md)<br/><sub>Roteiro cronometrado de 90 min.</sub> |
+| [SIFAP Legacy — overview](../README.md)<br/><sub>System context and complete inventory.</sub> | [Stage 1 — GUIDE](../../GUIDE.md)<br/><sub>Timed 90-minute agenda.</sub> |
 
-<sub>[Voltar ao índice do kit](../../../README.md)</sub>
+<sub>[Back to the kit index](../../../README.md)</sub>

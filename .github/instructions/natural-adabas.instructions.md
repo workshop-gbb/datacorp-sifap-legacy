@@ -1,23 +1,23 @@
 ---
-description: "Guia de leitura para código legado Natural/Adabas — padrões da linguagem, estrutura FDT, convenções de nomes, fluxos batch"
+description: "Reading guide for Natural/Adabas legacy code — language patterns, FDT structure, naming conventions, batch flows"
 applyTo: "01-arqueologia/legado-sifap/**,**/*.NSP,**/*.nsp,**/*.NSN,**/*.nsn,**/*.NSS,**/*.nss,**/*.NSA,**/*.nsa,**/*.NSL,**/*.nsl,**/*.NSC,**/*.nsc,**/*.NSM,**/*.nsm,**/*.NSD,**/*.nsd,**/*.NAT,**/*.nat,**/*.CPY,**/*.cpy,**/*.DDM,**/*.ddm,**/*.jcl,**/*.JCL"
 ---
 
-# Código Legado Natural/Adabas — Guia de Leitura
+# Natural/Adabas Legacy Code — Reading Guide
 
-Este arquivo é ativado quando você abre programas Natural, DDMs Adabas ou qualquer arquivo dentro do diretório `01-arqueologia/legado-sifap/`. Ele ensina como ler código legado — não interpreta nenhum sistema específico por você.
+This file is activated when you open Natural programs, Adabas DDMs, or any file within the `01-arqueologia/legado-sifap/` directory. It teaches you how to read legacy code — it does not interpret any specific system for you.
 
-## Estrutura de Programa Natural
+## Natural Program Structure
 
-Um programa Natural segue este esqueleto:
+A Natural program follows this skeleton:
 
 ```
 DEFINE DATA
   LOCAL
     01 #MY-VARIABLE  (A20)    /* A = alphanumeric, 20 chars */
     01 #COUNTER      (N5)     /* N = numeric, 5 digits */
-    01 #AMOUNT       (P9,2)   /* P = packed decimal, 9 inteiros + 2 decimais */
-    01 #RATES        (N3,4/1:27)  /* array: 27 ocorrencias de N3,4 */
+    01 #AMOUNT       (P9,2)   /* P = packed decimal, 9 integer + 2 decimal digits */
+    01 #RATES        (N3,4/1:27)  /* array: 27 occurrences of N3,4 */
   END-DEFINE
 
   /* Main logic here */
@@ -25,102 +25,102 @@ DEFINE DATA
 END
 ```
 
-> **Separador decimal na especificação de formato é VÍRGULA, nunca ponto.**
-> `(P9,2)` e `(N3,4)` são válidos; `(P9.2)` e `(N3.4)` **não compilam**.
-> A regra vale só para a *declaração* — **literais continuam com ponto**: `MOVE 1.3500 TO #FATOR`.
-> Em arrays, a faixa faz parte da notação: `(A60/1:10)`, `(N3,4/1:27)`, `(N3,6/1:10,1:12)`.
+> **The decimal separator in a format specification is a COMMA, never a period.**
+> `(P9,2)` and `(N3,4)` are valid; `(P9.2)` and `(N3.4)` **do not compile**.
+> This rule applies only to the *declaration* — **literals still use a period**: `MOVE 1.3500 TO #FATOR`.
+> In arrays, the range is part of the notation: `(A60/1:10)`, `(N3,4/1:27)`, `(N3,6/1:10,1:12)`.
 
-Blocos-chave a reconhecer:
+Key blocks to recognize:
 
-| Bloco | Propósito |
+| Block | Purpose |
 |-------|---------|
-| `DEFINE DATA LOCAL` | Declarações de variáveis com escopo neste programa |
-| `DEFINE DATA PARAMETER` | Variáveis de entrada/saída recebidas de um chamador |
-| `DEFINE DATA GLOBAL` | Compartilhado entre programas em uma sessão (raro, frágil) |
-| `INPUT` | Leitura do terminal (online) ou arquivo sequencial (batch) |
-| `DISPLAY` / `WRITE` | Saída para tela ou relatório |
-| `MAP` | Definição de layout de tela (terminal UI) |
+| `DEFINE DATA LOCAL` | Variable declarations scoped to this program |
+| `DEFINE DATA PARAMETER` | Input/output variables received from a caller |
+| `DEFINE DATA GLOBAL` | Shared among programs in a session (rare, fragile) |
+| `INPUT` | Reads from the terminal (online) or sequential file (batch) |
+| `DISPLAY` / `WRITE` | Output to a screen or report |
+| `MAP` | Screen layout definition (terminal UI) |
 
 ## CALLNAT vs PERFORM
 
-- **`CALLNAT 'SUBPROG' parm1 parm2`** — chama um subprograma externo (arquivo-fonte separado). Parâmetros são passados por referência, salvo marcação `(AD=O)` para output-only.
-- **`PERFORM subroutine-name`** — chama uma sub-rotina interna definida com `DEFINE SUBROUTINE ... END-SUBROUTINE` dentro do mesmo programa.
+- **`CALLNAT 'SUBPROG' parm1 parm2`** — calls an external subprogram (a separate source file). Parameters are passed by reference unless marked `(AD=O)` for output-only.
+- **`PERFORM subroutine-name`** — calls an internal subroutine defined with `DEFINE SUBROUTINE ... END-SUBROUTINE` within the same program.
 
-Ao mapear cadeias de chamada, `CALLNAT` é o importante — ele cruza fronteiras de arquivo.
+When mapping call chains, `CALLNAT` is the important one — it crosses file boundaries.
 
 ## INCLUDE Copycodes
 
-`INCLUDE copycode-name` insere um fragmento de código compartilhado em tempo de compilação, como um `#include` em C. Copycodes normalmente contêm:
+`INCLUDE copycode-name` inserts a shared code fragment at compile time, like a C `#include`. Copycodes typically contain:
 
-- Definições de shared data area (a "struct" do Natural)
-- Rotinas comuns de validação
-- Blocos padrão de tratamento de erros
+- Shared data area definitions (Natural's "struct")
+- Common validation routines
+- Standard error-handling blocks
 
-Quando vir `INCLUDE`, encontre o copycode correspondente para entender o layout completo de dados.
+When you see `INCLUDE`, find the corresponding copycode to understand the complete data layout.
 
-### Extensões de membro
+### Member Extensions
 
-Uma biblioteca Natural é **plana**: não há subdiretórios, e cada membro é resolvido pelo nome, não pelo caminho. A extensão indica o tipo:
+A Natural library is **flat**: there are no subdirectories, and each member is resolved by name, not by path. The extension indicates the type:
 
-| Extensão | Tipo | Chamado por |
+| Extension | Type | Called by |
 |----------|------|-------------|
-| `.NSN` | Programa ou subprograma | executado por JCL, ou `CALLNAT` |
+| `.NSN` | Program or subprogram | executed by JCL or `CALLNAT` |
 | `.NSA` | Parameter Data Area (PDA) | `PARAMETER USING` |
 | `.NSL` | Local Data Area (LDA) | `LOCAL USING` |
 | `.NSC` | Copycode | `INCLUDE` |
-| `.NSM` | Map (layout de tela 3270) | `INPUT USING MAP` |
-| `.jcl` | Job Control Language | agendador batch |
+| `.NSM` | Map (3270 screen layout) | `INPUT USING MAP` |
+| `.jcl` | Job Control Language | batch scheduler |
 
-`CALLNAT`, `INCLUDE`, `PARAMETER USING` e `LOCAL USING` **não são ignoráveis**: cada um puxa código ou declarações de outro arquivo. Um programa lido isoladamente está incompleto.
+`CALLNAT`, `INCLUDE`, `PARAMETER USING`, and `LOCAL USING` **MUST NOT be ignored**: each pulls code or declarations from another file. A program read in isolation is incomplete.
 
 ## Adabas FDT (Field Definition Table)
 
-Todo arquivo Adabas tem um FDT que define seus campos. Pense nele como o schema:
+Every Adabas file has an FDT that defines its fields. Think of it as the schema:
 
-| Coluna | Significado |
+| Column | Meaning |
 |--------|---------|
-| Level | Profundidade hierárquica (01 = topo, 02+ = filhos) |
-| Name | Nome curto de 2 caracteres (AA, AB, AC...) |
+| Level | Hierarchical depth (01 = top level, 02+ = children) |
+| Name | Two-character short name (AA, AB, AC...) |
 | Format | `A` = alpha, `N` = numeric, `P` = packed, `B` = binary, `D` = date, `T` = time |
-| Length | Tamanho do campo em bytes |
-| Descriptor | `DE` = índice pesquisável, `MU` = multi-value (array), `PE` = periodic group (grupo repetitivo) |
+| Length | Field size in bytes |
+| Descriptor | `DE` = searchable index, `MU` = multi-value (array), `PE` = periodic group (repeating group) |
 
-### Campos MU (Multiple-Value)
+### MU (Multiple-Value) Fields
 
-Um campo marcado `MU` pode conter múltiplos valores (como um array). Em Natural, é acessado com índice: `FIELD(1)`, `FIELD(2)` etc. O máximo de ocorrências é definido no FDT.
+A field marked `MU` can contain multiple values (like an array). In Natural, it is accessed by index: `FIELD(1)`, `FIELD(2)`, etc. The maximum number of occurrences is defined in the FDT.
 
-**Mapeamento moderno**: `@ElementCollection` em JPA, ou uma coluna JSONB em PostgreSQL.
+**Modern mapping**: `@ElementCollection` in JPA or a JSONB column in PostgreSQL.
 
-### Grupos PE (Periodic Groups)
+### PE (Periodic Groups)
 
-Um grupo `PE` é um grupo repetitivo de campos relacionados — como uma linha em uma tabela embedded. Por exemplo, um histórico de endereços no qual cada ocorrência tem rua, cidade, data.
+A `PE` group is a repeating group of related fields — like a row in an embedded table. For example, an address history in which each occurrence has a street, city, and date.
 
-**Mapeamento moderno**: relacionamento `@OneToMany` com uma entidade embedded, ou um array JSONB.
+**Modern mapping**: an `@OneToMany` relationship with an embedded entity, or a JSONB array.
 
 ### Super-Descriptors
 
-Um super-descriptor combina múltiplos campos em uma única chave pesquisável (índice composto). Notação como `SU = AA + AB(1-4)` significa "concatenar o campo AA com os primeiros 4 bytes de AB".
+A super-descriptor combines multiple fields into a single searchable key (composite index). Notation such as `SU = AA + AB(1-4)` means "concatenate field AA with the first 4 bytes of AB."
 
-**Mapeamento moderno**: `@Index(columnList = "col_a, col_b")` em JPA.
+**Modern mapping**: `@Index(columnList = "col_a, col_b")` in JPA.
 
-## Convenções de Nomes dos Anos 1990
+## 1990s Naming Conventions
 
-Codebases legadas Natural usam nomes baseados em prefixos. Padrões comuns incluem:
+Legacy Natural codebases use prefix-based names. Common patterns include:
 
-| Padrão de Prefixo | Significado Típico |
+| Prefix Pattern | Typical Meaning |
 |---|---|
-| `BN-` ou `BATCH-` | Programa batch ou variável relacionada a batch |
-| `PG-` ou `PROG-` | Programa principal |
-| `PS-` ou `SUB-` | Subprograma (chamado via CALLNAT) |
-| `AU-` ou `AUT-` | Relacionado a authorization ou audit |
-| prefixo `#` em variáveis | Variável local de trabalho (convenção Natural) |
-| prefixo `+` em variáveis | Variável de parâmetro passada pelo chamador |
+| `BN-` or `BATCH-` | Batch program or batch-related variable |
+| `PG-` or `PROG-` | Main program |
+| `PS-` or `SUB-` | Subprogram (called via CALLNAT) |
+| `AU-` or `AUT-` | Related to authorization or audit |
+| `#` prefix on variables | Local working variable (Natural convention) |
+| `+` prefix on variables | Parameter variable passed by the caller |
 
-São convenções, não regras — verifique lendo o código, não assumindo.
+These are conventions, not rules — verify by reading the code rather than assuming.
 
-## Padrões de Batch Job
+## Batch Job Patterns
 
-Programas Natural batch normalmente seguem esta estrutura:
+Batch Natural programs typically follow this structure:
 
 ```
 READ WORK FILE 1 record
@@ -131,7 +131,7 @@ READ WORK FILE 1 record
 END-WORK
 ```
 
-Relatórios de control-break usam:
+Control-break reports use:
 
 ```
 READ logical-file BY descriptor
@@ -143,23 +143,23 @@ READ logical-file BY descriptor
 END-READ
 ```
 
-## Tratamento de Packed Decimal
+## Packed Decimal Handling
 
-Packed decimal (formato `P`) armazena dígitos de forma eficiente: cada byte mantém dois dígitos, o último nibble é o sinal (C=positivo, D=negativo). Comum em cálculos financeiros.
+Packed decimal (`P` format) stores digits efficiently: each byte holds two digits, and the final nibble is the sign (C=positive, D=negative). It is common in financial calculations.
 
-Ao mapear para Java: sempre use `BigDecimal`, nunca `double` ou `float`. Campos packed com formato `P9,2` significam 9 dígitos inteiros mais 2 casas decimais → `BigDecimal` com `scale(2)`.
+When mapping to Java: ALWAYS use `BigDecimal`, NEVER `double` or `float`. Packed fields with the `P9,2` format mean 9 integer digits plus 2 decimal places → `BigDecimal` with `scale(2)`.
 
-**Em mainframe, dinheiro é packed (`P`), não `N`.** Ao ler o corpus, um valor monetário declarado como `N` é sinal de alerta — pode ser descuido do autor original ou uma divergência deliberada entre programa e DDM. Compare sempre o formato no programa com o formato do mesmo campo no `.ddm`: divergências de tipo e de tamanho são fonte clássica de truncamento e overflow silencioso.
+**On the mainframe, money is packed (`P`), not `N`.** When reading the corpus, a monetary value declared as `N` is a warning sign — it may be an oversight by the original author or a deliberate divergence between the program and DDM. ALWAYS compare the format in the program with the format of the same field in the `.ddm`: type and size mismatches are a classic source of silent truncation and overflow.
 
-## Estratégia de Leitura
+## Reading Strategy
 
-Ao abordar um programa legado pela primeira vez:
+When approaching a legacy program for the first time:
 
-1. **Comece com DEFINE DATA** — entenda as variáveis e seus tipos
-2. **Encontre o READ ou FIND principal** — isso diz quais dados o programa processa
-3. **Rastreie as chamadas CALLNAT** — estas são as dependências
-4. **Procure INCLUDE copycodes** — eles expandem as definições de dados
-5. **Verifique AT BREAK / AT END OF DATA** — eles revelam a lógica de relatório ou processamento
-6. **Anote qualquer ESCAPE ou ON ERROR** — estes são caminhos de tratamento de erro
-7. **Confira `IF NO RECORDS FOUND`** — o bloco `FIND ... IF NO RECORDS FOUND ... END-NOREC` define o que acontece quando a busca não retorna nada; é onde se escondem defaults silenciosos. Lembre que campos de view só têm valor **dentro** do bloco `FIND`/`READ`.
-8. **Verifique `FIND ... WITH` contra o DDM** — só é possível buscar por campo marcado como descritor (`D`, `S` ou `H`) na listagem do DDM. Uma busca por campo não-descritor não compila.
+1. **Start with DEFINE DATA** — understand the variables and their types
+2. **Find the main READ or FIND** — this reveals which data the program processes
+3. **Trace CALLNAT calls** — these are the dependencies
+4. **Look for INCLUDE copycodes** — they expand the data definitions
+5. **Check AT BREAK / AT END OF DATA** — they reveal reporting or processing logic
+6. **Note every ESCAPE or ON ERROR** — these are error-handling paths
+7. **Check `IF NO RECORDS FOUND`** — the `FIND ... IF NO RECORDS FOUND ... END-NOREC` block defines what happens when the search returns nothing; this is where silent defaults hide. Remember that view fields have values only **inside** the `FIND`/`READ` block.
+8. **Check `FIND ... WITH` against the DDM** — searches are possible only on fields marked as descriptors (`D`, `S`, or `H`) in the DDM listing. A search on a non-descriptor field does not compile.

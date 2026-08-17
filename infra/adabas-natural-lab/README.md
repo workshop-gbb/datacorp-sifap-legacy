@@ -1,58 +1,58 @@
 <!-- markdownlint-disable MD013 MD033 MD041 -->
 
-# Lab Adabas + Natural — runtime legado opcional
+# Adabas + Natural Lab — optional legacy runtime
 
-> **Trilha:** [Kit do Time](../../README.md) › [Estágio 1 — Arqueologia](../../01-arqueologia/README.md) › **Lab Adabas + Natural**
+> **Track:** [Team Kit](../../README.md) › [Stage 1 — Archaeology](../../01-arqueologia/README.md) › **Adabas + Natural Lab**
 
-**Provisiona uma VM no Azure com Adabas Community Edition e Natural Community Edition em containers, para quem quer executar os programas legados do SIFAP em vez de apenas lê-los.**
+**Provisions an Azure VM with Adabas Community Edition and Natural Community Edition in containers for participants who want to run the legacy programs of SIFAP (Payment Inspection and Administration System) instead of only reading them.**
 
-![Tipo Runbook](https://img.shields.io/badge/Tipo-Runbook-171717?style=flat-square) ![Trilha opcional](https://img.shields.io/badge/Trilha-Opcional-737373?style=flat-square) ![Custo Assinatura Azure](https://img.shields.io/badge/Custo-Assinatura%20Azure-A3A3A3?style=flat-square)
+![Runbook Type](https://img.shields.io/badge/Type-Runbook-171717?style=flat-square) ![Optional Track](https://img.shields.io/badge/Track-Optional-737373?style=flat-square) ![Azure Subscription Cost](https://img.shields.io/badge/Cost-Azure%20Subscription-A3A3A3?style=flat-square)
 
-| Campo | Valor |
+| Field | Value |
 |---|---|
-| **Público-alvo** | DevOps Engineer (Par 5) e quem quiser executar o legado de verdade |
-| **Pré-requisitos** | Assinatura Azure própria, Azure CLI autenticado, Terraform 1.5+, par de chaves SSH |
-| **Tempo estimado** | 15 min de comandos, mais o tempo do primeiro boot da VM |
-| **Estágio** | Trilha opcional — apoio ao Estágio 1 (Arqueologia) |
-| **Resultado esperado** | Adabas CE e Natural CE em execução em uma VM alcançável apenas pelo seu IP |
+| **Target audience** | DevOps Engineer (Pair 5) and anyone who wants to run the actual legacy system |
+| **Prerequisites** | Your own Azure subscription, authenticated Azure CLI, Terraform 1.5+, SSH key pair |
+| **Estimated time** | 15 minutes of commands, plus the VM's first-boot time |
+| **Stage** | Optional track — support for Stage 1 (Archaeology) |
+| **Expected result** | Adabas CE and Natural CE running on a VM reachable only from your IP |
 
 > [!CAUTION]
-> Este módulo cria recursos pagos em uma assinatura Azure real. Leia [Custo e controle de gasto](#custo-e-controle-de-gasto) antes do primeiro `terraform apply`.
+> This module creates paid resources in a real Azure subscription. Read [Cost and spending control](#cost-and-spending-control) before the first `terraform apply`.
 
 ---
 
-## O que este módulo entrega
+## What this module provides
 
-O Terraform deste diretório cria um ambiente isolado com um runtime legado funcional:
+The Terraform in this directory creates an isolated environment with a functional legacy runtime:
 
-- Uma VM Linux (Ubuntu 22.04 LTS) com Docker instalado no primeiro boot;
-- O container `adabas-db` com Adabas Community Edition e um banco de demonstração;
-- O container `natural-ce` com Natural Community Edition, já mapeado para o Adabas;
-- Um Key Vault que guarda a senha de administração do Adabas, gerada no `apply`;
-- Um Network Security Group que libera as portas do lab somente para os IPs que você declarar;
-- Um agendamento de desligamento diário da VM, para conter custo.
+- A Linux VM (Ubuntu 22.04 LTS) with Docker installed on first boot;
+- The `adabas-db` container with Adabas Community Edition and a demonstration database;
+- The `natural-ce` container with Natural Community Edition, already mapped to Adabas;
+- A Key Vault that stores the Adabas administration password generated during `apply`;
+- A Network Security Group that opens the lab ports only to the IPs you declare;
+- A daily VM shutdown schedule to contain costs.
 
-O objetivo é permitir que você carregue os fontes Natural do SIFAP, compile (CATALL/STOW) e execute os programas em um runtime real. O módulo entrega o runtime pronto e o ponto de montagem dos fontes; a carga e a compilação dos programas acontecem dentro do container e não são automatizadas aqui.
+The goal is to let you load the SIFAP Natural sources, compile them (CATALL/STOW), and run the programs in a real runtime. The module provides the ready-to-use runtime and the source mount point; loading and compiling the programs happens inside the container and is not automated here.
 
-### Quando você não precisa deste lab
+### When you do not need this lab
 
-O caminho principal do workshop não depende deste ambiente. Nos Estágios 1 a 4, o legado SIFAP é material de leitura: os programas Natural e os DDMs em [`01-arqueologia/legado-sifap/`](../../01-arqueologia/legado-sifap/) são arquivos de texto, e a rastreabilidade exigida no Estágio 2 (`source_legacy:`) aponta para esses arquivos, não para uma execução.
+The workshop's main path does not depend on this environment. In Stages 1 through 4, the SIFAP legacy system is reading material: the Natural programs and DDMs in [`01-arqueologia/legado-sifap/`](../../01-arqueologia/legado-sifap/) are text files, and the traceability required in Stage 2 (`source_legacy:`) points to those files, not to an execution.
 
-| Situação | Você precisa do lab? |
+| Situation | Do you need the lab? |
 |---|---|
-| Ler os programas, catalogar regras e escrever requisitos EARS | Não |
-| Implementar o SIFAP 2.0 em Java 21 + Next.js 15 | Não |
-| Passar nos portões de CI do workshop | Não |
-| Ver a sintaxe Natural sendo compilada e executada de fato | Sim |
-| Confirmar o comportamento de um programa cujo código ficou ambíguo na leitura | Sim |
-| Demonstrar a diferença entre o runtime legado e a arquitetura moderna | Sim |
+| Read the programs, catalog rules, and write EARS requirements | No |
+| Implement SIFAP 2.0 with Java 21 + Next.js 15 | No |
+| Pass the workshop CI gates | No |
+| See Natural syntax actually compiled and executed | Yes |
+| Confirm the behavior of a program whose code was ambiguous during reading | Yes |
+| Demonstrate the difference between the legacy runtime and the modern architecture | Yes |
 
 > [!NOTE]
-> Trate este lab como trilha avançada e opcional. Nenhum artefato obrigatório do workshop depende dele.
+> Treat this lab as an optional advanced track. No required workshop artifact depends on it.
 
 ---
 
-## Arquitetura provisionada
+## Provisioned architecture
 
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
@@ -62,12 +62,12 @@ flowchart LR
     classDef muted fill:#FAFAFA,stroke:#A3A3A3,color:#404040
     classDef result fill:#FFFFFF,stroke:#171717,color:#171717,stroke-width:2px
 
-    DEV["Seu laptop<br/>IP declarado em allowed_source_cidrs"]:::step
+    DEV["Your laptop<br/>IP declared in allowed_source_cidrs"]:::step
     NSG["NSG sifap-lab-nsg-brs<br/>22 · 2700 · 60001 · 8190"]:::alt
     VM["VM sifap-lab-vm-brs<br/>Ubuntu 22.04 · Docker"]:::step
-    NAT["Container natural-ce<br/>Natural CE · porta 2700"]:::result
-    ADA["Container adabas-db<br/>Adabas CE · DBID 12"]:::result
-    KV["Key Vault do lab<br/>segredo adabas-admin-password"]:::muted
+    NAT["natural-ce container<br/>Natural CE · port 2700"]:::result
+    ADA["adabas-db container<br/>Adabas CE · DBID 12"]:::result
+    KV["Lab Key Vault<br/>secret adabas-admin-password"]:::muted
 
     DEV --> NSG --> VM
     VM --> NAT
@@ -76,20 +76,20 @@ flowchart LR
     VM -.->|"managed identity"| KV
 ```
 
-Nomes seguem a convenção `{project}-{env}-{resource}-{region}` de [`infrastructure.instructions.md`](../../.github/instructions/infrastructure.instructions.md). Com os valores padrão (`project = sifap`, `environment = lab`, `location_short = brs`), o grupo de recursos é `sifap-lab-rg-brs`.
+Names follow the `{project}-{env}-{resource}-{region}` convention from [`infrastructure.instructions.md`](../../.github/instructions/infrastructure.instructions.md). With the default values (`project = sifap`, `environment = lab`, `location_short = brs`), the resource group is `sifap-lab-rg-brs`.
 
 ---
 
-## Pré-requisitos
+## Prerequisites
 
-- [ ] **Ter uma assinatura Azure com permissão de criação.** Você precisa criar grupo de recursos, VM, Key Vault e políticas de acesso. Confirme com `az account show`.
-- [ ] **Instalar e autenticar o Azure CLI.** Rode `az login` e, se tiver mais de uma assinatura, `az account set --subscription "<ID-DA-ASSINATURA>"`.
-- [ ] **Instalar o Terraform 1.5.0 ou superior.** O requisito está em `versions.tf` (`required_version = ">= 1.5.0"`). Verifique com `terraform version`.
-- [ ] **Ter um par de chaves SSH.** O módulo lê a chave pública indicada em `ssh_public_key_path`, cujo padrão é `~/.ssh/id_rsa.pub`. Se não existir, gere com `ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa`.
-- [ ] **Confirmar cota de vCPU na região.** O padrão é `Standard_D2s_v3` (2 vCPU / 8 GB) em `brazilsouth`. Uma assinatura nova costuma ter cota baixa ou zerada.
-- [ ] **Aceitar o custo.** A VM, os discos Premium SSD e o IP público estático são cobrados enquanto existirem.
+- [ ] **Have an Azure subscription with permission to create resources.** You must be able to create a resource group, VM, Key Vault, and access policies. Confirm with `az account show`.
+- [ ] **Install and authenticate the Azure CLI.** Run `az login` and, if you have more than one subscription, `az account set --subscription "<ID-DA-ASSINATURA>"`.
+- [ ] **Install Terraform 1.5.0 or later.** The requirement is in `versions.tf` (`required_version = ">= 1.5.0"`). Check with `terraform version`.
+- [ ] **Have an SSH key pair.** The module reads the public key specified by `ssh_public_key_path`, which defaults to `~/.ssh/id_rsa.pub`. If it does not exist, generate it with `ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa`.
+- [ ] **Confirm the regional vCPU quota.** The default is `Standard_D2s_v3` (2 vCPU / 8 GB) in `brazilsouth`. New subscriptions often have a low or zero quota.
+- [ ] **Accept the cost.** The VM, Premium SSD disks, and static public IP incur charges while they exist.
 
-Comandos para conferir região, tamanho e cota antes de aplicar:
+Commands to check the region, size, and quota before applying:
 
 ```bash
 az account show --output table
@@ -98,31 +98,31 @@ az vm list-usage --location brazilsouth --output table
 ```
 
 > [!IMPORTANT]
-> O estado do Terraform é local: `.gitignore` ignora `*.tfstate`. Quem roda o `apply` fica responsável pelo `destroy`, porque só aquele laptop tem o estado.
+> Terraform state is local: `.gitignore` ignores `*.tfstate`. Whoever runs `apply` is responsible for `destroy`, because only that laptop has the state.
 
 ---
 
-## Deploy passo a passo
+## Step-by-step deployment
 
-- [ ] **Passo 1 — Entrar no diretório do módulo.**
+- [ ] **Step 1 — Enter the module directory.**
 
 ```bash
 cd infra/adabas-natural-lab
 ```
 
-- [ ] **Passo 2 — Criar seu arquivo de variáveis.**
+- [ ] **Step 2 — Create your variables file.**
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
 ```
 
-- [ ] **Passo 3 — Descobrir seu IP público.**
+- [ ] **Step 3 — Discover your public IP.**
 
 ```bash
 curl -s https://api.ipify.org
 ```
 
-- [ ] **Passo 4 — Preencher `terraform.tfvars`.** Duas variáveis são obrigatórias: `owner` e `allowed_source_cidrs`. Use o IP do passo anterior com máscara `/32`.
+- [ ] **Step 4 — Fill in `terraform.tfvars`.** Two variables are required: `owner` and `allowed_source_cidrs`. Use the IP from the previous step with a `/32` mask.
 
 ```hcl
 owner = "seu-handle-github"
@@ -132,53 +132,53 @@ allowed_source_cidrs = [
 ]
 ```
 
-- [ ] **Passo 5 — Inicializar os providers.**
+- [ ] **Step 5 — Initialize the providers.**
 
 ```bash
 terraform init
 ```
 
-- [ ] **Passo 6 — Gerar e revisar o plano.**
+- [ ] **Step 6 — Generate and review the plan.**
 
 ```bash
 terraform plan -out=lab.tfplan
 ```
 
-- [ ] **Passo 7 — Aplicar.**
+- [ ] **Step 7 — Apply.**
 
 ```bash
 terraform apply lab.tfplan
 ```
 
-- [ ] **Passo 8 — Ler as saídas.**
+- [ ] **Step 8 — Read the outputs.**
 
 ```bash
 terraform output
 ```
 
 > [!WARNING]
-> `terraform.tfvars` está no `.gitignore` do módulo porque contém endereços IP reais de participantes. Somente `terraform.tfvars.example` é versionado. O mesmo vale para `*.tfplan`, que pode carregar valores sensíveis em texto claro. Nunca force o commit desses arquivos.
+> `terraform.tfvars` is listed in the module's `.gitignore` because it contains real participant IP addresses. Only `terraform.tfvars.example` is versioned. The same applies to `*.tfplan`, which may contain sensitive values in plain text. Never force-commit these files.
 
-Uma validação do módulo rejeita `0.0.0.0/0` em `allowed_source_cidrs`. O motivo está documentado em `variables.tf`: o Adabas CE não oferece criptografia de canal e o Natural Development Server não tem autenticação forte, então um listener aberto é caminho direto de comprometimento.
+A module validation rejects `0.0.0.0/0` in `allowed_source_cidrs`. The reason is documented in `variables.tf`: Adabas CE does not provide channel encryption, and the Natural Development Server does not have strong authentication, so an open listener is a direct compromise path.
 
 ---
 
-## Como conectar
+## How to connect
 
-O `apply` termina, mas a VM ainda executa o bootstrap: instalação do Docker, formatação do disco de dados, leitura do segredo no Key Vault e download das imagens. Acompanhe o log antes de tentar usar os endpoints (veja [Bootstrap ainda rodando](#bootstrap-ainda-rodando)).
+The `apply` finishes while the VM is still running the bootstrap: installing Docker, formatting the data disk, reading the Key Vault secret, and downloading the images. Follow the log before trying to use the endpoints (see [Bootstrap still running](#bootstrap-still-running)).
 
-| O que você quer | Output do Terraform | Como usar |
+| What you want | Terraform output | How to use it |
 |---|---|---|
-| Sessão SSH na VM | `ssh_command` | Comando pronto, no formato `ssh sifapadmin@<IP-PUBLICO>` |
-| IP público da VM | `public_ip` | Use em ferramentas que pedem só o endereço |
-| Endpoint do Natural Development Server | `natural_development_server` | Registre como servidor remoto no NaturalONE, no formato `<IP-PUBLICO>:2700` |
-| Administração REST do Adabas | `adabas_admin_url` | Abra no navegador, no formato `http://<IP-PUBLICO>:8190` |
-| Senha de administração do Adabas | `adabas_admin_password_command` | Imprime o comando `az keyvault secret show` já com o nome do cofre |
-| Log do bootstrap | `bootstrap_log_command` | Imprime o comando de `tail -f` no log da VM |
-| Nome do grupo de recursos | `resource_group_name` | Use nos comandos `az` e para conferir a remoção |
-| Nome da VM | `vm_name` | Use em `az vm deallocate` e `az vm start` |
+| SSH session on the VM | `ssh_command` | Ready-to-use command in the format `ssh sifapadmin@<IP-PUBLICO>` |
+| VM public IP | `public_ip` | Use it in tools that ask only for the address |
+| Natural Development Server endpoint | `natural_development_server` | Register it as a remote server in NaturalONE, in the format `<IP-PUBLICO>:2700` |
+| Adabas REST administration | `adabas_admin_url` | Open it in a browser, in the format `http://<IP-PUBLICO>:8190` |
+| Adabas administration password | `adabas_admin_password_command` | Prints the `az keyvault secret show` command with the vault name already included |
+| Bootstrap log | `bootstrap_log_command` | Prints the `tail -f` command for the VM log |
+| Resource group name | `resource_group_name` | Use it in `az` commands and to confirm removal |
+| VM name | `vm_name` | Use it in `az vm deallocate` and `az vm start` |
 
-Para obter um valor sem aspas, use `-raw`:
+To get an unquoted value, use `-raw`:
 
 ```bash
 terraform output -raw ssh_command
@@ -186,41 +186,41 @@ terraform output -raw natural_development_server
 terraform output -raw adabas_admin_url
 ```
 
-A administração REST do Adabas usa o usuário `admin`, definido em `cloud-init.yaml`. A conexão é HTTP, sem TLS: é justamente por isso que o NSG restringe a porta ao seu CIDR.
+Adabas REST administration uses the `admin` user defined in `cloud-init.yaml`. The connection is HTTP without TLS, which is exactly why the NSG restricts the port to your CIDR.
 
-### Ler a senha do Adabas no Key Vault
+### Read the Adabas password from Key Vault
 
-A senha é gerada pelo Terraform, gravada no Key Vault e lida pela VM através da identidade gerenciada. Ela nunca aparece em variáveis de entrada nem neste repositório.
+The password is generated by Terraform, stored in Key Vault, and read by the VM through its managed identity. It never appears in input variables or in this repository.
 
 ```bash
-# 1. Imprime o comando pronto, já com o nome real do cofre
+# 1. Print the ready-to-use command with the actual vault name
 terraform output -raw adabas_admin_password_command
 
-# 2. Execute o comando impresso acima para ver a senha no terminal
+# 2. Run the command printed above to view the password in the terminal
 ```
 
-O comando impresso tem esta forma:
+The printed command has this form:
 
 ```bash
 az keyvault secret show --vault-name <NOME-DO-COFRE> --name adabas-admin-password --query value -o tsv
 ```
 
 > [!WARNING]
-> Não copie a senha para arquivos do repositório, issues, PRs ou mensagens. Leia do Key Vault sempre que precisar.
+> Do not copy the password into repository files, issues, PRs, or messages. Read it from Key Vault whenever needed.
 
-### Levar os fontes do SIFAP para o container
+### Move the SIFAP sources into the container
 
-O bootstrap cria o diretório `/opt/sifap/corpus` na VM e o monta como somente leitura em `/corpus` dentro do container `natural-ce`. O módulo prepara o ponto de montagem, mas não copia nada: a carga dos fontes é sua.
+The bootstrap creates `/opt/sifap/corpus` on the VM and mounts it read-only at `/corpus` inside the `natural-ce` container. The module prepares the mount point but copies nothing; loading the sources is your responsibility.
 
 ```bash
-# Do diretório raiz do repositório, no seu laptop
+# From the repository root directory on your laptop
 scp -r 01-arqueologia/legado-sifap/natural-programs sifapadmin@<IP-PUBLICO>:/tmp/
 
-# Na VM, mover para o diretório montado no container
+# On the VM, move the files into the directory mounted in the container
 ssh sifapadmin@<IP-PUBLICO> 'sudo cp /tmp/natural-programs/* /opt/sifap/corpus/'
 ```
 
-Depois, abra um shell no container para trabalhar com os fontes:
+Then open a shell in the container to work with the sources:
 
 ```bash
 sudo docker exec -it natural-ce bash
@@ -229,58 +229,58 @@ ls /corpus
 
 ---
 
-## Portas liberadas e função de cada uma
+## Open ports and their purpose
 
-As regras estão em `main.tf`, no recurso `azurerm_network_security_group.lab`. Todas usam TCP e têm como origem apenas os CIDRs de `allowed_source_cidrs`. A regra `DenyAllOtherInbound`, com prioridade 4096, bloqueia todo o resto.
+The rules are in `main.tf`, in the `azurerm_network_security_group.lab` resource. All use TCP and accept traffic only from the CIDRs in `allowed_source_cidrs`. The `DenyAllOtherInbound` rule, at priority 4096, blocks everything else.
 
-| Porta | Regra no NSG | Prioridade | Para que serve |
+| Port | NSG rule | Priority | Purpose |
 |---|---|---|---|
-| 22 | `AllowSshFromWorkshop` | 100 | SSH na VM. Autenticação por chave; senha está desabilitada |
-| 2700 | `AllowNaturalDevelopmentServer` | 110 | Natural Development Server. É a porta que o NaturalONE usa para se conectar ao ambiente remoto |
-| 60001 | `AllowAdabasAdatcp` | 120 | ADATCP do Adabas. Só é necessária quando um cliente Adabas roda fora da VM; a comunicação entre os containers usa a rede interna do Docker |
-| 8190 | `AllowAdabasRestAdmin` | 130 | Interface REST de administração do Adabas |
+| 22 | `AllowSshFromWorkshop` | 100 | SSH to the VM. Key authentication; password authentication is disabled |
+| 2700 | `AllowNaturalDevelopmentServer` | 110 | Natural Development Server. NaturalONE uses this port to connect to the remote environment |
+| 60001 | `AllowAdabasAdatcp` | 120 | Adabas ADATCP. Required only when an Adabas client runs outside the VM; communication between containers uses Docker's internal network |
+| 8190 | `AllowAdabasRestAdmin` | 130 | Adabas REST administration interface |
 
 ---
 
-## Variáveis do módulo
+## Module variables
 
-Somente duas variáveis são obrigatórias. As demais têm padrão definido em `variables.tf`.
+Only two variables are required. The others have defaults defined in `variables.tf`.
 
-| Variável | Obrigatória | Padrão | Para que serve |
+| Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `owner` | Sim | — | Tag de responsável: handle do GitHub ou e-mail |
-| `allowed_source_cidrs` | Sim | — | CIDRs liberados nas quatro portas. `0.0.0.0/0` é rejeitado por validação |
-| `project` | Não | `sifap` | Prefixo de nome e tag. De 2 a 12 caracteres minúsculos alfanuméricos |
-| `environment` | Não | `lab` | Aceita `lab`, `dev` ou `workshop` |
-| `cost_center` | Não | `workshop-legacy-modernization` | Tag de rateio de custo |
-| `location` | Não | `brazilsouth` | Região Azure |
-| `location_short` | Não | `brs` | Código curto usado no nome dos recursos |
-| `vm_size` | Não | `Standard_D2s_v3` | 2 vCPU / 8 GB, piso prático para Adabas CE e Natural CE juntos |
-| `admin_username` | Não | `sifapadmin` | Usuário administrador da VM. O `cloud-init.yaml` adiciona `sifapadmin` ao grupo `docker` de forma fixa, então trocar este valor obriga a usar `sudo` para os comandos Docker |
-| `ssh_public_key_path` | Não | `~/.ssh/id_rsa.pub` | Caminho da chave pública autorizada |
-| `data_disk_size_gb` | Não | `32` | Tamanho do disco gerenciado que guarda os containers de banco |
-| `adabas_image` | Não | `softwareag/adabas-ce:7.4.0` | Imagem do Adabas Community Edition |
-| `natural_image` | Não | `softwareag/natural-ce:9.3.3` | Imagem do Natural Community Edition |
-| `adabas_dbid` | Não | `12` | DBID do Adabas que o Natural mapeia |
-| `auto_shutdown_time` | Não | `2000` | Horário do desligamento diário, no formato HHmm |
-| `auto_shutdown_timezone` | Não | `E. South America Standard Time` | Fuso do agendamento de desligamento |
-| `auto_shutdown_notification_email` | Não | `""` | E-mail avisado 30 minutos antes. Vazio desativa o aviso |
+| `owner` | Yes | — | Owner tag: GitHub handle or e-mail |
+| `allowed_source_cidrs` | Yes | — | CIDRs allowed on the four ports. Validation rejects `0.0.0.0/0` |
+| `project` | No | `sifap` | Name and tag prefix. From 2 to 12 lowercase alphanumeric characters |
+| `environment` | No | `lab` | Accepts `lab`, `dev`, or `workshop` |
+| `cost_center` | No | `workshop-legacy-modernization` | Cost allocation tag |
+| `location` | No | `brazilsouth` | Azure region |
+| `location_short` | No | `brs` | Short code used in resource names |
+| `vm_size` | No | `Standard_D2s_v3` | 2 vCPU / 8 GB, the practical minimum for Adabas CE and Natural CE together |
+| `admin_username` | No | `sifapadmin` | VM administrator. `cloud-init.yaml` adds `sifapadmin` to the `docker` group explicitly, so changing this value requires `sudo` for Docker commands |
+| `ssh_public_key_path` | No | `~/.ssh/id_rsa.pub` | Path to the authorized public key |
+| `data_disk_size_gb` | No | `32` | Size of the managed disk that stores the database containers |
+| `adabas_image` | No | `softwareag/adabas-ce:7.4.0` | Adabas Community Edition image |
+| `natural_image` | No | `softwareag/natural-ce:9.3.3` | Natural Community Edition image |
+| `adabas_dbid` | No | `12` | Adabas DBID mapped by Natural |
+| `auto_shutdown_time` | No | `2000` | Daily shutdown time in HHmm format |
+| `auto_shutdown_timezone` | No | `E. South America Standard Time` | Shutdown schedule time zone |
+| `auto_shutdown_notification_email` | No | `""` | E-mail notified 30 minutes beforehand. Empty disables the notification |
 
 ---
 
-## Custo e controle de gasto
+## Cost and spending control
 
-O output `estimated_cost_note` traz a estimativa do próprio módulo: cerca de **USD 0,20 por hora** com a VM ligada e cerca de **USD 0,04 por hora** (≈ USD 1/dia) com a VM desligada, considerando `Standard_D2s_v3`, discos Premium SSD e IP estático. Os valores vêm de preços de varejo (pay-as-you-go) da região `brazilsouth` consultados na Azure Retail Prices API. Confirme os valores da sua região e do seu contrato antes de assumir esse número.
+The `estimated_cost_note` output provides the module's estimate: approximately **USD 0.20 per hour** while the VM is running and approximately **USD 0.04 per hour** (about USD 1/day) while it is deallocated, considering `Standard_D2s_v3`, Premium SSD disks, and a static IP. The values come from pay-as-you-go retail prices for the `brazilsouth` region queried through the Azure Retail Prices API. Confirm the values for your region and agreement before relying on this estimate.
 
-Três mecanismos protegem a fatura, do mais fraco ao mais forte:
+Three mechanisms protect the budget, from weakest to strongest:
 
-| Mecanismo | O que faz | Quando usar |
+| Mechanism | What it does | When to use it |
 |---|---|---|
-| Desligamento automático | Desliga a VM todo dia às 20h00, no fuso `E. South America Standard Time` | Sempre ativo; funciona como rede de segurança, não como plano de uso |
-| `az vm deallocate` | Para a cobrança de computação e mantém o ambiente | Pausa entre sessões, quando você vai voltar ao lab |
-| `terraform destroy` | Remove todos os recursos | Terminou de usar o lab |
+| Automatic shutdown | Shuts down the VM every day at 20:00 in the `E. South America Standard Time` zone | Always active; use it as a safety net, not as an operating plan |
+| `az vm deallocate` | Stops compute charges and preserves the environment | Pause between sessions when you plan to return to the lab |
+| `terraform destroy` | Removes all resources | When you have finished using the lab |
 
-Para pausar e retomar:
+To pause and resume:
 
 ```bash
 az vm deallocate \
@@ -293,64 +293,64 @@ az vm start \
 ```
 
 > [!IMPORTANT]
-> `az vm deallocate` para a cobrança de computação, mas os discos gerenciados (64 GB de SO e 32 GB de dados, ambos Premium SSD) e o IP público estático continuam sendo cobrados. Para zerar o custo, use `terraform destroy`.
+> `az vm deallocate` stops compute charges, but the managed disks (64 GB OS and 32 GB data, both Premium SSD) and the static public IP continue to incur charges. To eliminate the cost, use `terraform destroy`.
 
-O IP público é estático, então ele não muda quando você desliga e liga a VM.
+The public IP is static, so it does not change when you stop and start the VM.
 
 ---
 
-## Solução de problemas
+## Troubleshooting
 
-| Sintoma | Causa provável | Correção |
+| Symptom | Likely cause | Resolution |
 |---|---|---|
-| `terraform plan` falha ao ler a chave SSH | O arquivo em `ssh_public_key_path` não existe | Gere o par de chaves ou ajuste a variável para o caminho correto |
-| SSH dá timeout | Seu IP público mudou e não está mais em `allowed_source_cidrs` | Atualize `terraform.tfvars` e rode `terraform apply` de novo |
-| `Permission denied (publickey)` | A chave privada usada não corresponde à pública enviada | Conecte com `ssh -i ~/.ssh/id_rsa sifapadmin@<IP-PUBLICO>` |
-| Portas 2700, 8190 ou 60001 sem resposta | Bootstrap ainda em andamento ou container parado | Acompanhe o log do bootstrap e verifique os containers |
-| A senha do Key Vault é rejeitada pelo Adabas | O bootstrap não conseguiu ler o segredo e gerou uma senha local | Procure `could not read the Key Vault secret` no log; se confirmado, recrie a VM com `terraform apply -replace=azurerm_linux_virtual_machine.lab` |
-| `docker` responde `permission denied` | A adesão ao grupo `docker` só vale em nova sessão | Reconecte o SSH ou use `sudo docker ...` |
-| `apply` falha com erro de SKU ou de cota | Região sem `Standard_D2s_v3` ou sem cota de vCPU | Troque a região ou o tamanho da VM |
+| `terraform plan` fails while reading the SSH key | The file at `ssh_public_key_path` does not exist | Generate the key pair or set the variable to the correct path |
+| SSH times out | Your public IP changed and is no longer in `allowed_source_cidrs` | Update `terraform.tfvars` and run `terraform apply` again |
+| `Permission denied (publickey)` | The private key does not match the submitted public key | Connect with `ssh -i ~/.ssh/id_rsa sifapadmin@<IP-PUBLICO>` |
+| Ports 2700, 8190, or 60001 do not respond | Bootstrap is still running or a container stopped | Follow the bootstrap log and check the containers |
+| Key Vault password is rejected by Adabas | Bootstrap could not read the secret and generated a local password | Search for `could not read the Key Vault secret` in the log; if confirmed, recreate the VM with `terraform apply -replace=azurerm_linux_virtual_machine.lab` |
+| `docker` returns `permission denied` | Docker group membership applies only in a new session | Reconnect through SSH or use `sudo docker ...` |
+| `apply` fails with an SKU or quota error | The region lacks `Standard_D2s_v3` or sufficient vCPU quota | Change the region or VM size |
 
-### Bootstrap ainda rodando
+### Bootstrap still running
 
-O primeiro boot instala o Docker e baixa vários GB de imagens. Esse download é a etapa lenta, e a duração depende da banda da região. Acompanhe em vez de estimar:
+The first boot installs Docker and downloads several GB of images. This download is the slow step, and its duration depends on regional bandwidth. Follow the progress instead of estimating:
 
 ```bash
 terraform output -raw bootstrap_log_command
 ```
 
-O comando impresso tem esta forma:
+The printed command has this form:
 
 ```bash
 ssh sifapadmin@<IP-PUBLICO> 'sudo tail -f /var/log/sifap-bootstrap.log'
 ```
 
-O log começa com `=== SIFAP lab bootstrap started` e termina com `=== SIFAP lab bootstrap finished`. Ao final, o bootstrap cria o arquivo marcador `/opt/sifap/READY`. Para uma verificação rápida:
+The log begins with `=== SIFAP lab bootstrap started` and ends with `=== SIFAP lab bootstrap finished`. At the end, bootstrap creates the `/opt/sifap/READY` marker file. For a quick check:
 
 ```bash
 ssh sifapadmin@<IP-PUBLICO> 'ls -l /opt/sifap/READY'
 ```
 
-### SSH recusado ou sem resposta
+### SSH refused or unresponsive
 
-Esta é a falha mais comum do lab, e quase sempre tem a mesma causa: **seu IP público mudou**. Redes domésticas, VPNs corporativas e conexões móveis trocam de endereço com frequência. O NSG continua liberando o IP antigo e a regra `DenyAllOtherInbound` bloqueia o novo.
+This is the lab's most common failure, and it almost always has the same cause: **your public IP changed**. Home networks, corporate VPNs, and mobile connections change addresses frequently. The NSG continues to allow the old IP, while the `DenyAllOtherInbound` rule blocks the new one.
 
 ```bash
-# 1. Verifique seu IP atual
+# 1. Check your current IP
 curl -s https://api.ipify.org
 
-# 2. Compare com o que está declarado
+# 2. Compare it with the declared value
 grep -A3 allowed_source_cidrs terraform.tfvars
 
-# 3. Se forem diferentes, atualize o arquivo e reaplique
+# 3. If they differ, update the file and apply again
 terraform apply
 ```
 
-O `apply` altera apenas as regras do NSG. A VM e os containers continuam de pé.
+The `apply` changes only the NSG rules. The VM and containers remain running.
 
-### Containers não sobem
+### Containers do not start
 
-Conecte na VM e inspecione o Compose gerado pelo bootstrap, que fica em `/opt/sifap/docker-compose.yml`:
+Connect to the VM and inspect the Compose file generated by bootstrap at `/opt/sifap/docker-compose.yml`:
 
 ```bash
 cd /opt/sifap
@@ -360,88 +360,88 @@ sudo docker compose logs natural-ce
 sudo docker compose up -d
 ```
 
-Os dois containers compartilham a rede bridge `sifap-lab`, e o `natural-ce` alcança o banco pelo nome `adabas-db`. Se o `adabas-db` não subir, o `natural-ce` também não fica utilizável.
+Both containers share the `sifap-lab` bridge network, and `natural-ce` reaches the database through the `adabas-db` name. If `adabas-db` does not start, `natural-ce` is not usable either.
 
-### Região sem cota ou sem o tamanho de VM
+### Region without quota or VM size
 
-Nem toda região oferece `Standard_D2s_v3`, e assinaturas novas costumam ter cota baixa. Confirme com os comandos de pré-requisito e, se precisar mudar de região, ajuste `location` e `location_short` juntos para manter o padrão de nomes:
+Not every region offers `Standard_D2s_v3`, and new subscriptions often have a low quota. Confirm with the prerequisite commands and, if you need to change regions, update `location` and `location_short` together to preserve the naming convention:
 
 ```hcl
 location       = "eastus2"
 location_short = "eus2"
 ```
 
-Se preferir manter a região e trocar o tamanho, lembre do piso documentado em `variables.tf`: Adabas CE e Natural CE consomem juntos algo entre 4 GB e 6 GB de RAM.
+If you prefer to keep the region and change the size, remember the minimum documented in `variables.tf`: together, Adabas CE and Natural CE consume approximately 4 GB to 6 GB of RAM.
 
 ---
 
-## Destruir o ambiente
+## Destroy the environment
 
-- [ ] **Passo 1 — Guardar o nome do grupo de recursos.** Depois do `destroy`, os outputs deixam de existir.
+- [ ] **Step 1 — Save the resource group name.** After `destroy`, the outputs no longer exist.
 
 ```bash
 cd infra/adabas-natural-lab
 terraform output -raw resource_group_name
 ```
 
-- [ ] **Passo 2 — Destruir tudo.** Confirme digitando `yes` quando o Terraform pedir.
+- [ ] **Step 2 — Destroy everything.** Confirm by typing `yes` when Terraform prompts.
 
 ```bash
 terraform destroy
 ```
 
-- [ ] **Passo 3 — Confirmar que nada sobrou.** O comando deve falhar informando que o grupo não existe.
+- [ ] **Step 3 — Confirm that nothing remains.** The command should fail and report that the group does not exist.
 
 ```bash
 az group show --name "<NOME-DO-GRUPO-DE-RECURSOS>"
 ```
 
 > [!CAUTION]
-> `terraform destroy` remove a VM, os discos e todos os dados carregados no Adabas. Se você tem trabalho dentro do lab que quer preservar, copie para fora antes.
+> `terraform destroy` removes the VM, disks, and all data loaded into Adabas. If the lab contains work you want to preserve, copy it out first.
 
-### Key Vault e a janela de soft-delete
+### Key Vault and the soft-delete window
 
-O Key Vault do lab usa `soft_delete_retention_days = 7` e `purge_protection_enabled = false`. O provider está configurado em `versions.tf` com `purge_soft_delete_on_destroy = true` e `recover_soft_deleted_key_vaults = true`, ou seja, o `destroy` normalmente já expurga o cofre e um novo `apply` recupera um cofre excluído com o mesmo nome.
+The lab Key Vault uses `soft_delete_retention_days = 7` and `purge_protection_enabled = false`. The provider is configured in `versions.tf` with `purge_soft_delete_on_destroy = true` and `recover_soft_deleted_key_vaults = true`, so `destroy` normally purges the vault and a new `apply` recovers a deleted vault with the same name.
 
-O problema aparece quando o `destroy` é interrompido ou a conta não tem permissão de purge. Nesse caso o nome fica reservado por até 7 dias e um novo `apply` com o mesmo nome falha. O nome inclui um sufixo aleatório de 6 caracteres, então a colisão ocorre quando você reaplica com o mesmo estado do Terraform.
+The problem occurs when `destroy` is interrupted or the account lacks purge permission. In that case, the name remains reserved for up to seven days, and a new `apply` with the same name fails. The name includes a random six-character suffix, so the collision occurs when you reapply with the same Terraform state.
 
 ```bash
-# Ver cofres em soft-delete
+# List soft-deleted vaults
 az keyvault list-deleted --output table
 
-# Remover em definitivo o cofre do lab
+# Permanently remove the lab vault
 az keyvault purge --name "<NOME-DO-COFRE>" --location brazilsouth
 ```
 
 ---
 
-## Critérios de conclusão
+## Completion criteria
 
-- [ ] `terraform output` retorna os endpoints do lab.
-- [ ] O log do bootstrap terminou e `/opt/sifap/READY` existe.
-- [ ] `sudo docker compose ps` mostra `adabas-db` e `natural-ce` em execução.
-- [ ] A administração REST do Adabas abre com o usuário `admin` e a senha lida do Key Vault.
-- [ ] `terraform.tfvars` continua fora do controle de versão.
-- [ ] Ao terminar, você rodou `az vm deallocate` (pausa) ou `terraform destroy` (remoção).
-
----
-
-## Referências
-
-| Recurso | Onde |
-|---|---|
-| Convenções de infraestrutura do kit | [`.github/instructions/infrastructure.instructions.md`](../../.github/instructions/infrastructure.instructions.md) |
-| Programas Natural e DDMs do SIFAP | [`01-arqueologia/legado-sifap/`](../../01-arqueologia/legado-sifap/) |
-| Como ler código Natural | [`01-arqueologia/legado-sifap/COMO-LER-NATURAL.md`](../../01-arqueologia/legado-sifap/COMO-LER-NATURAL.md) |
-| Runbook operacional do workshop | [`docs/runbook.md`](../../docs/runbook.md) |
-| Solução de problemas do workshop | [`docs/troubleshooting.md`](../../docs/troubleshooting.md) |
+- [ ] `terraform output` returns the lab endpoints.
+- [ ] The bootstrap log finished and `/opt/sifap/READY` exists.
+- [ ] `sudo docker compose ps` shows `adabas-db` and `natural-ce` running.
+- [ ] Adabas REST administration opens with the `admin` user and the password read from Key Vault.
+- [ ] `terraform.tfvars` remains outside version control.
+- [ ] When finished, you ran `az vm deallocate` (pause) or `terraform destroy` (removal).
 
 ---
 
-### Continuar a leitura
+## References
 
-| Anterior | Próximo |
+| Resource | Location |
 |---|---|
-| [Estágio 1 — Arqueologia](../../01-arqueologia/README.md)<br/><sub>Visão geral do estágio que este lab apoia.</sub> | [Legado SIFAP](../../01-arqueologia/legado-sifap/README.md)<br/><sub>Documentação do sistema legado e inventário de programas.</sub> |
+| Kit infrastructure conventions | [`.github/instructions/infrastructure.instructions.md`](../../.github/instructions/infrastructure.instructions.md) |
+| SIFAP Natural programs and DDMs | [`01-arqueologia/legado-sifap/`](../../01-arqueologia/legado-sifap/) |
+| How to read Natural code | [`01-arqueologia/legado-sifap/COMO-LER-NATURAL.md`](../../01-arqueologia/legado-sifap/COMO-LER-NATURAL.md) |
+| Workshop operations runbook | [`docs/runbook.md`](../../docs/runbook.md) |
+| Workshop troubleshooting | [`docs/troubleshooting.md`](../../docs/troubleshooting.md) |
 
-<sub>[Voltar ao índice do kit](../../README.md)</sub>
+---
+
+### Continue reading
+
+| Previous | Next |
+|---|---|
+| [Stage 1 — Archaeology](../../01-arqueologia/README.md)<br/><sub>Overview of the stage supported by this lab.</sub> | [SIFAP Legacy System](../../01-arqueologia/legado-sifap/README.md)<br/><sub>Legacy system documentation and program inventory.</sub> |
+
+<sub>[Back to the kit index](../../README.md)</sub>
