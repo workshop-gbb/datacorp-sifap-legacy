@@ -36,7 +36,7 @@ Everything is kept in one directory because a Natural library is **flat**: `CALL
 | Pair | Program | Author | Year | Description |
 |---|---|---|---|---|
 | **1 · Vision** (PO + RE)—registration | `CADBENEF.NSP` | Roberto Meirelles | 1997 | Beneficiary registration—creation, update, deletion |
-| | `CADDEPEND.NSP` | José A. Lima | 1998 | Registration of a dependent linked to the primary beneficiary |
+| | `CADDEPEN.NSP` | José A. Lima | 1998 | Registration of a dependent linked to the primary beneficiary |
 | | `CADPROG.NSP` | Fernanda C. Oliveira | 1997 | Social program registration—parameters and value ranges |
 | **2 · Architecture** (EA + SA)—batch | `BATCHPGT.NSP` | José A. Lima | 1999 | Batch payment—generates monthly payment cycles |
 | | `BATCHREL.NSP` | José A. Lima | 1999 | Batch report—produces management reports |

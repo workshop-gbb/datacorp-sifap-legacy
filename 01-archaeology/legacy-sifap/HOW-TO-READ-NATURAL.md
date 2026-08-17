@@ -409,7 +409,7 @@ The complete column legend is in the footer of each `.ddm` and in the [DDM READM
 
 | Category | Programs | What to expect |
 |---|---|---|
-| Registration | `CADBENEF`, `CADDEPEND`, `CADPROG` | Input screens. CPF, name, and date validations. |
+| Registration | `CADBENEF`, `CADDEPEN`, `CADPROG` | Input screens. CPF, name, and date validations. |
 | Calculation | `CALCBENF`, `CALCCORR`, `CALCDSCT` | Formulas and constants. Most financial rules live here. |
 | Validation | `VALBENEF`, `VALDOCS`, `VALELEG` | Sequences of `IF` statements. Each becomes a test. |
 | Batch | `BATCHPGT`, `BATCHREL`, `BATCHCON` | Many `CALLNAT` statements. Reveals the business flow. |

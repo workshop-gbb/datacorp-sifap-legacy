@@ -32,7 +32,7 @@ def test_should_frame_records_with_e4_little_endian_length_excluding_prefix(enco
     out = WORK_DIR / "beneficiary.cmpin"
     out.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        ["python3", str(ENCODER), "--ddm", str(DDM_DIR / "BENEFICIARY.ddm"), "--seed", str(SEED_DIR / "beneficiary.dat"), "--out", str(out)],
+        ["python3", str(ENCODER), "--ddm", str(DDM_DIR / "BENEFIC.ddm"), "--seed", str(SEED_DIR / "beneficiary.dat"), "--out", str(out)],
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -47,7 +47,7 @@ def test_should_frame_records_with_e4_little_endian_length_excluding_prefix(enco
 
 
 def test_should_encode_periodic_groups_with_one_byte_counts_and_occurrence_major_order(encoder):
-    fields = encoder.parse_ddm((DDM_DIR / "BENEFICIARY.ddm").read_text(encoding="utf-8", errors="replace"))
+    fields = encoder.parse_ddm((DDM_DIR / "BENEFIC.ddm").read_text(encoding="utf-8", errors="replace"))
     plan, width = encoder.build_plan(fields)
     record = (SEED_DIR / "beneficiary.dat").read_bytes()[:width]
     body = encoder.encode(record, plan, "<B")

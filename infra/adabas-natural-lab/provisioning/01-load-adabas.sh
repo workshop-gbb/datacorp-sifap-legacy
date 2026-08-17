@@ -15,7 +15,7 @@ LOAD_WORK="${WORK_DIR}/adabas-load"
 
 FILE_NAMES=(beneficiary social-program payment audit)
 FILE_NUMBERS=(150 151 152 153)
-DDM_FILES=(BENEFICIARY.ddm SOCIAL-PROGRAM.ddm PAYMENT.ddm AUDIT.ddm)
+DDM_FILES=(BENEFIC.ddm SOCPROG.ddm PAYMENT.ddm AUDIT.ddm)
 
 seed_file() { printf '%s/%s.dat' "$SEED_DIR" "$1"; }
 layout_file() { printf '%s/layout-%s.txt' "$SEED_DIR" "$1"; }

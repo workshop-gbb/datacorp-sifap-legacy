@@ -206,7 +206,7 @@ The SIFAP is made up of **12 main programs**, organized into the following modul
 | No | Program | Module | Type | Description |
 | --- | --------- | --------- | ------------ | --------------------------------------------------------- |
 | 01 | CADBENEF | Registration | Online | Beneficiary registration - inclusion, alteration, exclusion |
-| 02 | CADDEPEND | Registration | Online | Registration of dependents of the beneficiary |
+| 02 | CADDEPEN | Registration | Online | Registration of dependents of the beneficiary |
 | 03 | CADPROG | Registration | Online | Registration of social programs and parameters |
 | 04 | CALCBENF | Calculation | Batch/Online | Calculation of benefit value by band/program |
 | 05 | CALCCORR | Calculation | Batch | Calculation of annual corrections and adjustments |
@@ -250,7 +250,7 @@ The SIFAP is made up of **12 main programs**, organized into the following modul
  2010 and 2015, as required by SENARC. This change is not reflected
  in this document. Check in the source code of CADBENEF. -->
 
-#### 3.2.2. CADDEPEND - Dependent Registration
+#### 3.2.2. CADDEPEN - Dependent Registration
 
 **Description:** Online program for registering dependents linked to the titular beneficiary.
 
@@ -574,7 +574,7 @@ In case of ABEND while running BATCHPGT, follow the steps below:
 | SF01 | CADBENEF | Inclusion of beneficiary |
 | SF02 | CADBENEF | Change of beneficiary |
 | SF03 | CADBENEF | Logical exclusion of beneficiary |
-| SF04 | CADDEPEND | Dependent registration |
+| SF04 | CADDEPEN | Dependent registration |
 | SF05 | CONSBENF | Beneficiary inquiry |
 | SF06 | CADPROG | Maintenance of social programs |
 | SF10 | [TO BE COMPLETED] | Audit report (?) |

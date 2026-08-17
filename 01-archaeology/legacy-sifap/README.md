@@ -165,7 +165,7 @@ SIFAP screens use **Natural maps** in 3270 format (24 rows × 80 columns), acces
 | Program   | Description                                             | Author         | Year | Last Change    | Status     |
 | --------- | ------------------------------------------------------- | -------------- | ---- | -------------- | -------- |
 | CADBENEF  | Beneficiary registration—creation, update, deletion     | R. Meirelles   | 1997 | 2015           | Production |
-| CADDEPEND | Dependents linked to the primary beneficiary            | J. A. Lima     | 1998 | 2008           | Production |
+| CADDEPEN | Dependents linked to the primary beneficiary            | J. A. Lima     | 1998 | 2008           | Production |
 | CADPROG   | Social-program registration—parameters and value ranges | F. C. Oliveira | 1997 | 2015           | Production |
 
 ### 5.2. Calculation Module

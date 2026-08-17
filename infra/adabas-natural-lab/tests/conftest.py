@@ -19,8 +19,8 @@ LOAD_SCRIPT = pathlib.Path(os.environ.get("SIFAP_LOAD_ADABAS_SH", PROVISIONING /
 ENCODER = pathlib.Path(os.environ.get("SIFAP_ADACMP_INPUT_PY", PROVISIONING / "adacmp_input.py"))
 
 FILES = {
-    "beneficiary": (150, "BENEFICIARY.ddm", 500, 1739),
-    "social-program": (151, "SOCIAL-PROGRAM.ddm", 6, 361),
+    "beneficiary": (150, "BENEFIC.ddm", 500, 1739),
+    "social-program": (151, "SOCPROG.ddm", 6, 361),
     "payment": (152, "PAYMENT.ddm", 2000, 855),
     "audit": (153, "AUDIT.ddm", 200, 4995),
 }

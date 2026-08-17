@@ -73,3 +73,6 @@ override.tf.json
 # Crash logs can contain state fragments.
 crash.log
 crash.*.log
+
+# Natural compile harness scratch (never commit: duplicates the legacy corpus)
+.nat-harness/

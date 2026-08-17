@@ -67,7 +67,7 @@ Natural CE cannot use `BATCHMODE` (`Natural Startup Error: 42`). Natural also do
 2. Data areas: `PDAVALID`, `PDACALC`, `LDASIFAP`.
 3. Copycodes as source only: `CCVALCPF`, `CCAUDIT`.
 4. Subprograms: `SUBVALCP`, `SUBVALNI`, `VALBENEF`, `VALELEG`, `CALCBENF`.
-5. Programs: `CADBENEF`, `CONSBENF`, `BATCHPGT`, `BATCHREL`, `RELPGT`, `CADPROG`, `CADDEPEND`, `VALDOCS`, `CALCCORR`, `CALCDSCT`, `RELAUDIT`, `BATCHCON`.
+5. Programs: `CADBENEF`, `CONSBENF`, `BATCHPGT`, `BATCHREL`, `RELPGT`, `CADPROG`, `CADDEPEN`, `VALDOCS`, `CALCCORR`, `CALCDSCT`, `RELAUDIT`, `BATCHCON`.
 
 ## Re-run behavior
 

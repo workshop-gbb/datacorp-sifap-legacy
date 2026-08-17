@@ -103,7 +103,7 @@ flowchart LR
     classDef muted fill:#FAFAFA,stroke:#A3A3A3,color:#404040
 
     subgraph SIFAP["SIFAP — Payment Inspection and Administration System"]
-        M1["Module 1<br/>Registration<br/>CADBENEF / CADPROG / CADDEPEND"]:::step
+        M1["Module 1<br/>Registration<br/>CADBENEF / CADPROG / CADDEPEN"]:::step
         M2["Module 2<br/>Processing<br/>BATCHPGT / BATCHREL / BATCHCON"]:::step
         M3["Module 3<br/>Query<br/>CONSBENF / CONSPGT"]:::step
         M4["Module 4<br/>Audit<br/>AUDCONSUL / AUDRELAT"]:::step
@@ -118,7 +118,7 @@ Responsible for maintaining registration data on beneficiaries, dependents and s
 | ----------------- | --------------------------------------------------------- | ---------- |
 | CADBENEF | Beneficiary registration - inclusion, alteration, exclusion | Phase 1 |
 | CADPROG | Registration of social programs and parameterization | Phase 1 |
-| CADDEPEND | Registration of dependents of the beneficiary | Phase 1 |
+| CADDEPEN | Registration of dependents of the beneficiary | Phase 1 |
 
 #### Module 2 - PROCESSING
 
@@ -398,7 +398,7 @@ The evolution of the SIFAP is planned in the following phases, subject to approv
 
 | Phase | Expected Deadline | Functionality | Priority |
 | ---------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| **Phase 1** | Jun-Dec/1997 | Registration and Query Modules (CADBENEF, CADDEPEND, CADPROG, CONSBENF) | Mandatory |
+| **Phase 1** | Jun-Dec/1997 | Registration and Query Modules (CADBENEF, CADDEPEN, CADPROG, CONSBENF) | Mandatory |
 | **Phase 2** | Jan-Jul/1998 | Batch Processing Module (BATCHPGT, BATCHREL) | Mandatory |
 | **Phase 3** | Aug-Dec/1998 | Audit Module (AUDCONSUL, AUDRELAT) + Conciliation SIAFI (BATCHCON) | Desirable |
 | **Phase 4** | 1st half/1999 | Validation Module (VALBENEF, VALDOCS) - automated registration validation | Desirable |
@@ -411,7 +411,7 @@ The evolution of the SIFAP is planned in the following phases, subject to approv
  Phase 1: COMPLETED (Dec/1997) - as planned, with a delay of 2 months.
 
  Phase 2: COMPLETED (Jul/1998) - as planned. Entry into production
- from v1.0 with modules CADBENEF, CADDEPEND, CADPROG, CONSBENF, BATCHPGT,
+ from v1.0 with modules CADBENEF, CADDEPEN, CADPROG, CONSBENF, BATCHPGT,
  BATCHREL.
 
  Phase 3: PARTIALLY COMPLETED (2002/2005) - BATCHCON has been implemented
@@ -491,7 +491,7 @@ gantt
 
     section Coding
     Coding CADBENEF and CADPROG :a3, 1997-08, 2M
-    Coding CONSBENF and CADDEPEND :a4, 1997-09, 1M
+    Coding CONSBENF and CADDEPEN :a4, 1997-09, 1M
 
     section Quality
     Integrated Tests :a5, 1997-10, 1M
