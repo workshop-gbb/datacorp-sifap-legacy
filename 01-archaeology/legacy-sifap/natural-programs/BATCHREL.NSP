@@ -43,14 +43,14 @@ LOCAL
   1 #DT-TODAY              (N8)
 *
 * ACCUMULATORS BY REGION (5 REGIONS)
-  1 #TOT-REGION-GROSS      (P13,2/1:5)
-  1 #TOT-REGION-DISC       (P13,2/1:5)
-  1 #TOT-REGION-NET        (P13,2/1:5)
+  1 #TOT-REGION-GROSS      (P13.2/1:5)
+  1 #TOT-REGION-DISC       (P13.2/1:5)
+  1 #TOT-REGION-NET        (P13.2/1:5)
   1 #QTY-REGION            (N8/1:5)
   1 #NAME-REGION           (A15/1:5)
 *
 * ACCUMULATORS BY STATUS
-  1 #TOT-STS-GROSS         (P13,2/1:5)
+  1 #TOT-STS-GROSS         (P13.2/1:5)
   1 #QTY-STS               (N8/1:5)
   1 #NAME-STS              (A15/1:5)
 *

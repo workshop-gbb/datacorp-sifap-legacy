@@ -74,11 +74,11 @@ LOCAL
 *
 * IPCA TABLE - MONTHLY INDICES (BASE: JAN-DEC)
 * LAST LOAD: 2014
-  1 #IPCA-TAB             (N3,6/1:12)
+  1 #IPCA-TAB             (N3.6/1:12)
 *
 * AVAILABLE YEARS TABLE
   1 #YEAR-TAB             (N4/1:10)
-  1 #IPCA-YEAR            (N3,6/1:10,1:12)
+  1 #IPCA-YEAR            (N3.6/1:10,1:12)
 END-DEFINE
 *
 MOVE *DATN TO #DT-TODAY

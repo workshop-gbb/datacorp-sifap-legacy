@@ -90,8 +90,8 @@ LOCAL
 *
 * PAYMENT HISTORY
   1 #HIST-PERIOD          (N6/1:12)
-  1 #HIST-GROSS           (P9,2/1:12)
-  1 #HIST-NET             (P9,2/1:12)
+  1 #HIST-GROSS           (P9.2/1:12)
+  1 #HIST-NET             (P9.2/1:12)
   1 #HIST-STS             (A1/1:12)
   1 #HIST-TYPE            (A1/1:12)
   1 #QTY-HIST             (N3)

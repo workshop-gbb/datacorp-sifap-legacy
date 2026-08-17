@@ -52,8 +52,8 @@ LOCAL
   1 #K                    (N2)
 *
 * CONTRIBUTION RATE TABLE
-  1 #BAND-CONTRIB         (P9,2/1:4)
-  1 #RATE-CONTRIB         (N3,2/1:4)
+  1 #BAND-CONTRIB         (P9.2/1:4)
+  1 #RATE-CONTRIB         (N3.2/1:4)
 END-DEFINE
 *
 MOVE *DATN TO #DT-TODAY
