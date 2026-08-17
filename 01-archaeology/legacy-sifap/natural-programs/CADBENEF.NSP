@@ -121,7 +121,7 @@ INPUT 'SIFAP - BENEFICIARY REGISTRATION' /
       'NAME..........:' #NAME /
       'BIRTH DATE....:' #DT-BIRTH '(YYYYMMDD)' /
       'SEX...........:' #SEX '(M/F)' /
-      'ADDRESS.......:' #ADDRESS /
+      'ADDRESS.......:' #ADDRESS (AL=60) /
       'CITY..........:' #CITY /
       'STATE.........:' #UF /
       'ZIP CODE......:' #CEP /
@@ -347,7 +347,31 @@ DEFINE SUBROUTINE VALID-CPF
 *
 * EXTRACT DIGITS
   FOR #I = 1 TO 11
-    MOVE SUBSTR(#CPF-STR,#I,1) TO #DIG(#I)
+    DECIDE ON FIRST VALUE OF SUBSTR(#CPF-STR,#I,1)
+      VALUE '0'
+        MOVE 0 TO #DIG(#I)
+      VALUE '1'
+        MOVE 1 TO #DIG(#I)
+      VALUE '2'
+        MOVE 2 TO #DIG(#I)
+      VALUE '3'
+        MOVE 3 TO #DIG(#I)
+      VALUE '4'
+        MOVE 4 TO #DIG(#I)
+      VALUE '5'
+        MOVE 5 TO #DIG(#I)
+      VALUE '6'
+        MOVE 6 TO #DIG(#I)
+      VALUE '7'
+        MOVE 7 TO #DIG(#I)
+      VALUE '8'
+        MOVE 8 TO #DIG(#I)
+      VALUE '9'
+        MOVE 9 TO #DIG(#I)
+      NONE VALUE
+        MOVE FALSE TO #CPF-VALID
+        ESCAPE ROUTINE
+    END-DECIDE
   END-FOR
 *
 * FIRST CHECK DIGIT

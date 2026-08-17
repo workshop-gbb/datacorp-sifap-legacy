@@ -110,16 +110,11 @@ END-DEFINE
 REPEAT
 *
   SET CONTROL 'MB'
-  INPUT USING MAP 'CONSBENF-M01'
-*
-* ALTERNATE SCREEN WITHOUT MAP
-  IF *ERROR-NR NE 0
-    INPUT 'SIFAP - BENEFICIARY QUERY' /
-          '==========================' /
-          'SEARCH TYPE (C=CPF / N=NIS):' #TYPE-SEARCH /
-          'CPF..........:' #CPF-SEARCH /
-          'NIS..........:' #NIS-SEARCH
-  END-IF
+  INPUT 'SIFAP - BENEFICIARY QUERY' /
+        '==========================' /
+        'SEARCH TYPE (C=CPF / N=NIS):' #TYPE-SEARCH /
+        'CPF..........:' #CPF-SEARCH /
+        'NIS..........:' #NIS-SEARCH
 *
   IF *PF-KEY = 'PF3'
     ESCAPE BOTTOM
@@ -210,7 +205,7 @@ DEFINE SUBROUTINE SHOW-BENEFICIARY
   PERFORM MASK-CPF
 *
 * ADDRESS - BUILT FROM THE BA GROUP IN FILE 150
-  COMPRESS BENEFICIARY-V.STREET ','
+  COMPRESS BENEFICIARY-V.STREET-ADDRESS ','
            BENEFICIARY-V.NUMBER '-'
            BENEFICIARY-V.DISTRICT INTO #ADDRESS
 *
@@ -252,7 +247,7 @@ DEFINE SUBROUTINE SHOW-BENEFICIARY
         'NAME..........:' BENEFICIARY-V.FULL-NAME /
         'BIRTH DATE....:' BENEFICIARY-V.DT-BIRTH /
         'SEX...........:' BENEFICIARY-V.SEX /
-        'ADDRESS.......:' #ADDRESS /
+        'ADDRESS.......:' #ADDRESS (AL=60) /
         'CITY/STATE....:' BENEFICIARY-V.CITY
                       '/' BENEFICIARY-V.UF /
         'ZIP CODE......:' BENEFICIARY-V.CEP /
