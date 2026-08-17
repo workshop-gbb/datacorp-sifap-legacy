@@ -1,5 +1,3 @@
-<!-- markdownlint-disable MD013 MD033 MD041 -->
-
 ---
 
 title: "Legacy Documentation - SIFAP"
@@ -33,12 +31,12 @@ tags: ["legacy", "documentation", "sifap", "architecture", "history"]
 
 | File | Year | Description |
 |---|---|---|
-| `ARQUITETURA-ORIGINAL-1997.md` | 1997 | Technical architecture document for the original project—the planned vision before coding began |
-| `ARQUITETURA-ORIGINAL-1997.docx` | 1997 | Original format (Word) |
-| `MANUAL-TECNICO-SIFAP-2008.md` | 2008 | Technical operations manual—covers registration modules and part of the calculation and batch modules |
-| `MANUAL-TECNICO-SIFAP-2008.docx` | 2008 | Original format (Word) |
-| `REGRAS-NEGOCIO-2012.md` | 2012 | Partial business-rule survey—discontinued; 47 pages out of an estimated total of 200+ |
-| `REGRAS-NEGOCIO-2012.docx` | 2012 | Original format (Word) |
+| `ORIGINAL-ARCHITECTURE-1997.md` | 1997 | Technical architecture document for the original project—the planned vision before coding began |
+| `ORIGINAL-ARCHITECTURE-1997.docx` | 1997 | Original format (Word) |
+| `TECHNICAL-MANUAL-SIFAP-2008.md` | 2008 | Technical operations manual—covers registration modules and part of the calculation and batch modules |
+| `TECHNICAL-MANUAL-SIFAP-2008.docx` | 2008 | Original format (Word) |
+| `BUSINESS-RULES-2012.md` | 2012 | Partial business-rule survey—discontinued; 47 pages out of an estimated total of 200+ |
+| `BUSINESS-RULES-2012.docx` | 2012 | Original format (Word) |
 
 ---
 

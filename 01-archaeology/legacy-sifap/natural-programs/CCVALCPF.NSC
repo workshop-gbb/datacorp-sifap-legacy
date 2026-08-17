@@ -7,27 +7,27 @@
 * CHANGED:  07/06/2011 - ROBERTO MENDES - DIVIDE WITH REMAINDER
 * PURPOSE:  STANDARD CPF VALIDATION ROUTINE - MODULUS 11.
 *           THIS IS THE SIFAP STANDARD VERSION (NT-SUPDE-014).
-*           PROVIDES THE VALIDA-CPF-PADRAO SUBROUTINE.
+*           PROVIDES THE VALID-CPF-STANDARD SUBROUTINE.
 *
 * USE:      1. DECLARE REQUIRED FIELDS IN DEFINE DATA
 *           2. MOVE THE CPF TO #CPF-STR
-*           3. PERFORM VALIDA-CPF-PADRAO
+*           3. PERFORM VALID-CPF-STANDARD
 *           4. TEST #CPF-OK
 *           5. PLACE "INCLUDE CCVALCPF" AT THE END OF THE MODULE,
 *              IN THE SUBROUTINE AREA, BEFORE "END"
 *
 * REQUIRED FIELDS IN THE INCLUDING MODULE'S DEFINE DATA:
-*           1 #CPF-STR      (A11)       /* IN
-*           1 #CPF-OK       (L)         /* OUT
-*           1 #CPF-DIG      (N1/1:11)   /* WORK
-*           1 #CPF-SOMA     (N5)        /* WORK
-*           1 #CPF-QUOC     (N5)        /* WORK
-*           1 #CPF-RESTO    (N2)        /* WORK
-*           1 #CPF-DV1      (N1)        /* WORK
-*           1 #CPF-DV2      (N1)        /* WORK
-*           1 #CPF-PESO     (N2)        /* WORK
-*           1 #CPF-IDX      (N2)        /* WORK
-*           1 #CPF-IGUAIS   (L)         /* WORK
+*           1 #CPF-STR          (A11)       /* IN
+*           1 #CPF-OK           (L)         /* OUT
+*           1 #CPF-DIG          (N1/1:11)   /* WORK
+*           1 #CPF-SUM          (N5)        /* WORK
+*           1 #CPF-QUOT         (N5)        /* WORK
+*           1 #CPF-REMAIN       (N2)        /* WORK
+*           1 #CPF-DV1          (N1)        /* WORK
+*           1 #CPF-DV2          (N1)        /* WORK
+*           1 #CPF-WEIGHT       (N2)        /* WORK
+*           1 #CPF-IDX          (N2)        /* WORK
+*           1 #CPF-EQUAL        (L)         /* WORK
 *
 * NOTE:     INLINE COPIES OF THIS ROUTINE EXIST IN OTHER
 *           SIFAP MODULES WITH DIFFERENT BEHAVIOR.
@@ -36,10 +36,10 @@
 *           >>> DO NOT CHANGE THIS ROUTINE WITHOUT COMPARING THE
 *           >>> COPIES - THEY ARE NOT EQUIVALENT.
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-DEFINE SUBROUTINE VALIDA-CPF-PADRAO
+DEFINE SUBROUTINE VALID-CPF-STANDARD
 *
   MOVE TRUE TO #CPF-OK
-  RESET #CPF-SOMA #CPF-QUOC #CPF-RESTO #CPF-DV1 #CPF-DV2
+  RESET #CPF-SUM #CPF-QUOT #CPF-REMAIN #CPF-DV1 #CPF-DV2
 *
 * CPF MUST BE ENTIRELY NUMERIC
   IF #CPF-STR NE MASK(NNNNNNNNNNN)
@@ -53,31 +53,31 @@ DEFINE SUBROUTINE VALIDA-CPF-PADRAO
   END-FOR
 *
 * REJECT CPF WITH ALL DIGITS EQUAL
-  MOVE TRUE TO #CPF-IGUAIS
+  MOVE TRUE TO #CPF-EQUAL
   FOR #CPF-IDX = 2 TO 11
     IF #CPF-DIG(#CPF-IDX) NE #CPF-DIG(1)
-      MOVE FALSE TO #CPF-IGUAIS
+      MOVE FALSE TO #CPF-EQUAL
       ESCAPE BOTTOM
     END-IF
   END-FOR
-  IF #CPF-IGUAIS
+  IF #CPF-EQUAL
     MOVE FALSE TO #CPF-OK
     ESCAPE ROUTINE
   END-IF
 *
 * FIRST CHECK DIGIT - WEIGHTS 10 TO 2
-  MOVE 10 TO #CPF-PESO
+  MOVE 10 TO #CPF-WEIGHT
   FOR #CPF-IDX = 1 TO 9
-    COMPUTE #CPF-SOMA = #CPF-SOMA
-                      + (#CPF-DIG(#CPF-IDX) * #CPF-PESO)
-    SUBTRACT 1 FROM #CPF-PESO
+    COMPUTE #CPF-SUM = #CPF-SUM
+                      + (#CPF-DIG(#CPF-IDX) * #CPF-WEIGHT)
+    SUBTRACT 1 FROM #CPF-WEIGHT
   END-FOR
-  DIVIDE 11 INTO #CPF-SOMA GIVING #CPF-QUOC
-                           REMAINDER #CPF-RESTO
-  IF #CPF-RESTO < 2
+  DIVIDE 11 INTO #CPF-SUM GIVING #CPF-QUOT
+                           REMAINDER #CPF-REMAIN
+  IF #CPF-REMAIN < 2
     MOVE 0 TO #CPF-DV1
   ELSE
-    COMPUTE #CPF-DV1 = 11 - #CPF-RESTO
+    COMPUTE #CPF-DV1 = 11 - #CPF-REMAIN
   END-IF
   IF #CPF-DV1 NE #CPF-DIG(10)
     MOVE FALSE TO #CPF-OK
@@ -85,19 +85,19 @@ DEFINE SUBROUTINE VALIDA-CPF-PADRAO
   END-IF
 *
 * SECOND CHECK DIGIT - WEIGHTS 11 TO 2
-  RESET #CPF-SOMA
-  MOVE 11 TO #CPF-PESO
+  RESET #CPF-SUM
+  MOVE 11 TO #CPF-WEIGHT
   FOR #CPF-IDX = 1 TO 10
-    COMPUTE #CPF-SOMA = #CPF-SOMA
-                      + (#CPF-DIG(#CPF-IDX) * #CPF-PESO)
-    SUBTRACT 1 FROM #CPF-PESO
+    COMPUTE #CPF-SUM = #CPF-SUM
+                      + (#CPF-DIG(#CPF-IDX) * #CPF-WEIGHT)
+    SUBTRACT 1 FROM #CPF-WEIGHT
   END-FOR
-  DIVIDE 11 INTO #CPF-SOMA GIVING #CPF-QUOC
-                           REMAINDER #CPF-RESTO
-  IF #CPF-RESTO < 2
+  DIVIDE 11 INTO #CPF-SUM GIVING #CPF-QUOT
+                           REMAINDER #CPF-REMAIN
+  IF #CPF-REMAIN < 2
     MOVE 0 TO #CPF-DV2
   ELSE
-    COMPUTE #CPF-DV2 = 11 - #CPF-RESTO
+    COMPUTE #CPF-DV2 = 11 - #CPF-REMAIN
   END-IF
   IF #CPF-DV2 NE #CPF-DIG(11)
     MOVE FALSE TO #CPF-OK

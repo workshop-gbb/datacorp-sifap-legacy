@@ -1,5 +1,3 @@
-<!-- markdownlint-disable MD013 MD033 MD041 -->
-
 ---
 title: "SIFAP Technical Manual - Payment Inspection and Administration System"
 author: "Fernanda Lucia de Oliveira - SUPDE/DESIF"

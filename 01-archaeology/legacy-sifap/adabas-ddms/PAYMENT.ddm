@@ -1,5 +1,5 @@
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-* DDM:       PAGAMENTO
+* DDM:       PAYMENT
 * FILE:      152
 * SYSTEM:    SIFAP - PAYMENT INSPECTION AND ADMINISTRATION SYSTEM
 * AUTHOR:    ROBERTO CARLOS FERREIRA - ADABAS DBA
@@ -7,12 +7,12 @@
 * CHANGED:   10/01/1999 - MARCIA A. SOUZA - BATCH FIELDS
 *            10/01/1999 - MARCIA A. SOUZA - FF/FG REMITTANCE BATCH
 *            10/01/1999 - MARCIA A. SOUZA - EF CREDIT DATE/GF RETURN DATE
-*            12/12/2001 - MARCIA A. SOUZA - BD VLR-ABONO/EG TIPO-PAGTO
+*            12/12/2001 - MARCIA A. SOUZA - BD AMT-BONUS/EG TIPO-PAGTO
 *            05/09/2002 - ROBERTO C. FERREIRA - SIAFI INTEGRATION
-*            05/09/2002 - ROBERTO C. FERREIRA - SUBDESC SA ANO-REF
+*            05/09/2002 - ROBERTO C. FERREIRA - SUBDESC SA YEAR-REF
 *            14/07/2003 - ADILSON BATISTA - GG-GK REVERSAL AND CORRECTION
 *            22/04/2005 - ADILSON BATISTA - CROSS-AUDIT FIELDS
-*            22/04/2005 - ADILSON BATISTA - MU HC COD-OCORRENCIA
+*            22/04/2005 - ADILSON BATISTA - MU HC COD-OCCURRENCE
 *            17/11/2015 - CARLOS E. MENDES - FILE HASH FIELD
 * DESCRIPTION: HISTORY OF PAYMENTS PROCESSED BY SIFAP
 *            TRANSACTIONAL TABLE - APPROX. 180 MILLION RECORDS
@@ -21,9 +21,9 @@
 *            AVERAGE GROWTH: 3.8 MILLION RECORDS/MONTH
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 *
-* LISTDDM   PAGAMENTO      LIB SIFAPPRD   NAT 4.2.6   14/03/2018 14:23
+* LISTDDM   PAYMENT      LIB SIFAPPRD   NAT 4.2.6   14/03/2018 14:23
 *
-DDM NAME: PAGAMENTO                       DEFAULT SEQUENCE: AA
+DDM NAME: PAYMENT                       DEFAULT SEQUENCE: AA
 DBID: 057   FNR: 152
 *
  T L DB Name                     F Leng  S D Remark
@@ -31,104 +31,104 @@ DBID: 057   FNR: 152
 *
 * --- KEYS ---
 *
-   1 AA NUM-PAGAMENTO            N   15    U UNIQUE SEQUENCE
+   1 AA NUM-PAYMENT            N   15    U UNIQUE SEQUENCE
    1 AB NUM-CPF                  A   11    D BENEFICIARY CPF
-   1 AC NUM-INSCRICAO            N   11  N   BENEFICIARY REGISTRATION
-   1 AD COD-PROGRAMA             A    4    D SOCIAL PROGRAM
-   1 AE ANO-MES-REF              N    6    D YYYYMM - REFERENCE PERIOD
-   1 AF NUM-CICLO                N    6    D PROCESSING CYCLE
+   1 AC NUM-REGISTRATION            N   11  N   BENEFICIARY REGISTRATION
+   1 AD COD-PROGRAM             A    4    D SOCIAL PROGRAM
+   1 AE YEAR-MONTH-REF              N    6    D YYYYMM - REFERENCE PERIOD
+   1 AF NUM-CYCLE                N    6    D PROCESSING CYCLE
 *
 * --- AMOUNTS ---
 *
-   1 BA VLR-BRUTO                P  9,2      CALCULATED GROSS AMOUNT
-   1 BB VLR-LIQUIDO              P  9,2      NET AMOUNT (GROSS-DISCOUNT)
-   1 BC VLR-DESCONTO-TOTAL       P  7,2  N   SUM OF DISCOUNTS
-   1 BD VLR-ABONO                P  9,2  N   ALLOWANCE (ADDED 2001)
+   1 BA AMT-GROSS                P  9,2      CALCULATED GROSS AMOUNT
+   1 BB AMT-NET              P  9,2      NET AMOUNT (GROSS-DISCOUNT)
+   1 BC AMT-DISC-TOTAL       P  7,2  N   SUM OF DISCOUNTS
+   1 BD AMT-BONUS                P  9,2  N   ALLOWANCE (ADDED 2001)
 *
 * --- ITEMIZED DISCOUNTS (PERIODIC GROUP - MAX. 8 TYPES) ---
 *
- P 1 CA GRP-DESCONTO                         (1:8) APPLIED DISCOUNTS
-   2 CB TIPO-DESCONTO            A    3  N   IR/JD/CS/PA/EM/TX/OU/EX
-   2 CC VLR-DESCONTO             P  7,2  N   DISCOUNT AMOUNT
-   2 CD PCT-DESCONTO             P  3,2  N   APPLIED PERCENTAGE
-   2 CE NUM-PROCESSO             A   20  N   COURT CASE NO. (IF JD)
-   2 CF DT-INICIO-DSCT           N    8  N   YYYYMMDD
-   2 CG DT-FIM-DSCT              N    8  N   YYYYMMDD (0=UNDEFINED)
+ P 1 CA GRP-DISC                         (1:8) APPLIED DISCOUNTS
+   2 CB TYPE-DISC            A    3  N   IR/JD/CS/PA/EM/TX/OU/EX
+   2 CC AMT-DISC             P  7,2  N   DISCOUNT AMOUNT
+   2 CD PCT-DISC             P  3,2  N   APPLIED PERCENTAGE
+   2 CE NUM-CASE             A   20  N   COURT CASE NO. (IF JD)
+   2 CF DT-START-DISC           N    8  N   YYYYMMDD
+   2 CG DT-END-DISC              N    8  N   YYYYMMDD (0=UNDEFINED)
 *
 * --- STATUS AND PROCESSING ---
 *
-   1 DA SIT-PAGAMENTO            A    1  F D P=PENDING G=GENERATED E=ISSUED
+   1 DA SIT-PAYMENT            A    1  F D P=PENDING G=GENERATED E=ISSUED
 *                                             C=CONFIRMED D=RETURNED
 *                                             X=CANCELED R=REPROCESSED
-   1 DB DT-GERACAO               N    8    D YYYYMMDD - BATCH GENERATION
-   1 DC HR-GERACAO               N    6      HHMMSS
-   1 DD DT-EMISSAO               N    8  N   YYYYMMDD - SENT TO BANK
-   1 DE DT-CONFIRMACAO           N    8  N   YYYYMMDD - BANK RESPONSE
-   1 DF DT-CANCELAMENTO          N    8  N   YYYYMMDD (IF APPLICABLE)
-   1 DG MOT-CANCELAMENTO         A    3  N   REASON CODE (INTERNAL TABLE)
+   1 DB DT-GENERATION               N    8    D YYYYMMDD - BATCH GENERATION
+   1 DC HR-GENERATION               N    6      HHMMSS
+   1 DD DT-ISSUE               N    8  N   YYYYMMDD - SENT TO BANK
+   1 DE DT-CONFIRMATION           N    8  N   YYYYMMDD - BANK RESPONSE
+   1 DF DT-CANCELLATION          N    8  N   YYYYMMDD (IF APPLICABLE)
+   1 DG REASON-CANCELLATION         A    3  N   REASON CODE (INTERNAL TABLE)
 *
 * --- BANKING DATA ---
 *
-   1 EA COD-BANCO                A    3  N D FEBRABAN CODE
-   1 EB COD-AGENCIA              A    6  N   BRANCH NUMBER
-   1 EC NUM-CONTA                A   13  N   ACCOUNT NUMBER
-   1 ED TIPO-CONTA               A    1  F   C=CHECKING P=SAVINGS
-   1 EE COD-OPERACAO             A    3  N   CAIXA OPERATION (IF APPLICABLE)
-   1 EF DT-CREDITO               N    8  N D YYYYMMDD - ACCOUNT CREDIT
+   1 EA COD-BANK                A    3  N D FEBRABAN CODE
+   1 EB COD-BRANCH              A    6  N   BRANCH NUMBER
+   1 EC NUM-ACCOUNT                A   13  N   ACCOUNT NUMBER
+   1 ED TYPE-ACCOUNT               A    1  F   C=CHECKING P=SAVINGS
+   1 EE COD-OPERATION             A    3  N   CAIXA OPERATION (IF APPLICABLE)
+   1 EF DT-CREDIT               N    8  N D YYYYMMDD - ACCOUNT CREDIT
 *                                             (ADDED 1999 - NOT DB)
-   1 EG TIPO-PAGAMENTO           A    1  F D N=NORMAL R=RETROACTIVE
+   1 EG TIPO-PAYMENT           A    1  F D N=NORMAL R=RETROACTIVE
 *                                             A=ALLOWANCE C=CORRECTION
 *
 * --- SIAFI INTEGRATION (ADDED 2002) ---
 *
    1 FA NUM-OB-SIAFI             A   12  N   SIAFI BANK ORDER
    1 FB NUM-NE-SIAFI             A   12  N   SIAFI COMMITMENT NOTE
-   1 FC COD-UG-EMITENTE          A    6  N   MANAGEMENT UNIT
-   1 FD COD-GESTAO               A    5  N   SIAFI MANAGEMENT CODE
-   1 FE SIT-INTEG-SIAFI          A    1  F   I=INTEGRATED P=PENDING E=ERROR
-   1 FF NUM-LOTE                 N    8    D REMITTANCE BATCH (1999)
-   1 FG SEQ-LOTE                 N    6      SEQUENCE WITHIN BATCH
+   1 FC COD-UG-ISSUER          A    6  N   MANAGEMENT UNIT
+   1 FD COD-MANAGEMENT               A    5  N   SIAFI MANAGEMENT CODE
+   1 FE STAT-INTEG-SIAFI          A    1  F   I=INTEGRATED P=PENDING E=ERROR
+   1 FF NUM-BATCH                 N    8    D REMITTANCE BATCH (1999)
+   1 FG SEQ-BATCH                 N    6      SEQUENCE WITHIN BATCH
 *
 * --- BANK RECONCILIATION ---
 *
-   1 GA DT-CONCILIACAO           N    8  N   YYYYMMDD
-   1 GB SIT-CONCILIACAO          A    1  F   C=RECONCILED D=DIVERGENT
+   1 GA DT-RECONCIL           N    8  N   YYYYMMDD
+   1 GB STAT-RECONCIL          A    1  F   C=RECONCILED D=DIVERGENT
 *                                             P=PENDING N=N/A
-   1 GC VLR-CONCILIADO           P  9,2  N   BANK-CONFIRMED AMOUNT
-   1 GD COD-RETORNO-BANCO        A    2  N D CNAB 240 RETURN CODE
-   1 GE DES-RETORNO-BANCO        A   40  N   RETURN DESCRIPTION
-   1 GF DT-DEVOLUCAO             N    8  N   YYYYMMDD (ADDED 1999)
-   1 GG IND-ESTORNO              A    1  F   S/N (ADDED 2003)
-   1 GH NUM-PAGTO-ORIGEM         N   15  N D ORIGINAL PAYMENT (2003)
-   1 GI VLR-CORRECAO             P  9,2  N   CORRECTION AMOUNT
-   1 GJ DT-CORRECAO              N    8  N   YYYYMMDD
-   1 GK IND-CORRIGIDO            A    1  F   S/N
+   1 GC AMT-RECONCILED           P  9,2  N   BANK-CONFIRMED AMOUNT
+   1 GD COD-BANK-RETURN        A    2  N D CNAB 240 RETURN CODE
+   1 GE DESCR-BANK-RETURN        A   40  N   RETURN DESCRIPTION
+   1 GF DT-RETURN             N    8  N   YYYYMMDD (ADDED 1999)
+   1 GG IND-REVERSAL              A    1  F   S/N (ADDED 2003)
+   1 GH NUM-PAYMENT-ORIGIN         N   15  N D ORIGINAL PAYMENT (2003)
+   1 GI AMT-CORR             P  9,2  N   CORRECTION AMOUNT
+   1 GJ DT-CORR              N    8  N   YYYYMMDD
+   1 GK IND-CORR            A    1  F   S/N
 *
 * --- FILE HASH (ADDED 2015) ---
 *
-   1 HA HASH-ARQ-REMESSA         A   64  N   SHA-256 REMITTANCE FILE
-   1 HB HASH-ARQ-RETORNO         A   64  N   SHA-256 RETURN FILE
- M 1 HC COD-OCORRENCIA           A    3  N   (1:10) BANK OCCURRENCES
+   1 HA HASH-REMITTANCE-FILE         A   64  N   SHA-256 REMITTANCE FILE
+   1 HB HASH-RETURN-FILE         A   64  N   SHA-256 RETURN FILE
+ M 1 HC COD-OCCURRENCE           A    3  N   (1:10) BANK OCCURRENCES
 *                                             (ADDED 2005)
 *
 * --- CONTROL ---
 *
-   1 IA DT-INCLUSAO              N    8      YYYYMMDD
-   1 IB HR-INCLUSAO              N    6      HHMMSS
-   1 IC USR-INCLUSAO             A    8  N   LOGIN - USUALLY 'BATCH'
-   1 ID DT-ULT-ALTERACAO         N    8  N   YYYYMMDD
-   1 IE HR-ULT-ALTERACAO         N    6  N   HHMMSS
-   1 IF USR-ULT-ALTERACAO        A    8  N
+   1 IA DT-INSERT              N    8      YYYYMMDD
+   1 IB HR-INSERT              N    6      HHMMSS
+   1 IC USR-INSERT             A    8  N   LOGIN - USUALLY 'BATCH'
+   1 ID DT-LAST-UPDATE         N    8  N   YYYYMMDD
+   1 IE HR-LAST-UPDATE         N    6  N   HHMMSS
+   1 IF USR-LAST-UPDATE        A    8  N
 *
 * --- DERIVED DESCRIPTORS ---
 *
- S   SA ANO-REF                  N    4    D SUBDESCRIPTOR (2002)
+ S   SA YEAR-REF                  N    4    D SUBDESCRIPTOR (2002)
         /* AE(1-4)
- S   S1 SUPER-CPF-COMPET         A   17    S
+ S   S1 SUPER-CPF-PERIOD         A   17    S
         /* AB(1-11), AE(1-6)
- S   S2 SUPER-PROG-COMP-SIT      A   11    S
+ S   S2 SUPER-PROG-PERIOD-STAT      A   11    S
         /* AD(1-4), AE(1-6), DA(1-1)
- S   S3 SUPER-CICLO-SIT          A    7    S
+ S   S3 SUPER-CYCLE-STAT          A    7    S
         /* AF(1-6), DA(1-1)
 *
 * COLUMN LEGEND
@@ -162,4 +162,4 @@ DBID: 057   FNR: 152
 * NOTE2: ISN REUSE IS DISABLED FOR THIS FILE. THE ISN IS NOT A
 *        STABLE KEY AND MUST NOT BE USED AS AN EXTERNAL IDENTIFIER.
 *
-* * * END OF DDM PAGAMENTO * * *
+* * * END OF DDM PAYMENT * * *

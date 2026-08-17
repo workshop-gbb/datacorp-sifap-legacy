@@ -1,5 +1,3 @@
-<!-- markdownlint-disable MD013 MD033 MD041 -->
-
 ---
 
 title: "Project SIFAP - Technical Architecture Document"

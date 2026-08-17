@@ -1,5 +1,3 @@
-<!-- markdownlint-disable MD013 MD033 MD041 -->
-
 ---
 title: "SIFAP Business Rules - Partial Survey"
 author: "Ana Cristina Barros - SENARC Business Analyst"

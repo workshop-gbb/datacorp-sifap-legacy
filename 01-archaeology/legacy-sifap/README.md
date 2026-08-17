@@ -346,9 +346,9 @@ Field names are limited to **20 characters** and use standardized abbreviations:
 
 ## Related Documents
 
-- [`01-arqueologia/LEGACY-EXPLORATION-CHECKLIST.md`](../LEGACY-EXPLORATION-CHECKLIST.md)—mandatory gate before starting Stage 2.
-- [`01-arqueologia/GUIDE.md`](../GUIDE.md)—timed walkthrough for reading this legacy system.
-- [`02-spec-moderna/GUIDE.md`](../../02-spec-moderna/GUIDE.md)—next step: modern specification (EARS) with `source_legacy:` pointing to files in this folder.
+- [`01-archaeology/LEGACY-EXPLORATION-CHECKLIST.md`](../LEGACY-EXPLORATION-CHECKLIST.md)—mandatory gate before starting Stage 2.
+- [`01-archaeology/GUIDE.md`](../GUIDE.md)—timed walkthrough for reading this legacy system.
+- [`02-modern-spec/GUIDE.md`](../../02-modern-spec/GUIDE.md)—next step: modern specification (EARS) with `source_legacy:` pointing to files in this folder.
 
 ---
 
@@ -356,6 +356,6 @@ Field names are limited to **20 characters** and use standardized abbreviations:
 
 | Previous | Next |
 |---|---|
-| [Stage 1 GUIDE](../GUIDE.md)<br/><sub>Timed 90-minute walkthrough.</sub> | [How to Read Natural](COMO-LER-NATURAL.md)<br/><sub>Syntax tutorial for non-developers.</sub> |
+| [Stage 1 GUIDE](../GUIDE.md)<br/><sub>Timed 90-minute walkthrough.</sub> | [How to Read Natural](HOW-TO-READ-NATURAL.md)<br/><sub>Syntax tutorial for non-developers.</sub> |
 
 <sub>[Back to the kit index](../../README.md)</sub>

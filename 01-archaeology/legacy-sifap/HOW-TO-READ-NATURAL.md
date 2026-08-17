@@ -7,7 +7,7 @@
 | Field | Value |
 |---|---|
 | **Audience** | PO, Tech Writer, business analyst, junior developer—anyone opening a `.NSN` during Stage 1 |
-| **Prerequisites** | VS Code installed; access to the `legado-sifap/natural-programs/` folder |
+| **Prerequisites** | VS Code installed; access to the `legacy-sifap/natural-programs/` folder |
 | **Estimated time** | 10 min for this guide + 45 min per program |
 | **Stage** | Stage 1 — Archaeology |
 | **Expected outcome** | At least one rule cataloged with `file.NSN#L<start>-L<end>` evidence |

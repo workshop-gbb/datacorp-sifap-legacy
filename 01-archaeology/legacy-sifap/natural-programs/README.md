@@ -7,7 +7,7 @@
 | Field | Value |
 |---|---|
 | **Audience** | All pairs—each pair reads its three assigned programs |
-| **Prerequisites** | Read [`COMO-LER-NATURAL.md`](../COMO-LER-NATURAL.md) |
+| **Prerequisites** | Read [`HOW-TO-READ-NATURAL.md`](../HOW-TO-READ-NATURAL.md) |
 | **Stage** | Stage 1 — Archaeology |
 | **Expected outcome** | Rules cataloged with `file.NSN#L<start>-L<end>` evidence and a dependency map started |
 
@@ -27,7 +27,7 @@
 > **Your reading workload has not changed: it remains three programs per pair.**
 > The nine supporting members are library infrastructure—data areas, copycodes, two validation subprograms, and two JCLs. Open one when one of *your* programs uses `USING`, `INCLUDE`, or `CALLNAT` and you need to understand what that name means. They are **not** extra programs, **do not** belong to any pair, and **do not** count toward the three assigned readings.
 
-Everything is kept in one directory because a Natural library is **flat**: `CALLNAT`, `INCLUDE`, and `USING` resolve members **by name**, never by path. See [`COMO-LER-NATURAL.md`, section 2](../COMO-LER-NATURAL.md#2-natural-library-members).
+Everything is kept in one directory because a Natural library is **flat**: `CALLNAT`, `INCLUDE`, and `USING` resolve members **by name**, never by path. See [`HOW-TO-READ-NATURAL.md`, section 2](../HOW-TO-READ-NATURAL.md#2-natural-library-members).
 
 ---
 
@@ -94,7 +94,7 @@ The members in this folder reference one another. Discovering **who calls whom**
 **The four edge types and how to find them:**
 
 ```bash
-cd 01-arqueologia/legado-sifap/natural-programs
+cd 01-archaeology/legacy-sifap/natural-programs
 
 grep -n "CALLNAT" *.NSP *.NSN   # subprogram call         (edge between modules)
 grep -n "INCLUDE" *.NSP *.NSN   # inserted copycode       (edge to .NSC)

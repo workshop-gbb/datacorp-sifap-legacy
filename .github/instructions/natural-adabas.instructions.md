@@ -1,11 +1,11 @@
 ---
 description: "Use when reading Natural/Adabas legacy code, language patterns, FDT structure, naming conventions, and batch flows."
-applyTo: "01-arqueologia/legado-sifap/**,**/*.NSP,**/*.nsp,**/*.NSN,**/*.nsn,**/*.NSS,**/*.nss,**/*.NSA,**/*.nsa,**/*.NSL,**/*.nsl,**/*.NSC,**/*.nsc,**/*.NSM,**/*.nsm,**/*.NSD,**/*.nsd,**/*.NAT,**/*.nat,**/*.CPY,**/*.cpy,**/*.DDM,**/*.ddm,**/*.jcl,**/*.JCL"
+applyTo: "01-archaeology/legacy-sifap/**,**/*.NSP,**/*.nsp,**/*.NSN,**/*.nsn,**/*.NSS,**/*.nss,**/*.NSA,**/*.nsa,**/*.NSL,**/*.nsl,**/*.NSC,**/*.nsc,**/*.NSM,**/*.nsm,**/*.NSD,**/*.nsd,**/*.NAT,**/*.nat,**/*.CPY,**/*.cpy,**/*.DDM,**/*.ddm,**/*.jcl,**/*.JCL"
 ---
 
 # Natural/Adabas Legacy Code — Reading Guide
 
-This file activates when you open Natural programs, Adabas DDMs, JCL, copycodes, or any file within the `01-arqueologia/legado-sifap/` directory. It teaches how to read legacy code for SIFAP (Payment Inspection and Administration System): Natural program structure, CALLNAT and INCLUDE dependencies, Adabas FDTs, legacy naming, batch patterns, packed decimals, and first-pass reading strategy. It does **not** decide modern module boundaries or JPA mappings, which belong to [`modular-monolith.instructions.md`](modular-monolith.instructions.md), and it does not write EARS requirements or traceability records, which belong to [`requirements.instructions.md`](requirements.instructions.md).
+This file activates when you open Natural programs, Adabas DDMs, JCL, copycodes, or any file within the `01-archaeology/legacy-sifap/` directory. It teaches how to read legacy code for SIFAP (Payment Inspection and Administration System): Natural program structure, CALLNAT and INCLUDE dependencies, Adabas FDTs, legacy naming, batch patterns, packed decimals, and first-pass reading strategy. It does **not** decide modern module boundaries or JPA mappings, which belong to [`modular-monolith.instructions.md`](modular-monolith.instructions.md), and it does not write EARS requirements or traceability records, which belong to [`requirements.instructions.md`](requirements.instructions.md).
 
 ## Natural Program Structure
 

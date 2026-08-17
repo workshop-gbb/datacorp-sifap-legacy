@@ -1,7 +1,7 @@
 1                                                              PAGE     1
         A D A R E P   V8.3.3    F I L E   L A Y O U T   R E P O R T
         ==========================================================
-        DATABASE 057 (SIFAP-PROD)          FILE 150 (BENEFICIARIO)
+        DATABASE 057 (SIFAP-PROD)          FILE 150 (BENEFICIARY)
         RUN DATE 2018-03-14  14:22:07      REPORT BY DBA/SIFAP
         ADACMP FDT AS LOADED 1997-05-12, LAST FDT CHANGE 2015-11-19
 
@@ -24,7 +24,7 @@
     1     AL       8      U     NU
     1     AM      11      U     DE,UQ,NU
     1     AN      13      U     DE,UQ,NU
-    1     BA                    GR                   GRP-ENDERECO
+    1     BA                    GR                   GRP-ADDRESS
     2     BB      60      A     NU
     2     BC      10      A     NU
     2     BD      30      A     NU
@@ -48,11 +48,11 @@
     1     CL       1      A     FI
 1                                                              PAGE     2
         A D A R E P   V8.3.3    F I L E   L A Y O U T   R E P O R T
-        DATABASE 057 (SIFAP-PROD)          FILE 150 (BENEFICIARIO)
+        DATABASE 057 (SIFAP-PROD)          FILE 150 (BENEFICIARY)
 
   LEVEL  NAME  LENGTH  FORMAT  OPTIONS              PARENT / REMARK
   -----  ----  ------  ------  -------------------  --------------------
-    1     DA                    PE                   GRP-DEPENDENTE
+    1     DA                    PE                   GRP-DEPEND
     2     DB      11      A     NU
     2     DC      60      A     NU
     2     DD       8      U     NU
@@ -108,7 +108,7 @@
 
 1                                                              PAGE     3
         A D A R E P   V8.3.3    F I L E   L A Y O U T   R E P O R T
-        DATABASE 057 (SIFAP-PROD)          FILE 150 (BENEFICIARIO)
+        DATABASE 057 (SIFAP-PROD)          FILE 150 (BENEFICIARY)
 
         FILE STATISTICS
         ----------------------------------------------------------
@@ -148,7 +148,7 @@
   *  FIELDS WITH NU (NULL SUPPRESSION) USE NO SPACE WHEN
      EMPTY, BUT ARE ALSO NOT INCLUDED IN THE INDEX. A 'FIND' FOR AN
      EMPTY VALUE RETURNS NO RECORDS FOR THESE FIELDS.
-  *  THIS FDT DESCRIBES THE PHYSICAL FILE. THE DDM (BENEFICIARIO.DDM)
+  *  THIS FDT DESCRIBES THE PHYSICAL FILE. THE DDM (BENEFICIARY.DDM)
      DESCRIBES THE LOGICAL VIEW USED BY NATURAL. LONG FIELD NAMES
      EXIST ONLY IN THE DDM - THE PHYSICAL FILE RECOGNIZES
      ONLY THE 2-BYTE SHORT NAMES IN THIS LISTING.

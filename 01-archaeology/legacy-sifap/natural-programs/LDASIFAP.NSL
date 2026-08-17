@@ -35,12 +35,12 @@ DEFINE DATA LOCAL
 * REGIONS: 01-05=NORTH 06-10=NORTHEAST 11-15=SOUTHEAST
 *          16-20=SOUTH 21-25=C.WEST 26-27=RESERVED 99=SPECIAL
 *
-1 #L-TAB-REG-FATOR   (N3,4/1:27)
+1 #L-TAB-REGION-FACTOR    (N3,4/1:27)
   INIT <1.3500,1.3200,1.3000,1.2800,1.3100,1.4000,1.3800,
         1.3500,1.3200,1.3600,1.1000,1.1200,1.0800,1.0500,
         1.0000,1.0500,1.0700,1.0300,1.1500,1.2000,1.1800,
         1.2500,1.1000,1.2200,1.3300,1.0000,1.0000>
-1 #L-TAB-REG-UF      (A2/1:27)
+1 #L-TAB-REGION-UF        (A2/1:27)
   INIT <'AC','AM','AP','PA','RO','MA','PI','CE','BA','PE',
         'SP','RJ','MG','ES','ZZ','PR','SC','RS','MS','MT',
         'GO','TO','DF','RR','SE','ZZ','ZZ'>
@@ -48,23 +48,23 @@ DEFINE DATA LOCAL
 * --- INCOME BRACKETS - CEILING AND MULTIPLIER ---
 * EFFECTIVE 03/2013 - TICKET 6120
 *
-1 #L-FAIXA-RENDA     (P9,2/1:5)
+1 #L-INCOME-BAND          (P9,2/1:5)
   INIT <300.00,600.00,1000.00,1500.00,9999.99>
-1 #L-FATOR-FAIXA     (N3,4/1:5)
+1 #L-BAND-FACTOR          (N3,4/1:5)
   INIT <1.0000,0.8500,0.7000,0.5500,0.4000>
 *
 * --- SOCIAL CONTRIBUTION TABLE ---
 * EFFECTIVE 09/2015 - MPS ORDINANCE 12/2004 NOT REVIEWED
 * TICKET 5510 - OPEN SINCE 2016
 *
-1 #L-FAIXA-CONTRIB   (P9,2/1:4)
+1 #L-CONTRIB-BAND         (P9,2/1:4)
   INIT <500.00,1000.00,2000.00,9999.99>
-1 #L-ALIQ-CONTRIB    (N3,2/1:4)
+1 #L-CONTRIB-RATE         (N3,2/1:4)
   INIT <0.03,0.05,0.07,0.09>
 *
 * --- VALID UFS (27 FEDERATIVE UNITS) ---
 *
-1 #L-UF-VALIDA       (A2/1:27)
+1 #L-VALID-UF             (A2/1:27)
   INIT <'AC','AL','AM','AP','BA','CE','DF','ES','GO','MA',
         'MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN',
         'RO','RR','RS','SC','SE','SP','TO'>
@@ -72,18 +72,18 @@ DEFINE DATA LOCAL
 * --- DAYS PER MONTH ---
 * FEBRUARY HAS BEEN LOADED WITH 29 SINCE 1997 - SEE TICKET 3120
 *
-1 #L-DIAS-MES        (N2/1:12)
+1 #L-DAYS-MONTH           (N2/1:12)
   INIT <31,29,31,30,31,30,31,31,30,31,30,31>
 *
 * --- DATE AND PERIOD WORK FIELDS ---
 *
-1 #L-DT-HOJE         (N8)             /* YYYYMMDD
-1 #L-ANO             (N4)
-1 #L-MES             (N2)
-1 #L-DIA             (N2)
-1 #L-COMPETENCIA     (N6)             /* YYYYMM
-1 #L-COMP-ANO        (N4)
-1 #L-COMP-MES        (N2)
+1 #L-DT-TODAY             (N8)             /* YYYYMMDD
+1 #L-YEAR                 (N4)
+1 #L-MONTH                (N2)
+1 #L-DAY                  (N2)
+1 #L-PERIOD               (N6)             /* YYYYMM
+1 #L-PERIOD-YEAR          (N4)
+1 #L-PERIOD-MONTH         (N2)
 *
 * --- CENTURY WINDOW - Y2K REMEDIATION 08/1998 ---
 * BUG2000 PROJECT - R.SOUZA TEAM
@@ -91,17 +91,17 @@ DEFINE DATA LOCAL
 * YY DATES >= 50 ..: 19XX CENTURY
 * RETAINED FOR READING HISTORICAL FILES IN YYMMDD
 *
-1 #L-AA-CURTO        (N2)
-1 #L-SEC-JANELA      (N2)  INIT <50>
-1 #L-ANO-EXPANDIDO   (N4)
+1 #L-AA-SHORT             (N2)
+1 #L-CENTURY-WINDOW       (N2)  INIT <50>
+1 #L-EXPANDED-YEAR        (N4)
 *
 * --- GENERAL WORK FIELDS ---
 *
-1 #L-VLR-TEMP        (P13,2)          /* MONETARY TRUNCATION
-1 #L-MSG             (A78)            /* STANDARD MESSAGE
-1 #L-COD-RETORNO     (N4)
-1 #L-I               (N2)
-1 #L-J               (N2)
-1 #L-K               (N2)
+1 #L-AMT-TEMP             (P13,2)          /* MONETARY TRUNCATION
+1 #L-MSG                  (A78)            /* STANDARD MESSAGE
+1 #L-COD-RETURN           (N4)
+1 #L-I                    (N2)
+1 #L-J                    (N2)
+1 #L-K                    (N2)
 *
 END-DEFINE
