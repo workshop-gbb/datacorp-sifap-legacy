@@ -225,6 +225,8 @@ def encode_ngd(ddm: Ddm, *, timestamp: int | None = None) -> bytes:
         timestamp = int(time.time())
     records = b"".join(encode_field(field) for field in ddm.fields)
     file_name = ddm.file_name.encode("ascii")
+    if len(file_name) < 9:
+        file_name = file_name.ljust(9, b" ")
     header_size = 0x64 + len(file_name)
     header = bytearray(header_size)
     header[0:4] = b"\xff\xffD\x00"

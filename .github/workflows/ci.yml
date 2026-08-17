@@ -42,6 +42,122 @@ jobs:
               - 'infra/**'
               - '**/*.tf'
 
+  cloud-init-size:
+    name: cloud-init custom_data size guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Reject a cloud-init that cannot fit in Azure custom_data
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          # Azure caps the DECODED custom_data payload at 65535 bytes. Going over does not fail
+          # at plan time - it fails during apply with an opaque error, after the resource group,
+          # network and disks already exist. So bound it here instead.
+          #
+          # The template is rendered by templatefile() in main.tf, so the committed file is not
+          # the payload. Every ${var} is replaced by a value whose length is only known at apply
+          # time, and demo_fqdn alone is substituted ~10 times. This computes an UPPER BOUND by
+          # substituting the longest value each variable is allowed to take, so a green build
+          # means every legal tfvars combination fits.
+          import collections
+          import pathlib
+          import re
+          import sys
+
+          LIMIT = 65535
+          template = pathlib.Path("infra/adabas-natural-lab/cloud-init.yaml")
+          text = template.read_text(encoding="utf-8")
+
+          # "$${x}" is an escaped literal, not a substitution. Hide it before scanning.
+          sentinel = "\x00ESCAPED\x00"
+          scan = text.replace("$${", sentinel)
+
+          # Longest legal value per variable.
+          #   dns_label_prefix caps at 52 chars (validation in variables.tf) and the longest
+          #   Azure region name is ~18 chars ("germanywestcentral"), so:
+          #     demo_fqdn = 52 + 1 + 18 + len(".cloudapp.azure.com") = 90
+          WORST = {
+              "demo_fqdn": 90,
+              "caddy_tls_directive": 90 + 45,   # embeds demo_fqdn plus a comment prefix
+              "caddy_global_options": 80,       # "email <address>"
+              "key_vault_uri": 80,
+              "payload_base_url": 96,
+              "state_base_url": 96,
+              "terminal_natural_command": 120,
+              "modern_app_upstream": 64,
+              "adabas_admin_bind": 32,
+              "adabas_dbid": 5,
+              "basic_auth_username": 64,
+              "basic_auth_secret_name": 64,
+              "basic_auth_secret_kind": 16,
+              "secret_name": 64,
+          }
+          DEFAULT_IMAGE_LEN = 72   # registry/repository:tag
+
+          occurrences = collections.Counter(re.findall(r"\$\{(\w+)\}", scan))
+          if not occurrences:
+              print("::error::no template variables found - has the render contract changed?")
+              sys.exit(1)
+
+          rendered = scan
+          unknown = []
+          for name, count in occurrences.items():
+              if name in WORST:
+                  width = WORST[name]
+              elif name.endswith("_image"):
+                  width = DEFAULT_IMAGE_LEN
+              else:
+                  # A new variable nobody sized. Assume it is large rather than silently
+                  # under-counting it.
+                  width = 128
+                  unknown.append(name)
+              rendered = rendered.replace("${%s}" % name, "X" * width)
+
+          size = len(rendered.replace(sentinel, "${").encode("utf-8"))
+          headroom = LIMIT - size
+
+          print(f"committed template : {len(text.encode('utf-8')):>6} bytes")
+          print(f"worst-case render  : {size:>6} bytes")
+          print(f"Azure limit        : {LIMIT:>6} bytes")
+          print(f"headroom           : {headroom:>6} bytes")
+          print()
+          print("substitution counts (worst-case width):")
+          for name, count in occurrences.most_common():
+              width = WORST.get(name, DEFAULT_IMAGE_LEN if name.endswith("_image") else 128)
+              print(f"  {name:<26} x{count:<3} @ {width}")
+
+          for name in unknown:
+              print(
+                  f"::warning file={template}::template variable '{name}' has no worst-case "
+                  f"width; assuming 128 bytes. Add it to WORST in this workflow."
+              )
+
+          if headroom < 0:
+              print(
+                  f"::error file={template}::rendered cloud-init would be {size} bytes, "
+                  f"{-headroom} over Azure's {LIMIT}-byte custom_data limit. Move content to the "
+                  f"payload blob (see fetch-payload.sh) instead of inlining it."
+              )
+              sys.exit(1)
+
+          # Fail before the wall, not at it: a change that lands with 200 bytes to spare leaves
+          # the next contributor no room and no warning.
+          if headroom < 512:
+              print(
+                  f"::error file={template}::only {headroom} bytes of custom_data headroom "
+                  f"remain (minimum 512). Move something to the payload blob."
+              )
+              sys.exit(1)
+
+          if headroom < 2048:
+              print(
+                  f"::warning file={template}::custom_data headroom is down to {headroom} "
+                  f"bytes. Prefer the payload blob for anything new."
+              )
+          PY
+
   natural-format:
     name: Natural format guard
     runs-on: ubuntu-latest

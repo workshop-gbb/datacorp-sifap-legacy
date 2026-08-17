@@ -83,3 +83,12 @@ crash.*.log
 
 # Local Terraform state backups; can contain secrets.
 .local-state-backups/
+
+# Provisioning scratch benches. These mirror local.provisioning_scratch_prefixes in
+# infra/adabas-natural-lab/main.tf - anything ignored here is also excluded from the
+# payload blob, so the two lists must stay in sync. All of it is reproducible output
+# from the DDM/Natural benches, none of it belongs in git or on the VM.
+infra/adabas-natural-lab/provisioning/work/
+infra/adabas-natural-lab/provisioning/ngd-work/
+infra/adabas-natural-lab/provisioning/ddm-work/
+__pycache__/

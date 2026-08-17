@@ -105,16 +105,32 @@ locals {
   # "provisioning scripts are missing" instead of silently doing nothing.
   provisioning_dir = "${path.module}/provisioning"
 
-  # work/ is scratch: lib.sh creates it at runtime for CMPRINT output and ADACMP temporaries.
-  # Excluded so a developer who ran the scripts locally does not upload their leftovers on the
-  # next apply - and so the manifest stays a description of the SOURCE, not of someone's box.
+  # Scratch directories are excluded so a developer who ran the scripts locally does not upload
+  # their leftovers on the next apply - and so the manifest stays a description of the SOURCE,
+  # not of someone's box. work/ is created by lib.sh at runtime for CMPRINT output and ADACMP
+  # temporaries; ngd-work/ and ddm-work/ are DDM-forging benches; __pycache__/ is interpreter
+  # spill. All of them are reproducible, none of them belong on the VM.
+  provisioning_scratch_prefixes = ["work/", "ngd-work/", "ddm-work/", "__pycache__/"]
+
   provisioning_files = {
     for f in fileset(local.provisioning_dir, "**") :
     "provisioning/${f}" => "${local.provisioning_dir}/${f}"
-    if !startswith(f, "work/")
+    if length([for p in local.provisioning_scratch_prefixes : true if startswith(f, p)]) == 0
+    && !strcontains(f, "/__pycache__/")
   }
 
-  payload_files = merge(local.corpus_files, local.provisioning_files)
+  # Static content that USED to live inline in cloud-init.yaml. Azure caps custom_data at 65535
+  # bytes and the worst-case render was within 15 bytes of that ceiling, so the landing page, the
+  # /app placeholder and the corpus README moved out here. cloud-init still writes a small inline
+  # fallback landing page, which the payload overwrites on arrival - so a failed download degrades
+  # to "still provisioning, read this log" instead of an empty web root.
+  static_dir = "${path.module}/payload-static"
+
+  static_files = {
+    for f in fileset(local.static_dir, "**") : f => "${local.static_dir}/${f}"
+  }
+
+  payload_files = merge(local.corpus_files, local.provisioning_files, local.static_files)
 
   # sha256sum(1) format, verbatim: "<hash><two spaces><path>". The VM runs `sha256sum -c` on
   # it, so a truncated download or a half-written blob is caught on the box rather than three
