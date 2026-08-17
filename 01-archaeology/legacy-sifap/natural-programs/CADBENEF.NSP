@@ -13,7 +13,7 @@
 DEFINE DATA
 LOCAL USING PDAVALID
 LOCAL
-  1 BENEFICIARY-V VIEW OF BENEFICIARY
+  1 BENEFICIARY-V VIEW OF BENEFIC
     2 NUM-CPF                (A11)
     2 FULL-NAME              (A60)
     2 DT-BIRTH               (N8)
@@ -28,7 +28,7 @@ LOCAL
     2 RG-NUMBER              (A15)
     2 STAT-BENEFICIARY       (A1)
     2 COD-PROGRAM            (A4)
-    2 AMT-FAMILY-INCOME      (P9,2)
+    2 AMT-FAMILY-INCOME      (P9.2)
     2 QTY-DEPEND             (N2)
     2 DT-REGISTRATION        (N8)
     2 DT-LAST-UPDATE         (N8)
@@ -63,7 +63,7 @@ LOCAL
   1 #RG                    (A15)
   1 #STATUS                (A1)
   1 #COD-PROG              (N4)
-  1 #FAMILY-INCOME         (P9,2)
+  1 #FAMILY-INCOME         (P9.2)
   1 #NUM-DEPEND            (N2)
   1 #COD-REGION            (N2)
   1 #NIS                   (N11)

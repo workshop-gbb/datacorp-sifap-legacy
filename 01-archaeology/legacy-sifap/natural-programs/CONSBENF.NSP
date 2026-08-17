@@ -19,7 +19,7 @@ DEFINE DATA
 LOCAL USING PDAVALID
 LOCAL USING LDASIFAP
 LOCAL
-  1 BENEFICIARY-V VIEW OF BENEFICIARY
+  1 BENEFICIARY-V VIEW OF BENEFIC
     2 NUM-CPF             (A11)
     2 FULL-NAME           (A60)
     2 DT-BIRTH            (N8)
@@ -34,7 +34,7 @@ LOCAL
       3 COD-REGION        (A2)
     2 STAT-BENEFICIARY    (A1)
     2 COD-PROGRAM         (A4)
-    2 AMT-FAMILY-INCOME   (P9,2)
+    2 AMT-FAMILY-INCOME   (P9.2)
     2 QTY-DEPEND          (N2)
     2 NUM-NIS             (N11)
     2 DT-REGISTRATION     (N8)
@@ -43,9 +43,9 @@ LOCAL
     2 NUM-PAYMENT         (N15)
     2 NUM-CPF             (A11)
     2 YEAR-MONTH-REF      (N6)
-    2 AMT-GROSS           (P9,2)
-    2 AMT-DISC-TOTAL      (P7,2)
-    2 AMT-NET             (P9,2)
+    2 AMT-GROSS           (P9.2)
+    2 AMT-DISC-TOTAL      (P7.2)
+    2 AMT-NET             (P9.2)
     2 STAT-PAYMENT        (A1)
     2 TYPE-PAYMENT        (A1)
     2 DT-GENERATION       (N8)

@@ -22,15 +22,15 @@ LOCAL
     2 NUM-CPF             (A11)
     2 COD-PROGRAM         (A4)
     2 YEAR-MONTH-REF      (N6)
-    2 AMT-GROSS           (P9,2)
-    2 AMT-DISC-TOTAL      (P7,2)
-    2 AMT-NET             (P9,2)
+    2 AMT-GROSS           (P9.2)
+    2 AMT-DISC-TOTAL      (P7.2)
+    2 AMT-NET             (P9.2)
     2 STAT-PAYMENT        (A1)
     2 TYPE-PAYMENT        (A1)
     2 DT-GENERATION       (N8)
-    2 AMT-BONUS           (P9,2)
+    2 AMT-BONUS           (P9.2)
 *
-  1 BENEFICIARY-V VIEW OF BENEFICIARY
+  1 BENEFICIARY-V VIEW OF BENEFIC
     2 NUM-CPF             (A11)
     2 FULL-NAME           (A60)
     2 GRP-ADDRESS
@@ -48,13 +48,13 @@ LOCAL
   1 #MAX-LINES            (N2)
 *
 * ACCUMULATORS
-  1 #TOT-GROSS            (P13,2)
-  1 #TOT-DISC             (P13,2)
-  1 #TOT-NET              (P13,2)
-  1 #TOT-BONUS            (P13,2)
+  1 #TOT-GROSS            (P13.2)
+  1 #TOT-DISC             (P13.2)
+  1 #TOT-NET              (P13.2)
+  1 #TOT-BONUS            (P13.2)
   1 #QTY-REC              (N8)
-  1 #SUB-GROSS            (P13,2)
-  1 #SUB-NET              (P13,2)
+  1 #SUB-GROSS            (P13.2)
+  1 #SUB-NET              (P13.2)
   1 #QTY-SUB              (N8)
   1 #PROG-PREV            (A4)
 *

@@ -27,14 +27,14 @@ LOCAL
     2 NUM-CPF                (A11)
     2 COD-PROGRAM            (A4)
     2 YEAR-MONTH-REF         (N6)
-    2 AMT-GROSS              (P9,2)
-    2 AMT-DISC-TOTAL         (P7,2)
-    2 AMT-NET                (P9,2)
+    2 AMT-GROSS              (P9.2)
+    2 AMT-DISC-TOTAL         (P7.2)
+    2 AMT-NET                (P9.2)
     2 STAT-PAYMENT           (A1)
     2 TYPE-PAYMENT           (A1)
-    2 AMT-BONUS              (P9,2)
+    2 AMT-BONUS              (P9.2)
 *
-  1 BENEFICIARY-V VIEW OF BENEFICIARY
+  1 BENEFICIARY-V VIEW OF BENEFIC
     2 NUM-CPF                (A11)
     2 COD-REGION             (A2)
     2 UF                     (A2)
@@ -55,9 +55,9 @@ LOCAL
   1 #NAME-STS              (A15/1:5)
 *
 * GRAND TOTALS
-  1 #TOT-OVERALL-GROSS     (P15,2)
-  1 #TOT-OVERALL-DISC      (P15,2)
-  1 #TOT-OVERALL-NET       (P15,2)
+  1 #TOT-OVERALL-GROSS     (P15.2)
+  1 #TOT-OVERALL-DISC      (P15.2)
+  1 #TOT-OVERALL-NET       (P15.2)
   1 #QTY-OVERALL           (N8)
 *
 * AUXILIARY VARIABLES
@@ -73,7 +73,7 @@ LOCAL
   1 #MAX-LINES             (N2)
 *
 * REPORT ROUNDING
-  1 #AMT-ROUND             (P13,2)
+  1 #AMT-ROUND             (P13.2)
   1 #AMT-TEMP              (N15)
 END-DEFINE
 *

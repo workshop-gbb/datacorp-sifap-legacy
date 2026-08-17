@@ -10,7 +10,9 @@ DDM_DIR="${DDM_DIR:-${CORPUS_DIR}/adabas-ddms}"
 SOURCE_DIR="${SOURCE_DIR:-${CORPUS_DIR}/natural-programs}"
 BUILD_WORK="${WORK_DIR}/natural-build"
 
-DDMS=(BENEFICIARY SOCIAL-PROGRAM PAYMENT AUDIT)
+# Natural member names cannot exceed 8 characters, which is why the DDMs
+# carry short names even though the Adabas files are spelled out in full.
+DDMS=(BENEFIC SOCPROG PAYMENT AUDIT)
 DDM_FILES=(BENEFICIARY.ddm SOCIAL-PROGRAM.ddm PAYMENT.ddm AUDIT.ddm)
 DATA_AREAS=(PDAVALID PDACALC LDASIFAP)
 COPYCODES=(CCVALCPF CCAUDIT)
@@ -87,16 +89,9 @@ copy_sources_to_fuser() {
 run_compile_group() {
   local library="$1" label="$2"
   shift 2
-  local cmd="$BUILD_WORK/${label}.cmsynin" obj="$BUILD_WORK/${label}.cmobjin" out="$BUILD_WORK/${label}.out" member
-  : > "$cmd"
-  printf 'LOGON %s\n' "$library" >> "$cmd"
-  for member in "$@"; do
-    printf 'STOW %s\n' "$member" >> "$cmd"
-  done
-  printf 'FIN\n' >> "$cmd"
-  cp "$cmd" "$obj"
-  info "Compiling ${label}: $*"
-  if ! natural_batch "$cmd" "$obj" "$out" "$label"; then
+  local out="$BUILD_WORK/${label}.out"
+  info "Cataloging ${label}: $*"
+  if ! natural_stack "$label" "$library" "$out" "$@"; then
     warn "Natural output for ${label}:"
     extract_nat_error "$out"
     return 1
@@ -113,6 +108,8 @@ main() {
   prepare_sources
   ensure_libraries
   copy_sources_to_fuser
+  ftouch_register "$NATURAL_CONTAINER" SYSDDM /opt/softwareag/Natural/fuser/SYSDDM/SRC
+  ftouch_register "$NATURAL_CONTAINER" "$NATURAL_LIBRARY" "/opt/softwareag/Natural/fuser/${NATURAL_LIBRARY}/SRC"
 
   # Authoritative order from 01-archaeology/HOW-TO-COMPILE-AND-RUN.md section 2.4.
   run_compile_group SYSDDM ddms "${DDMS[@]}"
@@ -121,6 +118,7 @@ main() {
   run_compile_group "$NATURAL_LIBRARY" subprograms "${SUBPROGRAMS[@]}"
   run_compile_group "$NATURAL_LIBRARY" programs "${PROGRAMS[@]}"
 
+  assert_cataloged "$NATURAL_LIBRARY" "$(( ${#DATA_AREAS[@]} + ${#SUBPROGRAMS[@]} ))"
   info "Natural build phase finished"
 }
 

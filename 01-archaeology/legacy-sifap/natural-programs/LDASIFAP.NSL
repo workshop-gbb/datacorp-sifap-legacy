@@ -97,7 +97,7 @@ DEFINE DATA LOCAL
 *
 * --- GENERAL WORK FIELDS ---
 *
-1 #L-AMT-TEMP             (P13,2)          /* MONETARY TRUNCATION
+1 #L-AMT-TEMP             (P13.2)          /* MONETARY TRUNCATION
 1 #L-MSG                  (A78)            /* STANDARD MESSAGE
 1 #L-COD-RETURN           (N4)
 1 #L-I                    (N2)

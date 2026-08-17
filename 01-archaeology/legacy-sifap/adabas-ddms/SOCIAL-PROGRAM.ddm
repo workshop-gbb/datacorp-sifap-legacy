@@ -17,7 +17,7 @@
 *
 * LISTDDM   SOCIAL-PROGRAM LIB SIFAPPRD  NAT 4.2.6   14/03/2018 14:24
 *
-DDM NAME: SOCIAL-PROGRAM                 DEFAULT SEQUENCE: AA
+DDM NAME: SOCPROG                 DEFAULT SEQUENCE: AA
 DBID: 057   FNR: 151
 *
  T L DB Name                     F Leng  S D Remark

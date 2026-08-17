@@ -13,6 +13,8 @@ NATURAL_LIBRARY="${NATURAL_LIBRARY:-SIFAPPRD}"
 LOG_FILE="${SIFAP_PROVISIONING_LOG:-/var/log/sifap-provisioning.log}"
 ADABAS_WORK_DIR="${ADABAS_WORK_DIR:-/data/sifap-provisioning}"
 NATURAL_WORK_DIR="${NATURAL_WORK_DIR:-/opt/softwareag/Natural/sifap-provisioning}"
+FTOUCH_BIN="${FTOUCH_BIN:-/opt/softwareag/Natural/bin/ftouch}"
+NATURAL_STACK_TIMEOUT="${NATURAL_STACK_TIMEOUT:-600}"
 ADABAS_DBID="${ADABAS_DBID:-}"
 
 log() {
@@ -142,23 +144,76 @@ copy_into_container() {
   docker cp "$source" "${container}:${dest}"
 }
 
-natural_batch() {
-  local command_file="$1" object_input_file="$2" output_file="$3" label="$4"
-  local base
-  base="$(basename "$command_file")"
-  docker exec "$NATURAL_CONTAINER" sh -lc "mkdir -p '$NATURAL_WORK_DIR'"
-  docker cp "$command_file" "${NATURAL_CONTAINER}:${NATURAL_WORK_DIR}/${base}.cmd"
-  docker cp "$object_input_file" "${NATURAL_CONTAINER}:${NATURAL_WORK_DIR}/${base}.obj"
-  local rc=0
-  docker exec "$NATURAL_CONTAINER" sh -lc \
-    "natural BATCHMODE CMSYNIN='${NATURAL_WORK_DIR}/${base}.cmd' CMOBJIN='${NATURAL_WORK_DIR}/${base}.obj' CMPRINT='${NATURAL_WORK_DIR}/${base}.out' BMSIM=MF BMCONTROL=OFF ECHO=ON CC=ON >/dev/null 2>&1" || rc=$?
-  docker cp "${NATURAL_CONTAINER}:${NATURAL_WORK_DIR}/${base}.out" "$output_file" || fatal "Natural ${label} did not produce CMPRINT output"
-  if grep -E 'NAT[0-9]{4}|Natural Startup Error|Natural error|ERROR NO\.|Syntax error|Invalid command' "$output_file" >/dev/null 2>&1; then
-    fatal "Natural ${label} reported an error; see ${output_file}"
+ftouch_register() {
+  # Natural does not scan the SRC directory: a library is indexed by FILEDIR.SAG
+  # and only ftouch can write that index. Without this, every member is invisible
+  # and Natural answers NAT0082. ftouch takes exactly one file per call and
+  # enforces the 8.3 member-name limit.
+  local container="$1" library="$2" src_dir="$3"
+  docker exec "$container" sh -lc "
+    cd '${src_dir}' || exit 1
+    rc=0
+    for f in *.NS*; do
+      [ -e \"\$f\" ] || continue
+      if ! ${FTOUCH_BIN} lib=${library} -s \"\$f\" 2>&1 | grep -q 'executed with success'; then
+        echo \"ftouch failed for \$f\" >&2
+        rc=1
+      fi
+    done
+    exit \$rc
+  " || fatal "ftouch could not register every source in ${library}; member names must fit 8 characters plus a 3-character extension"
+}
+
+natural_stack() {
+  # Natural Community Edition rejects BATCHMODE outright ("Natural Startup
+  # Error 42 - Batch mode not available for Natural Community Edition"), so the
+  # documented CMSYNIN/CMOBJIN path cannot be used here. Natural does accept a
+  # STACK on an interactive session, which expect drives on a pty.
+  local label="$1" library="$2" output_file="$3"
+  shift 3
+  local members=("$@") stack="LOGON ${library}" member
+  for member in "${members[@]}"; do
+    stack="${stack};READ ${member};CATALOG ${member}"
+  done
+  stack="${stack};FIN"
+
+  local exp="${WORK_DIR}/${label}.exp"
+  cat > "$exp" <<EOF_EXP
+set timeout ${NATURAL_STACK_TIMEOUT}
+log_file -a ${NATURAL_WORK_DIR}/${label}.log
+spawn natural "STACK=(${stack})"
+expect {
+  -re "MORE|More" { send "\r"; exp_continue }
+  eof { }
+  timeout { puts "SIFAP-TIMEOUT" }
+}
+EOF_EXP
+
+  container_sh "$NATURAL_CONTAINER" "mkdir -p '$NATURAL_WORK_DIR' && rm -f '${NATURAL_WORK_DIR}/${label}.log'"
+  copy_into_container "$exp" "$NATURAL_CONTAINER" "${NATURAL_WORK_DIR}/${label}.exp"
+  container_sh "$NATURAL_CONTAINER" "expect '${NATURAL_WORK_DIR}/${label}.exp' >/dev/null 2>&1 || true"
+  # Strip the terminal escape sequences the pty session emits, otherwise the
+  # error scan below matches nothing useful.
+  container_sh "$NATURAL_CONTAINER" \
+    "sed -e 's/\x1b\[[0-9;?]*[a-zA-Z]//g' -e 's/\x1b[()][A-Z0-9]//g' '${NATURAL_WORK_DIR}/${label}.log' | tr -d '\r' > '${NATURAL_WORK_DIR}/${label}.out'"
+  docker cp "${NATURAL_CONTAINER}:${NATURAL_WORK_DIR}/${label}.out" "$output_file" \
+    || fatal "Natural ${label} produced no session output"
+
+  if grep -q 'SIFAP-TIMEOUT' "$output_file" 2>/dev/null; then
+    fatal "Natural ${label} timed out after ${NATURAL_STACK_TIMEOUT}s; see ${output_file}"
   fi
-  if [ "$rc" -ne 0 ]; then
-    warn "Natural ${label} exited with return code ${rc}; CMPRINT was captured at ${output_file}"
+  # NAT0084 only means the source was already saved, which is expected on a rerun.
+  if grep -oE 'NAT[0-9]{4}' "$output_file" 2>/dev/null | grep -qvE 'NAT0084'; then
+    return 1
   fi
+}
+
+assert_cataloged() {
+  local library="$1" expected="$2" found
+  found="$(container_sh "$NATURAL_CONTAINER" "ls /opt/softwareag/Natural/fuser/${library}/GP 2>/dev/null | wc -l" | tr -d ' \r')"
+  [ "${found:-0}" -ge "$expected" ] \
+    || fatal "${library} has ${found:-0} cataloged objects, expected at least ${expected}"
+  info "${library}: ${found} cataloged objects in GP"
 }
 
 extract_nat_error() {
