@@ -76,7 +76,7 @@ DBID: 057   FNR: 152
    1 EE COD-OPERACAO             A    3  N   CAIXA OPERATION (IF APPLICABLE)
    1 EF DT-CREDITO               N    8  N D YYYYMMDD - ACCOUNT CREDIT
 *                                             (ADDED 1999 - NOT DB)
-   1 EG TIPO-PAGAMENTO           A    1  F D N=NORMAL R=RETROATIVO
+   1 EG TIPO-PAGAMENTO           A    1  F D N=NORMAL R=RETROACTIVE
 *                                             A=ALLOWANCE C=CORRECTION
 *
 * --- SIAFI INTEGRATION (ADDED 2002) ---

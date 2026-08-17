@@ -1,49 +1,49 @@
 <!-- markdownlint-disable MD013 MD033 MD041 -->
 
-# Como Ler um Programa Natural Sem Saber Natural
+# How to Read a Natural Program Without Knowing Natural
 
-> **Trilha:** [Kit do Time](../../README.md) › [Estágio 1](../README.md) › [Legado SIFAP](README.md) › **Como ler Natural**
+> **Path:** [Team Kit](../../README.md) › [Stage 1](../README.md) › [SIFAP Legacy](README.md) › **How to read Natural**
 
-**Tutorial de leitura orientada a regras de negócio.** Você aprende a extrair os comportamentos relevantes de um arquivo `.NSN` em 45 minutos, mesmo sem conhecer a linguagem Natural.
+**A business-rule-oriented reading tutorial.** Learn to extract relevant behavior from a `.NSN` file in 45 minutes, even if you do not know the Natural language.
 
-| Campo | Valor |
+| Field | Value |
 |---|---|
-| **Público-alvo** | PO, Tech Writer, analista de negócio, desenvolvedor júnior — qualquer pessoa que vai abrir um `.NSN` no Estágio 1 |
-| **Pré-requisitos** | VS Code instalado; acesso à pasta `legado-sifap/natural-programs/` |
-| **Tempo estimado** | 10 min para este guia + 45 min por programa |
-| **Estágio** | Estágio 1 — Arqueologia |
-| **Resultado esperado** | Pelo menos uma regra catalogada com evidência `arquivo.NSN#L<início>-L<fim>` |
+| **Audience** | PO, Tech Writer, business analyst, junior developer—anyone opening a `.NSN` during Stage 1 |
+| **Prerequisites** | VS Code installed; access to the `legado-sifap/natural-programs/` folder |
+| **Estimated time** | 10 min for this guide + 45 min per program |
+| **Stage** | Stage 1 — Archaeology |
+| **Expected outcome** | At least one rule cataloged with `file.NSN#L<start>-L<end>` evidence |
 
 > [!TIP]
-> Você só precisa ler cinco construções: os comentários com `*` no início da linha, `IF/END-IF`, `MOVE`, `COMPUTE` e o bloco `FIND`/`END-FIND`. O restante da sintaxe é estrutura técnica que pode ser ignorada na leitura de regras.
+> You only need to read five constructs: comments with `*` at the start of the line, `IF/END-IF`, `MOVE`, `COMPUTE`, and the `FIND`/`END-FIND` block. The rest of the syntax is technical structure that can be ignored when reading rules.
 
 ---
 
-## 1. Anatomia visual de um programa Natural
+## 1. Visual anatomy of a Natural program
 
 ```text
-* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *    <- CABECALHO (comentarios)
-* PROGRAMA: CALCDSCT                                                  Toda linha com * e comentario.
-* SISTEMA:  SIFAP - SIST. FISC. ADM. PAGAMENTOS                      Leia aqui o historico do
-* AUTOR:    ROBERTO MENDES JUNIOR                                     programa: quem mexeu e
-* DATA:     25/08/1999                                                quando. Pistas valiosas.
-* ALTERADO: 12/04/2007 - MARCIA HELENA - INC DESC JUDICIAL
-* OBJETIVO: CALCULO DESCONTOS E DEDUCOES DO BENEFICIO
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *    <- HEADER (comments)
+* PROGRAM: CALCDSCT                                                   Every line with * is a comment.
+* SYSTEM:  SIFAP - PAYMENT INSPECTION AND ADMINISTRATION SYSTEM       Read the program history here:
+* AUTHOR:  ROBERTO MENDES JUNIOR                                      who changed it and when.
+* DATE:    25/08/1999                                                 Valuable clues.
+* CHANGED: 12/04/2007 - MARCIA HELENA - ADD JUDICIAL DEDUCTION
+* PURPOSE: CALCULATE BENEFIT DEDUCTIONS
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
-DEFINE DATA                                                          <- DECLARACAO DE DADOS
-LOCAL USING LDASIFAP                                                   Primeiro as areas externas
-LOCAL                                                                  (LDA/PDA), depois os campos
-  1 PAGAMENTO-V VIEW OF PAGAMENTO                                      proprios. Pode pular — so
-    2 NUM-PAGAMENTO      (N15)                                         anote os campos que vem de
-    2 VLR-BRUTO          (P9,2)                                        tabela (VIEW OF = DDM).
+DEFINE DATA                                                          <- DATA DECLARATION
+LOCAL USING LDASIFAP                                                   External areas first
+LOCAL                                                                  (LDA/PDA), then local fields.
+  1 PAGAMENTO-V VIEW OF PAGAMENTO                                      You can skip this—just note
+    2 NUM-PAGAMENTO      (N15)                                         fields that come from a table
+    2 VLR-BRUTO          (P9,2)                                        (VIEW OF = DDM).
     2 VLR-DESCONTO-TOTAL (P7,2)
   1 #VLR-MAX-DSCT        (P9,2)
 END-DEFINE
 *
-MOVE *DATN TO #DT-HOJE                                                <- CORPO DO PROGRAMA
-*                                                                       Aqui mora a logica.
-* CHECK DEDUCTION CAP                                                   FOQUE AQUI.
+MOVE *DATN TO #DT-HOJE                                                <- PROGRAM BODY
+*                                                                       The logic lives here.
+* CHECK DEDUCTION CAP                                                   FOCUS HERE.
 IF #TIPO-DSCT NE 'J'
   IF #VLR-TOTAL-DSCT > (#VLR-BRUTO * 0.30)
     COMPUTE #VLR-TOTAL-DSCT = #VLR-BRUTO * 0.30
@@ -53,86 +53,86 @@ END-IF
 END
 ```
 
-**Três zonas:**
+**Three zones:**
 
-1. **Cabeçalho** (linhas com `*`): conta a história do programa. Anote autores e datas — eles indicam quando regras foram adicionadas.
-2. **`DEFINE DATA` … `END-DEFINE`**: declara os dados. Começa pelas áreas externas (`USING`) e termina nos campos próprios. Pode pular, ou olhar para identificar quais campos do DDM o programa usa.
-3. **Corpo** (depois de `END-DEFINE`): **aqui está a lógica de negócio**. É o que você quer extrair.
+1. **Header** (lines with `*`): tells the program's history. Note authors and dates—they indicate when rules were added.
+2. **`DEFINE DATA` … `END-DEFINE`**: declares the data. It starts with external areas (`USING`) and ends with local fields. You can skip it or scan it to identify which DDM fields the program uses.
+3. **Body** (after `END-DEFINE`): **this is where the business logic lives**. This is what you want to extract.
 
 > [!NOTE]
-> Nos fontes (`.NSP`, `.NSN`, `.NSA`, `.NSL`, `.NSC`, `.NSD`) os comentários estão em português **maiúsculo e sem acentos**. Não é descuido: o terminal 3270 do mainframe usa EBCDIC e não representa acentuação de forma confiável. Nesta documentação em Markdown, acentos são normais.
+> In the source files (`.NSP`, `.NSN`, `.NSA`, `.NSL`, `.NSC`, `.NSD`), comments are in Portuguese **uppercase without accents**. This is intentional: the mainframe's 3270 terminal uses EBCDIC and does not represent accented characters reliably. This English Markdown documentation uses normal punctuation and capitalization.
 
 ---
 
-## 2. Os membros de uma biblioteca Natural
+## 2. Natural library members
 
-Um programa Natural quase nunca está sozinho. O SIFAP tem programas, mas também **áreas de dados, copycodes e subprogramas**. Você reconhece cada tipo pela extensão do arquivo.
+A Natural program is almost never isolated. SIFAP, the Payment Inspection and Administration System, has programs as well as **data areas, copycodes, and subprograms**. You can identify each type by its file extension.
 
-| Extensão | Tipo de membro | Para que serve | Como entra no programa |
+| Extension | Member type | Purpose | How it enters the program |
 |---|---|---|---|
-| `.NSP` | Programa | Ponto de entrada executável — batch ou online | executado direto (`EXEC PGM=NATBATCH`, ou digitado no terminal) |
-| `.NSN` | Subprograma | Lógica reutilizável com contrato de parâmetros | `CALLNAT '<nome>'` |
-| `.NSS` | Subrotina externa | Rotina compartilhada, chamada pelo nome | `PERFORM <subrotina>` |
-| `.NSA` | PDA — *Parameter Data Area* | Contrato de parâmetros entre chamador e chamado | `PARAMETER USING <pda>` no chamado; `LOCAL USING <pda>` no chamador |
-| `.NSL` | LDA — *Local Data Area* | Campos e tabelas compartilhados por vários módulos | `LOCAL USING <lda>` |
-| `.NSC` | Copycode | Trecho de código colado em tempo de compilação | `INCLUDE <copycode>` |
-| `.NSM` | MAP | Layout de tela 3270 | `INPUT USING MAP '<map>'` |
-| `.NSD` | DDM — *Data Definition Module* | Como o Natural enxerga um arquivo Adabas | `VIEW OF <ddm>` no `DEFINE DATA` |
-| `.jcl` | JCL z/OS | Como o batch roda em produção: jobs, arquivos, agendamento | fora do Natural — `EXEC PGM=NATBATCH` |
+| `.NSP` | Program | Executable entry point—batch or online | run directly (`EXEC PGM=NATBATCH`, or entered at the terminal) |
+| `.NSN` | Subprogram | Reusable logic with a parameter contract | `CALLNAT '<name>'` |
+| `.NSS` | External subroutine | Shared routine called by name | `PERFORM <subroutine>` |
+| `.NSA` | PDA—*Parameter Data Area* | Parameter contract between caller and callee | `PARAMETER USING <pda>` in the callee; `LOCAL USING <pda>` in the caller |
+| `.NSL` | LDA—*Local Data Area* | Fields and tables shared by several modules | `LOCAL USING <lda>` |
+| `.NSC` | Copycode | Code fragment inserted at compile time | `INCLUDE <copycode>` |
+| `.NSM` | MAP | 3270 screen layout | `INPUT USING MAP '<map>'` |
+| `.NSD` | DDM—*Data Definition Module* | How Natural sees an Adabas file | `VIEW OF <ddm>` in `DEFINE DATA` |
+| `.jcl` | JCL z/OS | How the batch runs in production: jobs, files, scheduling | outside Natural—`EXEC PGM=NATBATCH` |
 
 > [!IMPORTANT]
-> **A extensão diz o tipo do membro, e o tipo determina como o módulo é acionado.** Confundir `.NSP` com `.NSN` é o erro mais comum de quem chega ao Natural: um programa não pode ser alvo de `CALLNAT`, e um subprograma não pode ser executado direto. No SIFAP são **12 programas** (`.NSP`) e **5 subprogramas** (`.NSN`).
+> **The extension identifies the member type, and the type determines how the module is invoked.** Confusing `.NSP` with `.NSN` is the most common mistake for Natural newcomers: a program cannot be a `CALLNAT` target, and a subprogram cannot be run directly. SIFAP has **12 programs** (`.NSP`) and **5 subprograms** (`.NSN`).
 
-### 2.1. As quatro linhas que criam dependência
+### 2.1. The four lines that create dependencies
 
 ```natural
 DEFINE DATA
-PARAMETER USING PDAVALID    /* RECEBE PARAMETROS DE QUEM CHAMOU  (.NSA)
-LOCAL USING LDASIFAP        /* USA A AREA LOCAL COMPARTILHADA    (.NSL)
+PARAMETER USING PDAVALID    /* RECEIVES PARAMETERS FROM CALLER   (.NSA)
+LOCAL USING LDASIFAP        /* USES THE SHARED LOCAL DATA AREA   (.NSL)
 LOCAL
   1 #MSG               (A60)
 END-DEFINE
 *
 CALLNAT 'SUBVALCP' #PV-TIPO-DOC #PV-CPF #PV-NIS
                    #PV-COD-RETORNO #PV-MSG
-                   #PV-IND-ESPECIAL       /* CHAMA OUTRO MODULO  (.NSN)
+                   #PV-IND-ESPECIAL       /* CALLS ANOTHER MODULE (.NSN)
 *
-INCLUDE CCAUDIT             /* COLA UM BLOCO DE CODIGO AQUI      (.NSC)
+INCLUDE CCAUDIT             /* INSERTS A CODE BLOCK HERE         (.NSC)
 END
 ```
 
-| Linha | Significa | Onde está o membro |
+| Line | Meaning | Member location |
 |---|---|---|
-| `CALLNAT 'X'` | chama o subprograma `X` e passa parâmetros | `X.NSN` |
-| `... USING Y` | usa a área de dados `Y` | `Y.NSA` (PDA) ou `Y.NSL` (LDA) |
-| `INCLUDE Z` | cola o copycode `Z` neste ponto | `Z.NSC` |
-| `PERFORM W` | executa uma sub-rotina | interna (`DEFINE SUBROUTINE W` no próprio arquivo) ou externa `W.NSS` |
+| `CALLNAT 'X'` | calls subprogram `X` and passes parameters | `X.NSN` |
+| `... USING Y` | uses data area `Y` | `Y.NSA` (PDA) or `Y.NSL` (LDA) |
+| `INCLUDE Z` | inserts copycode `Z` at this point | `Z.NSC` |
+| `PERFORM W` | runs a subroutine | internal (`DEFINE SUBROUTINE W` in the same file) or external `W.NSS` |
 
-`PERFORM` normalmente fica dentro do módulo. **`CALLNAT` cruza a fronteira do arquivo** — é ele que interessa ao mapa de dependências.
+`PERFORM` normally stays within the module. **`CALLNAT` crosses the file boundary**—that is what matters to the dependency map.
 
 > [!IMPORTANT]
-> **A biblioteca Natural é plana.** Todos os membros vivem na mesma biblioteca (`SIFAPPRD`) e são resolvidos **pelo nome**, nunca por caminho. `CALLNAT`, `INCLUDE` e `USING` não recebem pasta — por isso o kit mantém tudo em `natural-programs/`, num diretório só. Nome de membro tem no máximo 8 caracteres: é daí que vêm as abreviações como `CALCBENF` e `LDASIFAP`.
+> **A Natural library is flat.** All members live in the same library (`SIFAPPRD`) and are resolved **by name**, never by path. `CALLNAT`, `INCLUDE`, and `USING` do not take a folder—this is why the kit keeps everything in the single `natural-programs/` directory. Member names are limited to eight characters, which explains abbreviations such as `CALCBENF` and `LDASIFAP`.
 
 ---
 
-## 3. As construções que importam
+## 3. Constructs that matter
 
-### 3.1. Comentário — `*` no início da linha
+### 3.1. Comment—`*` at the start of the line
 
-Tudo que começa com `*` é texto livre. Leia sempre os comentários — frequentemente eles explicam o "porquê" da regra.
+Everything beginning with `*` is free text. Always read comments—they often explain the "why" behind a rule.
 
 ```natural
 * CHECK DEDUCTION CAP
 ```
 
-Tradução: "Aqui o programa verifica o teto do desconto."
+Meaning: "The program checks the deduction cap here."
 
 > [!TIP]
-> Comentários frequentemente têm datas e iniciais (`* 2007 MH - INC JUDICIAL`). Cada uma é evidência de que uma regra foi adicionada em um momento histórico — e ainda pode estar válida.
+> Comments often contain dates and initials (`* 2007 MH - INC JUDICIAL`). Each one is evidence that a rule was added at a particular point in history—and may still be valid.
 
-### 3.2. Decisão — `IF` … `END-IF`
+### 3.2. Decision—`IF` … `END-IF`
 
-Esta é a construção mais importante. **Toda regra de negócio está dentro de um `IF`.**
+This is the most important construct. **Every business rule is inside an `IF`.**
 
 ```natural
 IF #TIPO-DSCT NE 'J'
@@ -142,41 +142,41 @@ IF #TIPO-DSCT NE 'J'
 END-IF
 ```
 
-Leitura em voz alta: "Se o tipo de desconto não é 'J' (judicial), e se o valor total dos descontos é maior que 30% do valor bruto, então reduza o total ao limite de 30%."
+Read aloud: "If the deduction type is not 'J' (judicial), and the total deductions exceed 30% of the gross amount, reduce the total to the 30% limit."
 
-**Operadores comuns:**
+**Common operators:**
 
-| Natural | Significado |
+| Natural | Meaning |
 |---|---|
-| `EQ` ou `=` | igual |
-| `NE` ou `<>` | diferente |
-| `GT` ou `>` | maior |
-| `LT` ou `<` | menor |
-| `GE` ou `>=` | maior ou igual |
-| `LE` ou `<=` | menor ou igual |
-| `AND` | e |
-| `OR` | ou |
+| `EQ` or `=` | equal |
+| `NE` or `<>` | not equal |
+| `GT` or `>` | greater than |
+| `LT` or `<` | less than |
+| `GE` or `>=` | greater than or equal |
+| `LE` or `<=` | less than or equal |
+| `AND` | and |
+| `OR` | or |
 
-Regra extraída do exemplo: *"Descontos não judiciais (tipo diferente de J) têm teto de 30% do valor bruto."*
+Rule extracted from the example: *"Non-judicial deductions (type other than J) are capped at 30% of the gross amount."*
 
-### 3.3. Atribuição — `MOVE` e `COMPUTE`
+### 3.3. Assignment—`MOVE` and `COMPUTE`
 
-`MOVE` copia um valor para uma variável. `COMPUTE` faz uma conta.
+`MOVE` copies a value to a variable. `COMPUTE` performs a calculation.
 
 ```natural
-MOVE *DATN TO #DT-HOJE               /* ATRIBUI A DATA DE HOJE A #DT-HOJE
-MOVE 500.00 TO #FAIXA-CONTRIB(1)     /* ATRIBUI 500 A PRIMEIRA FAIXA
-COMPUTE #VLR-MAX = #VLR-BRUTO * 0.30 /* CALCULA 30% DO VALOR BRUTO
+MOVE *DATN TO #DT-HOJE               /* ASSIGNS TODAY'S DATE TO #DT-HOJE
+MOVE 500.00 TO #FAIXA-CONTRIB(1)     /* ASSIGNS 500 TO THE FIRST RANGE
+COMPUTE #VLR-MAX = #VLR-BRUTO * 0.30 /* CALCULATES 30% OF THE GROSS AMOUNT
 ```
 
-Tudo depois de `/*` na mesma linha também é comentário — é a segunda forma de comentar em Natural, muito usada para anotar campos no `DEFINE DATA`.
+Everything after `/*` on the same line is also a comment—the second way to write comments in Natural, often used to annotate fields in `DEFINE DATA`.
 
 > [!IMPORTANT]
-> Números literais (`500.00`, `0.30`, `0.075`) quase sempre representam regras: faixas, alíquotas, percentuais. Anote cada um que encontrar.
+> Numeric literals (`500.00`, `0.30`, `0.075`) almost always represent rules: ranges, rates, or percentages. Record every one you find.
 
-### 3.4. Chamada de outro módulo — `CALLNAT '<subprograma>'`
+### 3.4. Calling another module—`CALLNAT '<subprogram>'`
 
-`CALLNAT` invoca um subprograma, equivalente a uma chamada de função. Os parâmetros vão na ordem definida pela PDA e podem ocupar várias linhas.
+`CALLNAT` invokes a subprogram, equivalent to a function call. Parameters follow the order defined by the PDA and may span several lines.
 
 ```natural
 CALLNAT 'SUBVALCP' #PV-TIPO-DOC #PV-CPF #PV-NIS

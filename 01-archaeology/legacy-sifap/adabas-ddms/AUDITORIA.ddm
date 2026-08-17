@@ -29,7 +29,7 @@ DBID: 057   FNR: 153
 * --- EVENT IDENTIFICATION ---
 *
    1 AA NUM-AUDITORIA            N   15    U UNIQUE SEQUENCE
-   1 AB DT-EVENTO                N    8    D AAAAMMDD
+   1 AB DT-EVENTO                N    8    D YYYYMMDD
    1 AC HR-EVENTO                N    6      HHMMSS
    1 AD TS-EVENTO                N   14  N   YYYYMMDDHHMMSS (PRECISION)
    1 AE NUM-TRANSACAO            A    8  N D CICS TRANSACTION (2003)

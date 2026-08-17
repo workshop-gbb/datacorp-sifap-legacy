@@ -49,7 +49,7 @@ DBID: 057   FNR: 150
    1 AJ RG-ORGAO                 A   10  N   ISSUING AUTHORITY
    1 AK RG-UF                    A    2  N   ISSUING STATE
    1 AL RG-DT-EXPEDICAO          N    8  N   YYYYMMDD
-   1 AM NUM-NIS                  N   11  N U NIS/PIS-PASEP (ADIC 2001)
+   1 AM NUM-NIS                  N   11  N U NIS/PIS-PASEP (ADDED 2001)
    1 AN NUM-BENEFICIO            N   13  N U GRANT NUMBER (ADDED 2003)
 *
 * --- ADDRESS GROUP ---
