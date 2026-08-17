@@ -1,9 +1,0 @@
-/var/log/sifap-provisioning.log /mnt/sifap-data/work/logs/*.log {
-  weekly
-  rotate 8
-  compress
-  missingok
-  notifempty
-  copytruncate
-  create 0640 root adm
-}
