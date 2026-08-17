@@ -196,7 +196,7 @@ jobs:
           actual_subscription="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<< "$account_json")"
           [ "$actual_subscription" = "$ARM_SUBSCRIPTION_ID" ] || fail "OIDC logged into subscription ${actual_subscription}, but AZURE_SUBSCRIPTION_ID is ${ARM_SUBSCRIPTION_ID}. Fix the repository variable or the azure/login inputs."
 
-          az account subscription show --id "$ARM_SUBSCRIPTION_ID" --query "{subscriptionId:subscriptionId,state:state}" -o table \
+          az account show --query "{subscriptionId:id,state:state}" -o table \
             || fail "The federated identity cannot read subscription ${ARM_SUBSCRIPTION_ID}. Grant at least Reader on the subscription, then rerun."
 
       - name: Verify required resource providers
@@ -313,37 +313,34 @@ jobs:
           ' "${LAB_DIR}/variables.tf")"
           [ -n "$vm_size" ] || fail "Could not derive vm_size from ${LAB_DIR}/variables.tf. Keep the variable default parseable or update this preflight."
 
-          sku_json="$(az vm list-skus \
+          sku_json="$(timeout 120s az vm list-skus \
             --location eastus2 \
             --resource-type virtualMachines \
             --size "$vm_size" \
             --all \
             --query "[?name=='${vm_size}'].{name:name,capabilities:capabilities,restrictions:restrictions}" \
-            -o json)"
+            -o json)" \
+            || fail "Timed out or failed while reading SKU restrictions for ${vm_size} in eastus2 with az vm list-skus. Retry; if Azure keeps timing out, verify Compute RP health and SKU availability in the portal before applying."
 
-          python3 - "$vm_size" "$sku_json" > sku.env <<'PY'
+          required_vcpus="$(python3 - "$vm_size" "$sku_json" <<'PY'
           import json, sys
           vm_size = sys.argv[1]
           skus = json.loads(sys.argv[2] or "[]")
           if not skus:
-              print(f"ERROR=VM SKU {vm_size} is not offered in eastus2. Pick an offered size or change var.location.")
-              sys.exit(0)
+              print(f"VM SKU {vm_size} is not offered in eastus2. Pick an offered size or change var.location.", file=sys.stderr)
+              sys.exit(1)
           sku = skus[0]
           restrictions = sku.get("restrictions") or []
           if restrictions:
-              print("ERROR=VM SKU %s is restricted in eastus2: %s. Pick an unrestricted size/zone or request capacity from Azure." % (vm_size, json.dumps(restrictions)))
-              sys.exit(0)
+              print("VM SKU %s is restricted in eastus2: %s. Pick an unrestricted size/zone or request capacity from Azure." % (vm_size, json.dumps(restrictions)), file=sys.stderr)
+              sys.exit(1)
           vcpu = next((c.get("value") for c in sku.get("capabilities", []) if c.get("name") == "vCPUs"), "")
           if not vcpu:
-              print(f"ERROR=Could not read vCPUs capability for {vm_size} from az vm list-skus.")
-              sys.exit(0)
-          print(f"REQUIRED_VCPUS={vcpu}")
+              print(f"Could not read vCPUs capability for {vm_size} from az vm list-skus.", file=sys.stderr)
+              sys.exit(1)
+          print(vcpu)
           PY
-          # shellcheck disable=SC1091
-          source sku.env
-          if [ -n "${ERROR:-}" ]; then
-            fail "$ERROR"
-          fi
+          )" || fail "VM SKU ${vm_size} is not usable in eastus2. See the Python error above for details."
 
           quota_json="$(az vm list-usage \
             --location eastus2 \
@@ -354,11 +351,11 @@ jobs:
           available=$((limit - current))
 
           echo "VM size: ${vm_size}"
-          echo "Required vCPUs: ${REQUIRED_VCPUS}"
+          echo "Required vCPUs: ${required_vcpus}"
           echo "standardDSv3Family quota in eastus2: used=${current}, limit=${limit}, available=${available}"
 
-          if [ "$available" -lt "$REQUIRED_VCPUS" ]; then
-            fail "East US 2 standardDSv3Family has ${available} available vCPUs, but ${vm_size} requires ${REQUIRED_VCPUS}. Request a quota increase for standardDSv3Family in eastus2 or choose a smaller/offered VM size before applying."
+          if [ "$available" -lt "$required_vcpus" ]; then
+            fail "East US 2 standardDSv3Family has ${available} available vCPUs, but ${vm_size} requires ${required_vcpus}. Request a quota increase for standardDSv3Family in eastus2 or choose a smaller/offered VM size before applying."
           fi
 
   # ---------------------------------------------------------------------------
@@ -646,6 +643,7 @@ jobs:
           log=/var/log/sifap-provisioning.log
           provisioned=/opt/sifap/PROVISIONED
           ddms_ready=/opt/sifap/state/DDMS-READY
+          env_file=/etc/sifap/provisioning.env
 
           tail_log() {
             if [ -f "$log" ]; then
@@ -656,13 +654,47 @@ jobs:
             fi
           }
 
+          set_phase() {
+            phase="$1"
+            mkdir -p "$(dirname "$env_file")"
+            PHASE="$phase" ENV_FILE="$env_file" python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          path = Path(os.environ["ENV_FILE"])
+          phase = os.environ["PHASE"]
+          lines = path.read_text().splitlines() if path.exists() else []
+          out = []
+          replaced = False
+          for line in lines:
+              if line.startswith("SIFAP_PHASE="):
+                  if not replaced:
+                      out.append(f"SIFAP_PHASE={phase}")
+                      replaced = True
+                  continue
+              out.append(line)
+          if not replaced:
+              out.append(f"SIFAP_PHASE={phase}")
+          path.write_text("\n".join(out) + "\n")
+          PY
+            chown root:root "$env_file"
+            chmod 0644 "$env_file"
+          }
+
+          restore_auto() {
+            set_phase auto || true
+          }
+
           if [ -f "$provisioned" ]; then
+            restore_auto
             echo "SIFAP_STATUS=PROVISIONED"
             echo "Completion marker exists: ${provisioned}"
             exit 0
           fi
 
-          if systemctl is-active --quiet sifap-provisioning 2>/dev/null; then
+          active_state="$(systemctl show sifap-provisioning --property=ActiveState --value 2>/dev/null || true)"
+          substate="$(systemctl show sifap-provisioning --property=SubState --value 2>/dev/null || true)"
+          if [ "$active_state" = "active" ] && [ "$substate" != "exited" ]; then
             echo "SIFAP_STATUS=RUNNING"
             echo "sifap-provisioning is still running."
             tail_log
@@ -670,6 +702,7 @@ jobs:
           fi
 
           if systemctl is-failed --quiet sifap-provisioning 2>/dev/null; then
+            restore_auto
             if [ -f "$ddms_ready" ]; then
               echo "SIFAP_STATUS=FINALIZE_FAILED"
               echo "DDMs are present, but finalize failed."
@@ -683,16 +716,38 @@ jobs:
 
           if [ -f "$ddms_ready" ]; then
             echo "SIFAP_STATUS=FINALIZE_STARTED"
-            echo "DDMs are present. Starting finalize phase through systemd."
-            systemctl set-environment SIFAP_PHASE=finalize
-            systemctl restart sifap-provisioning
-            sleep 5
+            echo "DDMs are present. Persisting SIFAP_PHASE=finalize in ${env_file} for this run."
+            set_phase finalize
+            systemctl stop sifap-provisioning.service || true
+            set +e
+            timeout 2400s systemctl start sifap-provisioning.service
+            start_rc=$?
+            set -e
+            restore_auto
+            if [ "$start_rc" -eq 124 ]; then
+              echo "SIFAP_STATUS=RUNNING"
+              echo "Finalize is still running after 40 minutes; restored ${env_file} to SIFAP_PHASE=auto for the next boot."
+              tail_log
+              exit 0
+            fi
+            if [ "$start_rc" -ne 0 ]; then
+              echo "SIFAP_STATUS=FINALIZE_FAILED"
+              echo "systemctl start sifap-provisioning.service failed with exit ${start_rc}; restored ${env_file} to SIFAP_PHASE=auto."
+              tail_log
+              exit 0
+            fi
+            if [ -f "$provisioned" ]; then
+              echo "SIFAP_STATUS=PROVISIONED"
+              echo "Finalize completed and restored ${env_file} to SIFAP_PHASE=auto."
+              exit 0
+            fi
+            echo "SIFAP_STATUS=FINALIZE_FAILED"
+            echo "Finalize service exited successfully, but ${provisioned} is still missing; restored ${env_file} to SIFAP_PHASE=auto."
             tail_log
             exit 0
           fi
 
           result="$(systemctl show sifap-provisioning --property=Result --value 2>/dev/null || true)"
-          substate="$(systemctl show sifap-provisioning --property=SubState --value 2>/dev/null || true)"
           if [ "$result" = "success" ] || [ "$substate" = "exited" ]; then
             echo "SIFAP_STATUS=WAITING_FOR_DDMS"
             echo "Base provisioning succeeded. DDM readiness marker is absent: ${ddms_ready}"
