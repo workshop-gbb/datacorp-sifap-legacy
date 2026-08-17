@@ -148,14 +148,16 @@ ftouch_register() {
   # Natural does not scan the SRC directory: a library is indexed by FILEDIR.SAG
   # and only ftouch can write that index. Without this, every member is invisible
   # and Natural answers NAT0082. ftouch takes exactly one file per call and
-  # enforces the 8.3 member-name limit.
+  # enforces the 8.3 member-name limit. 'sm' marks the member as structured
+  # mode; without it Natural reads the source as reporting mode and answers
+  # NAT0610 for any structured statement.
   local container="$1" library="$2" src_dir="$3"
   docker exec "$container" sh -lc "
     cd '${src_dir}' || exit 1
     rc=0
     for f in *.NS*; do
       [ -e \"\$f\" ] || continue
-      if ! ${FTOUCH_BIN} lib=${library} -s \"\$f\" 2>&1 | grep -q 'executed with success'; then
+      if ! ${FTOUCH_BIN} lib=${library} sm -s \"\$f\" 2>&1 | grep -q 'executed with success'; then
         echo \"ftouch failed for \$f\" >&2
         rc=1
       fi
@@ -168,7 +170,8 @@ natural_stack() {
   # Natural Community Edition rejects BATCHMODE outright ("Natural Startup
   # Error 42 - Batch mode not available for Natural Community Edition"), so the
   # documented CMSYNIN/CMOBJIN path cannot be used here. Natural does accept a
-  # STACK on an interactive session, which expect drives on a pty.
+  # STACK on an interactive session, which expect drives on a pty. SM=ON must
+  # match the mode the sources were registered with, or Natural answers NAT1155.
   local label="$1" library="$2" output_file="$3"
   shift 3
   local members=("$@") stack="LOGON ${library}" member
@@ -181,7 +184,7 @@ natural_stack() {
   cat > "$exp" <<EOF_EXP
 set timeout ${NATURAL_STACK_TIMEOUT}
 log_file -a ${NATURAL_WORK_DIR}/${label}.log
-spawn natural "STACK=(${stack})"
+spawn natural SM=ON "STACK=(${stack})"
 expect {
   -re "MORE|More" { send "\r"; exp_continue }
   eof { }
