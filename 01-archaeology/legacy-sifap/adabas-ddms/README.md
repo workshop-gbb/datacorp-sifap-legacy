@@ -19,7 +19,7 @@ A **DDM (Data Definition Module)** is the file that describes the schema of an A
 
 **Why it matters:** without reading the DDM, you do not know which fields exist, what types they have, or which structures (`MU`, `PE`) will need to become child tables in PostgreSQL. Field names in `.NSN` programs are abbreviations that only make sense when cross-referenced with the DDM.
 
-**How this applies to SIFAP:** the `CALCBENF.NSN` program references fields such as `BN-AMT-INCOME-PC` and `PS-AMT-MAX`. To understand what each field represents, consult the `BENEFICIARY` and `SOCIAL-PROGRAM` DDMs.
+**How this applies to SIFAP:** the `CALCBENF.NSN` program references fields such as `BN-AMT-INCOME-PC` and `PS-AMT-MAX`. To understand what each field represents, consult the `BENEFIC` and `SOCPROG` DDM members.
 
 ---
 
@@ -27,9 +27,9 @@ A **DDM (Data Definition Module)** is the file that describes the schema of an A
 
 | File | Adabas file | Description |
 |---|---|---|
-| `BENEFICIARY.ddm` | DBID 057 / FNR 150 | Beneficiary records—personal data, documents, registration status, banking data, dependents (PE) |
+| `BENEFIC.ddm` | DBID 057 / FNR 150 | Beneficiary records—personal data, documents, registration status, banking data, dependents (PE) |
 | `PAYMENT.ddm` | DBID 057 / FNR 152 | Payment records—amounts, dates, status, paying bank, deductions (PE), reconciliation |
-| `SOCIAL-PROGRAM.ddm` | DBID 057 / FNR 151 | Social programs—eligibility rules, value ranges, calculation parameters |
+| `SOCPROG.ddm` | DBID 057 / FNR 151 | Social programs—eligibility rules, value ranges, calculation parameters |
 | `AUDIT.ddm` | DBID 057 / FNR 153 | Audit trail—user actions, registration changes, batch context |
 | `FDT-150-BENEFICIARY.txt` | DBID 057 / FNR 150 | **Physical FDT** for file 150 (ADAREP output)—actual layout, `NU`/`FI`/`DE`/`UQ` options, data volume, and unload-window estimate |
 

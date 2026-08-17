@@ -379,10 +379,10 @@ Every operation that changes data in the system (inclusion, change, deletion) wi
 - Identification of the affected record;
 - Previous and subsequent values ​​(for changes).
 
-> **Design note:** In the initial phase, audit records will be written in fields of type MU (multiple value) in DDM BENEFICIARY itself, using a periodic group (PE) for history. This approach simplifies implementation and avoids creating an additional DDM.
+> **Design note:** In the initial phase, audit records will be written in fields of type MU (multiple value) in DDM BENEFIC, the Beneficiary file, using a periodic group (PE) for history. This approach simplifies implementation and avoids creating an additional DDM.
 
 <!-- This decision was reversed in 2005, when the volume of
- audit on PE of DDM BENEFICIARY caused severe degradation of
+ audit on PE of DDM BENEFIC caused severe degradation of
  performance. DDM AUDIT (FNR 153) was then created as an entity
  separately, and the subprogram LOGAUDIT was refactored to write to this
  new DDM. DBA Cláudia Regina dos Santos led the migration of
@@ -445,7 +445,7 @@ The evolution of the SIFAP is planned in the following phases, subject to approv
  - RELPGT (payment report) - implemented in 2003 by Patrícia
  Helena Moura. Replaced partial functionality of the BATCHREL.
  - DDM AUDIT (FNR 153) - created in 2005. The original project provided
- audit as PE in DDM BENEFICIARY.
+ audit as PE in DDM BENEFIC.
  - CadÚnico Integration - implemented as an emergency in 2006, without
  program cataloged in the official inventory. -->
 

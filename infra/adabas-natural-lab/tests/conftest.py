@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import pathlib
 import re
 import shutil
@@ -14,8 +15,8 @@ PROVISIONING = LAB / "provisioning"
 DDM_DIR = ROOT / "01-archaeology" / "legacy-sifap" / "adabas-ddms"
 SEED_DIR = PROVISIONING / "seed"
 WORK_DIR = LAB / "tests" / ".work"
-LOAD_SCRIPT = PROVISIONING / "01-load-adabas.sh"
-ENCODER = PROVISIONING / "adacmp_input.py"
+LOAD_SCRIPT = pathlib.Path(os.environ.get("SIFAP_LOAD_ADABAS_SH", PROVISIONING / "01-load-adabas.sh"))
+ENCODER = pathlib.Path(os.environ.get("SIFAP_ADACMP_INPUT_PY", PROVISIONING / "adacmp_input.py"))
 
 FILES = {
     "beneficiary": (150, "BENEFICIARY.ddm", 500, 1739),

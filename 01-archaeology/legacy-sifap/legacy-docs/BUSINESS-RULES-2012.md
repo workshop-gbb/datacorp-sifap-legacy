@@ -73,7 +73,7 @@ revision_history:
 
 **RN-002** - It is not permitted to include a beneficiary with CPF already in the registry in active status (BN-CD-SIT = 'A'). Logically excluded beneficiaries (BN-CD-SIT = 'E') can be re-included upon new registration.
 
-**RN-003** - The beneficiary must be linked to at least one active social program (field BN-CD-PROG referencing valid registration in DDM SOCIAL-PROGRAM with PS-IN-ATIVO = 'S').
+**RN-003** - The beneficiary must be linked to at least one active social program (field BN-CD-PROG referencing valid registration in DDM SOCPROG with PS-IN-ATIVO = 'S').
 
 **RN-004** - The maximum number of dependents per beneficiary is **3** (field BN-QT-DEPEND, values ​​from 0 to 3). For programs that require a higher number, request authorization from the CGPB via form FR-SIFAP-012.
 
@@ -102,7 +102,7 @@ revision_history:
 
 ### 1.3. Exclusion Rules
 
-**RN-011** - Beneficiary exclusion is always logical (BN-CD-SIT changed from 'A' to 'E'). There is no physical deletion of records in DDM BENEFICIARY.
+**RN-011** - Beneficiary exclusion is always logical (BN-CD-SIT changed from 'A' to 'E'). There is no physical deletion of records in DDM BENEFIC, the Beneficiary file.
 
 **RN-012** - Deletion of beneficiaries with pending payments (PG-CD-STATUS = 'P') is blocked by the system. The operator must wait for settlement or cancel payments before deletion.
 
@@ -120,7 +120,7 @@ VALOR-BENEFICIO = VALOR-BASE(program, bracket) + (ACRESCIMO-DEPEND * QT-DEPEND)
 
 Where:
 
-- `VALOR-BASE` is obtained from DDM SOCIAL-PROGRAM according to the beneficiary's declared income range;
+- `VALOR-BASE` is obtained from DDM SOCPROG according to the beneficiary's declared income range;
 - `ACRESCIMO-DEPEND` is the additional amount per dependent, defined by program;
 - `QT-DEPEND` is the number of active dependents linked to the primary beneficiary.
 
@@ -137,7 +137,7 @@ Where:
 
 ### 2.2. Value Ranges
 
-**RN-017** - The value ranges are parameterized in DDM SOCIAL-PROGRAM, using PE (periodic group) fields indexed by fiscal year. Each social program can have up to 10 defined value ranges.
+**RN-017** - The value ranges are parameterized in DDM SOCPROG, using PE (periodic group) fields indexed by fiscal year. Each social program can have up to 10 defined value ranges.
 
 **RN-018** - The range applicable to the beneficiary is determined by the declared per capita family income (field BN-VL-RENDA-PC). The band assignment follows ascending order of income, with the first band whose upper limit is greater than or equal to the declared income being applied.
 

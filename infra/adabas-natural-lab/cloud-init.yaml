@@ -640,14 +640,7 @@ write_files:
       # Persistent copy is moved to /mnt/sifap-data/state/provisioning.env.
       SIFAP_PHASE=auto
 
-  # Wrapper around provisioning/run-all.sh, which is what actually loads Adabas
-  # and compiles the Natural library. Run by systemd, never inline in cloud-init:
-  # Adabas needs several minutes to build its demo database before any ADALOD can
-  # succeed, and a cloud-init step that waits that long risks the boot timeout
-  # killing it halfway through a database load.
-  #
-  #   systemctl status sifap-provisioning     <- did it work?
-  #   systemctl restart sifap-provisioning    <- run it again (it is idempotent)
+  # Systemd wrapper around provisioning/run-all.sh.
   - path: /opt/sifap/run-provisioning.sh
     owner: root:root
     permissions: '0755'
@@ -673,7 +666,7 @@ write_files:
       DDM_BACKUP=/mnt/sifap-data/state/ddm-gp-backup.tgz
       STATE_BASE="${state_base_url}"
       BLOB_API=2021-08-06
-      SIFAP_PHASE="${SIFAP_PHASE:-auto}"
+      SIFAP_PHASE="$${SIFAP_PHASE:-auto}"
 
       rm -f /opt/sifap/PROVISIONING-FAILED
 
@@ -730,10 +723,6 @@ write_files:
         fi
       }
 
-      # Same marker contract as bootstrap.sh: one line, greppable, mirrored to
-      # syslog so the Azure Monitor agent ships it and
-      # azurerm_monitor_scheduled_query_rules_alert_v2.provisioning_failed can
-      # alert on it. Keep the strings in sync with the KQL in main.tf.
       on_exit() {
         rc=$?
         if [ "$rc" -eq 0 ]; then
@@ -759,10 +748,6 @@ write_files:
       echo "phase: $SIFAP_PHASE"
       restore_ddm_backup_if_empty
 
-      # The scripts are owned by sibling work and staged by fetch-payload.sh, so
-      # "not there" is a real state. Fail loudly and specifically: a unit in the
-      # `failed` state with this in its log is a signal; a unit that quietly does
-      # nothing is how a lab reaches a demo with an empty database.
       if [ ! -f "$ENTRYPOINT" ]; then
         echo "ERROR: $ENTRYPOINT is missing."
         echo "ERROR: nothing has loaded Adabas and nothing has compiled Natural."
@@ -778,11 +763,6 @@ write_files:
 
       chmod 0755 "$ENTRYPOINT" 2>/dev/null || true
 
-      # Readiness is split deliberately. run-all.sh already waits for the Adabas
-      # nucleus to accept work (wait_for_adabas_ready, 900s by default), so
-      # repeating that here would only double the worst-case wait. What it cannot
-      # diagnose is "compose never brought the container up at all" - so that,
-      # and only that, is checked here, with its own exit code.
       echo "waiting for the adabas-db container to be running (up to 5 minutes)"
       READY=0
       for attempt in $(seq 1 60); do
@@ -800,10 +780,6 @@ write_files:
         exit 4
       fi
 
-      # The exact names provisioning/lib.sh reads. Their defaults already match
-      # this module's layout, but ADABAS_DBID defaults to empty there and only
-      # Terraform knows the real value - so passing it is not optional.
-      # Everything here is a name or a path; no credential is exported.
       export PROVISIONING_DIR=/opt/sifap/provisioning
       export SIFAP_CORPUS_DIR=/opt/sifap/corpus
       export SIFAP_PROVISIONING_LOG=/var/log/sifap-provisioning.log
@@ -816,19 +792,13 @@ write_files:
       export SIFAP_DDMS_READY_MARKER="$STATE_DIR/DDMS-READY"
 
       cd /opt/sifap/provisioning
-      # >&3: run-all.sh installs its own tee to $LOG, so its output goes to the
-      # journal here and to the log there - once each, not twice.
       "$ENTRYPOINT" >&3 2>&3
 
       backup_ddms_if_present
 
       echo "=== SIFAP provisioning finished at $(date -Is) ==="
 
-  # Why a unit and not a runcmd line: cloud-init runs runcmd synchronously and a
-  # first Adabas boot plus a full CATALL can run for a quarter of an hour. As a
-  # unit it survives the end of cloud-init, survives a reboot (the VM is
-  # auto-shut down nightly), and reports its state through systemctl instead of
-  # through a log nobody reads.
+  # Long-running provisioning unit.
   - path: /etc/systemd/system/sifap-provisioning.service
     owner: root:root
     permissions: '0644'

@@ -228,7 +228,7 @@ The SIFAP is made up of **12 main programs**, organized into the following modul
 
 #### 3.2.1. CADBENEF - Beneficiary Registration
 
-**Description:** Online program for maintaining beneficiary registration. Allows logical inclusion, alteration and deletion of records in the DDM BENEFICIARY.
+**Description:** Online program for maintaining beneficiary registration. Allows logical inclusion, alteration and deletion of records in DDM BENEFIC, the Beneficiary file.
 
 **Transaction:** SF01 (inclusion), SF02 (change), SF03 (deletion)
 
@@ -277,7 +277,7 @@ The SIFAP is made up of **12 main programs**, organized into the following modul
 **Features:**
 
 - Inclusion and alteration of social programs;
-- Parameterization of value ranges (fields MU in DDM SOCIAL-PROGRAM);
+- Parameterization of value ranges (fields MU in DDM SOCPROG);
 - Definition of eligibility rules per program;
 - Validity control (start/end date).
 
@@ -290,7 +290,7 @@ The SIFAP is made up of **12 main programs**, organized into the following modul
 
 #### 3.3.1. CALCBENF - Benefits Calculation
 
-**Description:** Program for calculating the value of the benefit to be paid to the beneficiary, based on the ranges and rules defined in DDM SOCIAL-PROGRAM.
+**Description:** Program for calculating the value of the benefit to be paid to the beneficiary, based on the ranges and rules defined in DDM SOCPROG.
 
 **Features:**
 
@@ -334,7 +334,7 @@ The SIFAP is made up of **12 main programs**, organized into the following modul
 
 **Execution flow:**
 
-1. Sequential reading of DDM BENEFICIARY (active registers, BN-CD-SIT = 'A');
+1. Sequential reading of DDM BENEFIC, the Beneficiary file (active registers, BN-CD-SIT = 'A');
 2. For each beneficiary, invoke CALCBENF to obtain the benefit value;
 3. Record recording on DDM PAYMENT with status 'P' (pending);
 4. Generation of the remittance file CNAB 240 for Banco do Brasil;
@@ -483,7 +483,7 @@ In case of ABEND while running BATCHPGT, follow the steps below:
 | S0C7 | Data exception | Numeric field with invalid value in Adabas | Identify corrupt registry via ADAORD. Correct or delete. |
 | S878 | Virtual storage exceeded | Processing volume above forecast | Increase REGION on JCL. Contact operation.                       |
 | S0C4 | Protection exception | Addressing error in subprogram | Contact Roberto Carlos Meirelles for analysis.                  |
-| U4038 | Natural runtime error | Overflow error in calculation | Check values ​​in DDM SOCIAL-PROGRAM (ranges).               |
+| U4038 | Natural runtime error | Overflow error in calculation | Check values ​​in DDM SOCPROG (ranges).                      |
 | ADA-RSP 148 | Adabas timeout | Response time exceeded | Check containment on Adabas. Contact DBA.                     |
 
 ### 5.4. Rollback Procedure

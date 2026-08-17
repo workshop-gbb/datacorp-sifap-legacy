@@ -1,41 +1,71 @@
 # SIFAP Adabas/Natural provisioning
 
-These scripts are mounted on the VM at `/opt/sifap/provisioning`. The only cloud-init entry point should be:
+These scripts are mounted on the VM at `/opt/sifap/provisioning`. The cloud-init entry point is:
 
 ```bash
 sudo /opt/sifap/provisioning/run-all.sh
 ```
 
+The scripts log to stdout and `/var/log/sifap-provisioning.log`.
+
+## Phases
+
+`run-all.sh` is controlled by `SIFAP_PHASE`:
+
+- `auto` (default) — runs the base phase, then checks whether all required DDMs already exist. If they do, it continues through finalize. If they do not, it prints a waiting-for-DDMs message and exits **0**. A fresh deployment legitimately has no Natural DDMs yet, so this state must not look like a provisioning failure.
+- `base` — loads Adabas, verifies the four files, and catalogs only the three data areas. It does not run smoke tests and it does not require DDMs.
+- `finalize` — requires the four DDMs, catalogs subprograms and programs, runs smoke tests, and writes `/opt/sifap/PROVISIONED` only after all of that succeeds.
+
+After creating the DDMs manually, run:
+
+```bash
+sudo SIFAP_PHASE=finalize /opt/sifap/provisioning/run-all.sh
+```
+
+Restarting the systemd service also works if it invokes `run-all.sh` without overriding `SIFAP_PHASE`, because `auto` will detect the DDMs and continue into finalize.
+
 ## Scripts
 
-- `run-all.sh` — orchestrates readiness, Adabas load, Natural build, and smoke tests; logs to stdout and `/var/log/sifap-provisioning.log`.
+- `run-all.sh` — orchestrates `auto`, `base`, and `finalize` phases.
 - `01-load-adabas.sh` — creates Adabas files 150–153 and loads `seed/{beneficiary,payment,social-program,audit}.dat` with `seed/layout-*.txt`.
-- `02-build-natural.sh` — creates `SYSDDM` DDM sources, copies SIFAP sources into library `SIFAPPRD`, and runs `STOW` in dependency order.
+- `02-build-natural.sh` — copies SIFAP sources into library `SIFAPPRD`, registers them with `ftouch`, catalogs data areas in base, and catalogs DDM-dependent subprograms/programs in finalize.
 - `03-smoke-test.sh` — runs `CONSBENF` for a seeded CPF and `BATCHPGT` for period `202601` (override with `SIFAP_SMOKE_PERIOD`).
-- `lib.sh` — logging, retry, container, and Natural batch helpers.
+- `lib.sh` — logging, container helpers, `ftouch`, pty/`expect` Natural execution, DDM detection, and catalog verification.
 
-## Commands and confidence
+## Manual DDM creation
 
-Confirmed by inspecting the local images (not by a live Azure apply):
+The Adabas load is automated, but DDM creation is a one-time manual NaturalONE step. This is a Natural Community Edition limitation verified against `softwareag/natural-ce:9.3.3`:
 
-- Adabas CE `7.4.0` contains `adafdu`, `adacmp`, `adamup`, `adarep`, `adadbm`, and `adafrm` in PATH.
-- The image does **not** expose `adalod`; the script uses the same `adacmp` + `adamup db=<DBID> update=<FNR>,add` pattern used by `/opt/softwareag/Adabas/demodb/LoadDemo.bsh`.
-- Natural CE `9.3.3` contains `natural` but not `natbatch`; batch mode syntax is taken from `/opt/softwareag/Natural/samples/sysexbat/natbat.xml`: `natural BATCHMODE CMSYNIN=... CMOBJIN=... CMPRINT=...`.
+- `natural BATCHMODE ...` fails with Startup Error 42; batch mode is not available in Community Edition.
+- Natural CE ships no usable `SYSDDM` utility objects.
+- `ftouch lib=SYSDDM ...` fails with return code 6149.
+- Cataloging a DDM listing as source fails with `NAT4225 Invalid level`; a DDM listing is not compilable Natural source.
 
-Best-effort until a real VM apply validates it:
+Use NaturalONE against the Natural Development Server exposed by the lab on port `2700`. Generate the DDMs from the live Adabas database (`DBID 12`) and files:
 
-- Generated `.NSD` DDM source from the corpus `LISTDDM` reports.
-- Derived FDTs for files 151–153 from DDM listings.
-- Exact behavior of `STOW` for DDMs copied into `SYSDDM/SRC`.
-- `CONSBENF` batch input sequencing for its alternate no-map screen.
+| FNR | DDM member name |
+| --- | --- |
+| 150 | `BENEFIC` |
+| 151 | `SOCPROG` |
+| 152 | `PAYMENT` |
+| 153 | `AUDIT` |
 
-## Compile order
+The short names are required by Natural's 8-character member-name limit. The generated DDMs must be present in the using library's GP directory as `BENEFIC.NGD`, `SOCPROG.NGD`, `PAYMENT.NGD`, and `AUDIT.NGD`.
 
-The build follows `01-archaeology/HOW-TO-COMPILE-AND-RUN.md` section 2.4:
+## Markers
 
-1. DDMs in `SYSDDM`: `BENEFICIARY`, `SOCIAL-PROGRAM`, `PAYMENT`, `AUDIT`.
+- `/opt/sifap/state/DDMS-READY` — written when provisioning detects all four `.NGD` files in `SIFAPPRD/GP`. It means the manual DDM step is complete.
+- `/opt/sifap/PROVISIONED` — written only after finalize succeeds, including DDM detection, Natural cataloging of subprograms/programs, and smoke tests.
+
+## Natural build mechanism
+
+Natural CE cannot use `BATCHMODE` (`Natural Startup Error: 42`). Natural also does not scan `SRC`; every source member must be registered one file at a time with `ftouch lib=<LIB> sm -s <file>` so `FILEDIR.SAG` can see it. Compilation and smoke execution therefore run `natural SM=ON "STACK=(...)"` on an interactive pty driven by `expect`. `SM=ON` must match the structured-mode registration or Natural reports mode errors.
+
+## Compile inventory
+
+1. Manual DDMs in `SIFAPPRD/GP`: `BENEFIC`, `SOCPROG`, `PAYMENT`, `AUDIT`.
 2. Data areas: `PDAVALID`, `PDACALC`, `LDASIFAP`.
-3. Copycodes as source: `CCVALCPF`, `CCAUDIT`.
+3. Copycodes as source only: `CCVALCPF`, `CCAUDIT`.
 4. Subprograms: `SUBVALCP`, `SUBVALNI`, `VALBENEF`, `VALELEG`, `CALCBENF`.
 5. Programs: `CADBENEF`, `CONSBENF`, `BATCHPGT`, `BATCHREL`, `RELPGT`, `CADPROG`, `CADDEPEND`, `VALDOCS`, `CALCCORR`, `CALCDSCT`, `RELAUDIT`, `BATCHCON`.
 
@@ -47,9 +77,18 @@ The build follows `01-archaeology/HOW-TO-COMPILE-AND-RUN.md` section 2.4:
 
 `03-smoke-test.sh` asserts that:
 
-- `CONSBENF` output contains the beneficiary screen/output and the seeded CPF suffix.
-- `BATCHPGT` output contains its banner, the period, and a business summary (`PAYMENTS GENERATED`, `NO PAYMENT GENERATED`, or `TOTAL PROCESSED`).
+- `CONSBENF` output contains `SIFAP - BENEFICIARY INFORMATION` or `BENEFICIARY QUERY`, contains the seeded CPF suffix, and does **not** contain `not found`, `não encontrado`, or `nao encontrado`.
+- `BATCHPGT` output contains `BATCHPGT - MONTHLY PAYMENT GENERATION`, contains the smoke period, and contains one business summary phrase: `PAYMENTS GENERATED`, `NO PAYMENT GENERATED`, or `TOTAL PROCESSED`.
 
-## Required live validation
+## Resolved facts and remaining open questions
 
-A real Azure apply is still required to prove: Adabas file definitions, seed layouts, Natural DDM generation, all `STOW` commands, and both smoke-test paths. These scripts are intentionally honest about that gap and fail loudly with the member/output path on Natural errors.
+Resolved:
+
+- DDMs cannot be generated by copying `.NSD` files into `SYSDDM/SRC` in Natural CE.
+- `STOW`/batch-mode provisioning is not available in Natural CE; the lab uses `ftouch` plus pty-driven `STACK`/`CATALOG`.
+- DDM member names are the 8-character-safe names `BENEFIC`, `SOCPROG`, `PAYMENT`, and `AUDIT`.
+
+Still open until a full VM run after manual DDM creation:
+
+- Whether all 5 subprograms and 12 programs catalog cleanly after the source fixes land.
+- Whether both smoke-test paths pass against the final manually generated DDMs and loaded data.

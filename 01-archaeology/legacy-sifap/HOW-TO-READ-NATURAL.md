@@ -34,9 +34,9 @@ LOCAL USING LDASIFAP                                                   External 
 LOCAL                                                                  (LDA/PDA), then local fields.
   1 PAYMENT-V VIEW OF PAYMENT                                      You can skip this—just note
     2 NUM-PAYMENT      (N15)                                         fields that come from a table
-    2 AMT-GROSS          (P9,2)                                        (VIEW OF = DDM).
-    2 AMT-DISC-TOTAL (P7,2)
-  1 #AMT-MAX-DISC        (P9,2)
+    2 AMT-GROSS          (P9.2)                                        (VIEW OF = DDM).
+    2 AMT-DISC-TOTAL (P7.2)
+  1 #AMT-MAX-DISC        (P9.2)
 END-DEFINE
 *
 MOVE *DATN TO #DT-TODAY                                                <- PROGRAM BODY
@@ -282,9 +282,11 @@ An ambiguous condition should be recorded as an open question in [`mysteries-fou
 ## 6. Field types and formats (DDMs and variables)
 
 > [!IMPORTANT]
-> **In a format specification, the decimal separator is a COMMA.** `(N9,2)` means nine digits, two of which are decimal places. The form `(N9.2)`, with a period, **does not exist in Natural**—it does not compile. If you see a period inside format parentheses, it is a transcription error, not an old dialect.
+> **In this lab, the decimal separator in a Natural source format specification is a period.** Natural Community Edition 9.3.3 compiles `(N9.2)` and `(P9.2)`. It rejects comma forms such as `(N9,2)` and `(P9,2)` with `NAT0165`.
 >
-> The comma applies **only to the format**. In literal values within code, the separator remains a period: `MOVE 1.3500 TO #FACTOR-ADJUST` and `COMPUTE #VLR = #BRUTO * 0.30`.
+> Natural installations can vary by decimal-character setting, and older mainframe installations commonly used a comma. This workshop follows the Natural CE 9.3.3 image. `DC=,` is not a workaround here because it collides with the `ID` delimiter and gives `NAT0385`.
+>
+> This rule applies **only to source declarations**. In literal values within code, the separator remains a period: `MOVE 1.3500 TO #FACTOR-ADJUST` and `COMPUTE #VLR = #BRUTO * 0.30`. DDM listings still print decimal lengths with a comma, for example `P  9,2`.
 
 ### 6.1. Formats you will encounter
 
@@ -295,10 +297,10 @@ An ambiguous condition should be recorded as an open question in [`mysteries-fou
 | `(N11)` | *Unpacked* numeric, 11 digits, no decimal places | `NUMERIC(11)` |
 | `(N8)` | Date in `AAAAMMDD` format—Natural has no date type here | `DATE` |
 | `(N6)` | Reference period in `AAAAMM` format, or time in `HHMMSS` format | `INTEGER` (convert) |
-| `(N9,2)` | *Unpacked* numeric, 9 digits, 2 decimal places | `NUMERIC(9,2)` |
-| `(P9,2)` | *Packed decimal*, 9 digits, 2 decimal places | `NUMERIC(9,2)` |
-| `(P13,2)` | *Packed decimal*, 13 digits, 2 decimal places—batch accumulator | `NUMERIC(13,2)` |
-| `(N3,4)` | 3 digits, 4 decimal places—typical for a factor or index | `NUMERIC(3,4)` |
+| `(N9.2)` | *Unpacked* numeric, 9 digits, 2 decimal places | `NUMERIC(9,2)` |
+| `(P9.2)` | *Packed decimal*, 9 digits, 2 decimal places | `NUMERIC(9,2)` |
+| `(P13.2)` | *Packed decimal*, 13 digits, 2 decimal places—batch accumulator | `NUMERIC(13,2)` |
+| `(N3.4)` | 3 digits, 4 decimal places—typical for a factor or index | `NUMERIC(3,4)` |
 | `(L)` | Logical (`TRUE` / `FALSE`) | `BOOLEAN` |
 
 ### 6.2. `P` (packed) × `N` (unpacked)—money is always `P`
@@ -309,7 +311,7 @@ An ambiguous condition should be recorded as an open question in [`mysteries-fou
 | Cost | more space | less space, faster arithmetic |
 | Typical SIFAP use | counters, codes, `AAAAMMDD` dates, loop indexes | **monetary values and calculation factors** |
 
-On the mainframe, money is *packed*. That is what the DDM says—`CH AMT-FAMILY-INCOME P 9,2`—and what the programs declare. When you find `(P9,2)`, `(P7,2)`, or `(P13,2)`, you are looking at a value field.
+On the mainframe, money is *packed*. That is what the DDM says—`CH AMT-FAMILY-INCOME P 9,2`—and what the programs declare. When you find `(P9.2)`, `(P7.2)`, or `(P13.2)` in Natural source, you are looking at a value field.
 
 > [!TIP]
 > During modernization, decimal `P` and `N` values become `BigDecimal` in Java and `NUMERIC(p,s)` in PostgreSQL. **Never** use `double` or `float`: the legacy system calculates exact decimals, and differences appear at the cent level.
@@ -319,9 +321,9 @@ On the mainframe, money is *packed*. That is what the DDM says—`CH AMT-FAMILY-
 | Notation | Meaning |
 |---|---|
 | `(A60/1:10)` | 10 occurrences of 60 characters |
-| `(N3,4/1:27)` | 27 occurrences of 3 digits with 4 decimal places |
-| `(P9,2/1:5)` | 5 monetary occurrences |
-| `(N3,6/1:10,1:12)` | two-dimensional array, 10 × 12 |
+| `(N3.4/1:27)` | 27 occurrences of 3 digits with 4 decimal places |
+| `(P9.2/1:5)` | 5 monetary occurrences |
+| `(N3.6/1:10,1:12)` | two-dimensional array, 10 × 12 |
 
 The bounds are part of the notation: write `1:27`, not just `27`. Arrays often appear with `INIT <...>`—**every number in that list is a candidate rule**. Dimensions tell a story: 27 positions usually index UF, while 12 index months.
 
@@ -369,7 +371,7 @@ The line beginning with `/*` immediately below a derived descriptor lists **the 
 
 `FIND` searches through an Adabas index. Therefore, `FIND <view> WITH <field>` **works only if the field has a value in column `D`** (`D`, `U`, `S`, `H`, or `P`). A field without an index cannot be searched.
 
-| Field in `BENEFICIARY.ddm` | Column `D` | Is `FIND ... WITH` legal? |
+| Field in `BENEFIC.ddm` | Column `D` | Is `FIND ... WITH` legal? |
 |---|---|---|
 | `AB NUM-CPF` | `U` | yes |
 | `CE STAT-BENEFICIARY` | `D` | yes |
@@ -426,8 +428,8 @@ The complete column legend is in the footer of each `.ddm` and in the [DDM READM
 | Reading in file order | Go directly to the `IF` statements using Ctrl+F. |
 | Confusing a variable (`#VLR`) with a DDM field (`AMT-GROSS`) | Leading `#` = local variable. No `#` = database field. |
 | Assuming every `MOVE` is a rule | `MOVE` is assignment. The rule is the `IF` that selected the `MOVE`. |
-| Copying a period-based format (`(N9.2)`) into documentation | The format decimal separator is a comma: `(N9,2)`, `(P13,2)`. |
-| Treating `(P9,2)` as something other than money | `P` is *packed decimal*: the mainframe monetary format. |
+| Copying a DDM-listing comma form (`P 9,2`) into Natural source documentation | Source declarations use a period in this lab: `(N9.2)`, `(P13.2)`. |
+| Treating `(P9.2)` as something other than money | `P` is *packed decimal*: the mainframe monetary format. |
 | Recording a view field read outside the `FIND` block | Check whether the value was copied to a `#variable` before `END-FIND`. |
 | Recording a rule without a line citation | Always record `file.NSN#L<start>-L<end>`. CI rejects entries without it. |
 
