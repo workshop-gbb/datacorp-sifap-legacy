@@ -1,0 +1,448 @@
+name: Deploy Adabas/Natural Lab
+
+# Provisions infra/adabas-natural-lab to Azure East US 2.
+#
+# Authentication is OIDC only. No client secret, no publish profile and no storage access key
+# is stored in this repository; the runner exchanges its short-lived GitHub token for an Entra
+# token, which is why every Azure step needs `id-token: write`.
+#
+# Two federated credentials must exist on the app registration or the login step fails with
+# AADSTS70021. Subjects, exactly:
+#   repo:paulasilvatech/datacorp-mm-team-kit:environment:lab   <- apply and destroy jobs
+#   repo:paulasilvatech/datacorp-mm-team-kit:pull_request      <- plan job
+# The plan job deliberately declares no `environment:`, because doing so would change its
+# subject and stop matching the pull_request credential.
+#
+# See infra/adabas-natural-lab/README.md for the full setup, including the repository
+# variables this workflow reads.
+
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/deploy-lab.yml"
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/deploy-lab.yml"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "What to do with the lab"
+        required: true
+        default: plan
+        type: choice
+        options: [plan, apply, destroy]
+      confirm:
+        description: "Type DESTROY to confirm teardown (destroy only)"
+        required: false
+        default: ""
+        type: string
+
+# Least privilege at the top: read the code, nothing more. Jobs that need to mint an OIDC
+# token or write a PR comment opt in individually.
+permissions:
+  contents: read
+
+env:
+  # Keep in step with required_version in infra/*/versions.tf.
+  TERRAFORM_VERSION: "1.14.6"
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  ARM_USE_OIDC: "true"
+  ARM_USE_AZUREAD: "true"
+  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  LAB_DIR: infra/adabas-natural-lab
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Static analysis. Runs on every event, needs no cloud credentials, and is a
+  # prerequisite for plan and apply so a failing gate cannot be merged past.
+  # ---------------------------------------------------------------------------
+  scan:
+    name: IaC security scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.0
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive infra/
+
+      # -backend=false keeps init offline: no state, no credentials, no network round trip to
+      # Azure. Enough to resolve providers so validate can do its job.
+      - name: Validate every module
+        run: |
+          set -euo pipefail
+          for dir in infra/*/; do
+            [ -n "$(find "$dir" -maxdepth 1 -name '*.tf' -print -quit)" ] || continue
+            echo "::group::validate $dir"
+            terraform -chdir="$dir" init -backend=false -lockfile=readonly
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+
+      - name: Set up tflint
+        uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # v6.3.0
+        with:
+          tflint_version: v0.63.1
+
+      # Blocking. Catches what validate cannot see: dead locals, missing types, deprecated
+      # syntax, naming drift.
+      - name: Run tflint
+        run: |
+          set -euo pipefail
+          tflint --init --config="${GITHUB_WORKSPACE}/infra/.tflint.hcl"
+          for dir in infra/*/; do
+            [ -n "$(find "$dir" -maxdepth 1 -name '*.tf' -print -quit)" ] || continue
+            echo "::group::tflint $dir"
+            tflint --config="${GITHUB_WORKSPACE}/infra/.tflint.hcl" --chdir="$dir"
+            echo "::endgroup::"
+          done
+
+      # Blocking, and the reason this job exists. tfsec was archived upstream and folded into
+      # Trivy, so Trivy's misconfiguration scanner is the supported successor and carries the
+      # same AVD rule IDs. Accepted findings are suppressed inline, next to the resource, with
+      # the reasoning written down - grep the modules for `#trivy:ignore` to audit them.
+      - name: Trivy misconfiguration scan (blocking on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: infra/
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          hide-progress: false
+
+      # Advisory. Checkov's Azure pack assumes a production estate - private endpoints,
+      # customer-managed keys, no public IP anywhere - and this lab is a deliberately
+      # internet-reachable demo box, so most of its findings are the design working. Open
+      # source checkov also cannot filter by severity without a Prisma API key, which would
+      # mean putting a credential in the repo for a nice-to-have. Report it, do not block.
+      - name: Checkov advisory scan
+        id: checkov
+        continue-on-error: true
+        uses: bridgecrewio/checkov-action@99bb2caf247dfd9f03cf984373bc6043d4e32ebf # v12.1347.0
+        with:
+          directory: infra/
+          framework: terraform
+          output_format: cli,sarif
+          output_file_path: console,checkov.sarif
+          soft_fail: true
+
+      # Uploaded as a build artifact rather than to code scanning on purpose: the code
+      # scanning API needs `security-events: write`, and this job is not getting write access
+      # to anything for a report nobody blocks on.
+      - name: Upload checkov report
+        if: always()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: checkov-sarif
+          path: checkov.sarif
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Plan on pull requests, and on a manual `plan` dispatch. Read-only against
+  # Azure, so no environment gate - but it does hold real credentials, hence the
+  # fork guard below.
+  # ---------------------------------------------------------------------------
+  plan:
+    name: Terraform plan
+    needs: scan
+    if: >-
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'workflow_dispatch' && inputs.action == 'plan')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write # OIDC token for azure/login
+      pull-requests: write # post the plan as a review comment
+    # Supersede an in-flight plan when the branch is pushed again; nothing is being changed
+    # in Azure, so cancelling costs nothing.
+    concurrency:
+      group: deploy-lab-plan-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.0
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Azure login (OIDC)
+        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # The reason the brazilsouth attempt died half-applied. Ten seconds here beats
+      # discovering a zero vCPU quota after the resource group, vault and disk are live.
+      - name: Preflight - compute quota in East US 2
+        run: |
+          echo "::group::vCPU quota, eastus2"
+          az vm list-usage --location eastus2 -o table
+          echo "::endgroup::"
+          az vm list-usage --location eastus2 --query \
+            "[?contains(localName,'Standard DSv3')].{Quota:localName,Used:currentValue,Limit:limit}" -o table
+
+      - name: Materialise SSH public key
+        run: |
+          set -euo pipefail
+          printf '%s\n' "${{ vars.LAB_SSH_PUBLIC_KEY }}" > "${RUNNER_TEMP}/lab_key.pub"
+          echo "TF_VAR_ssh_public_key_path=${RUNNER_TEMP}/lab_key.pub" >> "$GITHUB_ENV"
+
+      - name: Terraform init
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          terraform init -lockfile=readonly \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}"
+
+      - name: Terraform plan
+        id: plan
+        working-directory: ${{ env.LAB_DIR }}
+        env:
+          TF_VAR_owner: ${{ vars.LAB_OWNER }}
+          TF_VAR_allowed_source_cidrs: ${{ vars.LAB_ALLOWED_SOURCE_CIDRS }}
+        run: |
+          set -euo pipefail
+          terraform plan -no-color -out=tfplan -detailed-exitcode && code=$? || code=$?
+          # 0 = no changes, 2 = changes queued, 1 = the plan itself failed.
+          if [ "$code" -eq 1 ]; then exit 1; fi
+          # `terraform show` redacts sensitive values; the binary plan file does not, which is
+          # why that file never leaves this runner. The apply job regenerates it.
+          terraform show -no-color tfplan > plan.txt
+          {
+            echo "exitcode=$code"
+            echo "summary<<PLANEOF"
+            tail -c 60000 plan.txt
+            echo "PLANEOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment plan on the pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PLAN_SUMMARY: ${{ steps.plan.outputs.summary }}
+          PLAN_EXITCODE: ${{ steps.plan.outputs.exitcode }}
+        with:
+          script: |
+            const marker = '<!-- deploy-lab-plan -->';
+            const changes = process.env.PLAN_EXITCODE === '2';
+            const body = [
+              marker,
+              '### Terraform plan - `infra/adabas-natural-lab`',
+              '',
+              changes
+                ? 'This plan **queues changes**. Review them before merging.'
+                : 'No changes. Infrastructure matches the configuration.',
+              '',
+              '<details><summary>Show plan</summary>',
+              '',
+              '```terraform',
+              process.env.PLAN_SUMMARY || '(empty)',
+              '```',
+              '',
+              '</details>',
+              '',
+              '_Applies run on merge to `main`, after approval on the `lab` environment._',
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const existing = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number,
+            });
+            // Update one comment in place instead of burying the thread under a new one per push.
+            const previous = existing.find((c) => c.body && c.body.includes(marker));
+            if (previous) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: previous.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+  # ---------------------------------------------------------------------------
+  # Apply on merge to the default branch, or on an explicit `apply` dispatch.
+  # Gated by the `lab` GitHub environment: configure required reviewers there,
+  # which is what turns this into a human-approved deployment.
+  # ---------------------------------------------------------------------------
+  apply:
+    name: Terraform apply
+    needs: scan
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60 # VM provisioning plus cloud-init container pulls
+    environment:
+      name: lab
+      url: ${{ steps.publish.outputs.demo_url }}
+    permissions:
+      contents: read
+      id-token: write
+    # cancel-in-progress stays false: killing Terraform mid-apply is how state ends up
+    # describing something Azure no longer has.
+    concurrency:
+      group: deploy-lab-apply
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.0
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Azure login (OIDC)
+        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Preflight - compute quota in East US 2
+        run: az vm list-usage --location eastus2 -o table
+
+      - name: Materialise SSH public key
+        run: |
+          set -euo pipefail
+          printf '%s\n' "${{ vars.LAB_SSH_PUBLIC_KEY }}" > "${RUNNER_TEMP}/lab_key.pub"
+          echo "TF_VAR_ssh_public_key_path=${RUNNER_TEMP}/lab_key.pub" >> "$GITHUB_ENV"
+
+      - name: Terraform init
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          terraform init -lockfile=readonly \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}"
+
+      # Re-planned here rather than carried over as an artifact. A saved plan file stores
+      # sensitive values in cleartext, including the generated Adabas password, so it must not
+      # be uploaded anywhere. The state lock plus environment approval covers the drift window.
+      - name: Terraform apply
+        working-directory: ${{ env.LAB_DIR }}
+        env:
+          TF_VAR_owner: ${{ vars.LAB_OWNER }}
+          TF_VAR_allowed_source_cidrs: ${{ vars.LAB_ALLOWED_SOURCE_CIDRS }}
+        run: terraform apply -auto-approve -no-color
+
+      - name: Publish demo URL
+        id: publish
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          set -euo pipefail
+          demo_url=$(terraform output -raw demo_url)
+          echo "demo_url=${demo_url}" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Lab is up"
+            echo ""
+            echo "| Item | Value |"
+            echo "|---|---|"
+            echo "| Demo URL | ${demo_url} |"
+            echo "| Admin console | $(terraform output -raw admin_console_url) |"
+            echo "| TLS | $(terraform output -raw tls_mode) |"
+            echo ""
+            echo "Cloud-init still has containers to pull after apply returns, so the URL"
+            echo "starts answering a few minutes after this job goes green."
+            echo ""
+            echo '```bash'
+            terraform output -raw health_check_command
+            echo ""
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Teardown. Manual only, needs the word DESTROY typed out, and approves through
+  # its own environment so it cannot ride in on an approval meant for an apply.
+  # ---------------------------------------------------------------------------
+  destroy:
+    name: Terraform destroy
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy' && inputs.confirm == 'DESTROY'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: lab-destroy
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: deploy-lab-apply # shares the apply lock; the two must never overlap
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.0.0
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Azure login (OIDC)
+        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Materialise SSH public key
+        run: |
+          set -euo pipefail
+          printf '%s\n' "${{ vars.LAB_SSH_PUBLIC_KEY }}" > "${RUNNER_TEMP}/lab_key.pub"
+          echo "TF_VAR_ssh_public_key_path=${RUNNER_TEMP}/lab_key.pub" >> "$GITHUB_ENV"
+
+      # The Key Vault carries prevent_destroy so a stray command cannot wipe a running demo.
+      # This is the sanctioned way to lift it: Terraform merges override.tf argument by
+      # argument, so exactly one flag changes and nothing else in the resource moves.
+      - name: Lift the Key Vault destroy guard
+        working-directory: ${{ env.LAB_DIR }}
+        run: cp teardown.tf.disabled override.tf
+
+      - name: Terraform init
+        working-directory: ${{ env.LAB_DIR }}
+        run: |
+          terraform init -lockfile=readonly \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}"
+
+      - name: Terraform destroy
+        working-directory: ${{ env.LAB_DIR }}
+        env:
+          TF_VAR_owner: ${{ vars.LAB_OWNER }}
+          TF_VAR_allowed_source_cidrs: ${{ vars.LAB_ALLOWED_SOURCE_CIDRS }}
+        run: terraform destroy -auto-approve -no-color
+
+      # Soft delete keeps the vault name reserved for 7 days, which blocks the next apply with
+      # a name-taken error that looks nothing like its cause. Purge it while we are here.
+      - name: Purge the soft-deleted Key Vault
+        if: always()
+        run: |
+          set -euo pipefail
+          az keyvault list-deleted --query "[?properties.location=='eastus2'].name" -o tsv \
+            | while read -r vault; do
+                case "$vault" in
+                  sifaplab*) echo "Purging ${vault}"; az keyvault purge --name "$vault" --location eastus2 || true ;;
+                esac
+              done

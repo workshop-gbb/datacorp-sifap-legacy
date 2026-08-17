@@ -32,3 +32,44 @@ docs/FACILITATOR-MYSTERY-ANSWER-KEY.md
 **/*GABARITO*.md
 **/*-RESPOSTAS.md
 **/*-ANSWER-KEY.md
+
+# Terraform — repo-wide, not just infra/adabas-natural-lab.
+# State is the single most dangerous file here: it stores every attribute Terraform ever read
+# back, in cleartext, including generated passwords and Key Vault secret values. Terraform
+# offers no way to encrypt it at rest locally. These patterns live at the root so a new module
+# under infra/ is protected the moment someone creates it, rather than the day someone
+# remembers to copy a .gitignore into it.
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Real variable values: subscription IDs, IP allow-lists, owner emails. The .example files are
+# the documented templates and must stay tracked, hence the negation.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Provider binaries and module caches — large, platform-specific, and rebuilt by `init`.
+# .terraform.lock.hcl is deliberately NOT ignored: it pins provider hashes and belongs in git.
+.terraform/
+.terraform.tfstate.lock.info
+
+# Saved plans store sensitive values unredacted, exactly like state.
+tfplan
+*.tfplan
+*.tfplan.*
+plan.txt
+
+# Backend settings passed via `terraform init -backend-config=backend.hcl`.
+backend.hcl
+
+# Local overrides, including the teardown escape hatch that lifts prevent_destroy.
+# The tracked template is infra/adabas-natural-lab/teardown.tf.disabled.
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Crash logs can contain state fragments.
+crash.log
+crash.*.log

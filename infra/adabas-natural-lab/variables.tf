@@ -407,3 +407,23 @@ variable "log_daily_quota_gb" {
     error_message = "log_daily_quota_gb must be -1 (uncapped) or greater than zero."
   }
 }
+
+variable "key_vault_allowed_ip_rules" {
+  description = <<-EOT
+    Public IP allow-list for the Key Vault firewall, in CIDR or bare-IP form. Empty (the
+    default) leaves the vault on its open public endpoint with default_action = "Allow".
+
+    Empty is the default for a reason, not an oversight. Three parties need the data plane:
+    the operator's laptop, the lab VM (through its own public IP, which does not exist until
+    the VM does), and the CI runner that writes the secret during apply - and GitHub-hosted
+    runners have no stable egress IP. A default-Deny firewall with an incomplete list turns
+    every apply into a 403.
+
+    Set it once you know all three addresses, or when you run applies from fixed egress. The
+    vault is still protected by access policies scoped to exactly two principals, and holds
+    one generated lab password. Azure rejects /31 and /32 masks here, so the module strips a
+    /32 down to the bare address for you.
+  EOT
+  type        = list(string)
+  default     = []
+}

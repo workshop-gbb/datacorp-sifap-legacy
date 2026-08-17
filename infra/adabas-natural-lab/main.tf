@@ -39,7 +39,6 @@ locals {
   # than read back from the resource so cloud-init can be rendered without a dependency cycle
   # through the VM that consumes it.
   demo_fqdn = "${local.dns_label}.${var.location}.cloudapp.azure.com"
-  demo_url  = "https://${local.demo_fqdn}"
 
   # --- TLS mode -------------------------------------------------------------
   # Let's Encrypt validates the HTTP-01 challenge from arbitrary addresses worldwide. An
@@ -62,6 +61,14 @@ locals {
   budget_start_date = var.budget_start_date != "" ? var.budget_start_date : formatdate("YYYY-MM-01'T'00:00:00'Z'", timestamp())
 
   alert_emails = var.auto_shutdown_notification_email != "" ? [var.auto_shutdown_notification_email] : []
+
+  # Azure Key Vault rejects /31 and /32 masks in ip_rules and wants the bare address instead,
+  # which is exactly the form people copy out of `curl ifconfig.me`. Normalise rather than
+  # make every operator rediscover it from a 400.
+  key_vault_ip_rules = [
+    for c in var.key_vault_allowed_ip_rules :
+    replace(trimspace(c), "/\\/32$/", "")
+  ]
 
   tags = {
     project     = var.project
@@ -241,6 +248,16 @@ resource "azurerm_network_interface" "lab" {
 # Association resources expose no tags argument; the tagged objects are the NIC and the NSG.
 resource "azurerm_network_interface_security_group_association" "lab" {
   network_interface_id      = azurerm_network_interface.lab.id
+  network_security_group_id = azurerm_network_security_group.lab.id
+}
+
+# The same NSG is bound a second time, at the subnet. Azure evaluates subnet rules before NIC
+# rules on the way in, and since both point at one NSG the effective policy is unchanged - so
+# this costs nothing and buys two things: anything added to this subnet later is filtered from
+# the moment it exists rather than from the moment somebody remembers to attach a NIC rule,
+# and a NIC rebuild cannot silently leave the VM unfiltered.
+resource "azurerm_subnet_network_security_group_association" "lab" {
+  subnet_id                 = azurerm_subnet.lab.id
   network_security_group_id = azurerm_network_security_group.lab.id
 }
 
@@ -473,11 +490,16 @@ moved {
 #                                    deployer holding "User Access Administrator" to create
 #                                    role assignments - a common blocker on workshop tenants.
 #
-# Network exposure: the vault is left on its public endpoint (no network_acls) because the VM
-# reads its secret over the public endpoint via its own egress IP, and the workshop operator
-# writes the secret from a laptop. Locking this down properly needs a private endpoint or an
-# IP allow-list covering both; see the residual risk noted in the module review before reusing
-# this pattern outside a throwaway lab.
+# Network exposure: with var.key_vault_allowed_ip_rules empty (the default) the vault stays on
+# its open public endpoint, because three parties need the data plane and only one of them has
+# a predictable address - see that variable for the full reasoning. Set it to switch the
+# firewall to default-Deny.
+#
+# ACCEPTED RISK: trivy AVD-AZU-0013 wants default_action = "Deny" on the vault firewall. The
+# compensating controls are the access policies below, which grant exactly two principals
+# (the deployer and the VM identity) and nothing else, on a vault holding one generated
+# password with no value outside this lab. Revisit before reusing this pattern anywhere real.
+#trivy:ignore:AVD-AZU-0013
 resource "azurerm_key_vault" "lab" {
   name                       = "${var.project}${var.environment}kv${local.unique_suffix}"
   location                   = azurerm_resource_group.lab.location
@@ -488,6 +510,15 @@ resource "azurerm_key_vault" "lab" {
   purge_protection_enabled   = false
   enable_rbac_authorization  = false
   tags                       = local.tags
+
+  # Always emitted so the firewall posture is explicit in state rather than implied by
+  # absence. With an empty allow-list this behaves exactly like no block at all; populate
+  # var.key_vault_allowed_ip_rules to flip it to default-Deny.
+  network_acls {
+    default_action = length(local.key_vault_ip_rules) > 0 ? "Deny" : "Allow"
+    bypass         = "AzureServices"
+    ip_rules       = local.key_vault_ip_rules
+  }
 
   lifecycle {
     # The one resource here holding a credential. `terraform destroy` stops at this guard on
