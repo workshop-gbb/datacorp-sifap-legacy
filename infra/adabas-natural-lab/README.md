@@ -430,9 +430,26 @@ terraform output
 terraform output -raw demo_url
 ```
 
+`apply` returns while the VM is still pulling images and loading Adabas. The next three steps are what turn a running VM into a running mainframe; skipping them leaves an empty `SIFAPPRD` library.
+
+- [ ] **Step 10 — Wait for the base phase to finish.** It loads Adabas files 150-153 and catalogs the three data areas. It exits successfully with the DDMs still missing — that is the expected state, not a failure.
+
+```bash
+eval "$(terraform output -raw provisioning_status_command)"
+```
+
+- [ ] **Step 11 — Create the four DDMs once, in NaturalONE.** This is the only manual step, and Natural CE cannot automate it. Register the server from `terraform output -raw natural_development_server`, then generate `BENEFIC` (150), `SOCPROG` (151), `PAYMENT` (152) and `AUDIT` (153) against `DBID 12`. The verified limitations and the full procedure are in [`provisioning/README.md`](provisioning/README.md#manual-ddm-creation).
+
+- [ ] **Step 12 — Re-run provisioning to finalize.** `auto` detects the four `.NGD` objects, catalogs the subprograms and programs, runs the smoke tests, archives the DDMs to the `sifap-state` container, and writes `/opt/sifap/PROVISIONED`.
+
+```bash
+eval "$(terraform output -raw provisioning_rerun_command)"
+```
+
+The lab is a working mainframe only once `/opt/sifap/PROVISIONED` exists. See [Completion criteria](#completion-criteria).
+
 > [!WARNING]
 > `terraform.tfvars` is ignored by git because it contains real participant IP addresses. Only `terraform.tfvars.example` is versioned. The same applies to `*.tfplan` and `plan.txt`, which store sensitive values — including the generated Adabas password — in plain text with no redaction. Never force-commit these files.
-
 
 ### Protecting and recovering local state
 
@@ -559,7 +576,7 @@ Shipping the sources is not the same as running them. The scripts under `infra/a
 **Provisioning is two-phase because Natural CE 9.3.3 cannot create DDMs.**
 
 1. `SIFAP_PHASE=auto` (the default in `/etc/sifap/provisioning.env`) runs the `base` work: load Adabas, verify the four files, and catalog the three data areas. On a fresh VM it exits successfully when the four DDMs are still missing; that is expected, not a failed deployment.
-2. Create the four DDMs (`BENEFIC`, `SOCPROG`, `PAYMENT`, `AUDIT`) once in NaturalONE through the Natural Development Server output.
+2. Create the four DDMs (`BENEFIC`, `SOCPROG`, `PAYMENT`, `AUDIT`) once in NaturalONE, against the endpoint from the `natural_development_server` output. Full procedure: [`provisioning/README.md`](provisioning/README.md#manual-ddm-creation).
 3. Restart the unit. `auto` detects the DDMs, runs `finalize`, catalogs the remaining objects, runs smoke tests, and leaves `/opt/sifap/PROVISIONED`.
 
 `/opt/sifap/state` is a symlink to the managed data disk. The DDM readiness marker is `/opt/sifap/state/DDMS-READY`; the phase file at `/etc/sifap/provisioning.env` is also backed by that disk, so it survives reboots and OS disk rebuilds.
@@ -1066,6 +1083,8 @@ Note the `--location` argument: it is the region the vault was deleted *from*. W
 - [ ] The bootstrap log finished and `/opt/sifap/READY` exists.
 - [ ] `sudo docker compose ps` shows `adabas-db`, `natural-ce`, `ttyd`, and `caddy` running.
 - [ ] `/opt/sifap/corpus/natural-programs` and `/opt/sifap/corpus/adabas-ddms` are populated, and `/opt/sifap/PAYLOAD-OK` exists.
+- [ ] The four DDMs exist as `BENEFIC.NGD`, `SOCPROG.NGD`, `PAYMENT.NGD`, and `AUDIT.NGD` in `SIFAPPRD/GP`, and `/opt/sifap/state/DDMS-READY` exists.
+- [ ] Adabas files 150-153 hold 500, 6, 2000, and 200 records with zero incorrect records.
 - [ ] `systemctl status sifap-provisioning` reports `active (exited)`, and `/opt/sifap/PROVISIONED` exists.
 - [ ] `terminal_url` opens a Natural session in the browser, not a bare shell.
 - [ ] Adabas REST administration opens at `/admin/` with the `admin` user and the password read from Key Vault.
