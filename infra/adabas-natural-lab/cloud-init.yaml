@@ -3,14 +3,25 @@
 # SIFAP legacy lab: Adabas Community Edition + Natural Community Edition
 #
 # Rendered by Terraform (templatefile). The ONLY interpolations in this file are
-# the ten template variables passed from main.tf:
-#   adabas_image, natural_image, caddy_image, adabas_dbid, key_vault_uri,
-#   secret_name, demo_fqdn, caddy_global_options, caddy_tls_directive,
-#   adabas_admin_bind
+# the template variables passed from main.tf:
+#   adabas_image, natural_image, caddy_image, ttyd_image, docker_cli_image,
+#   adabas_dbid, key_vault_uri, secret_name, demo_fqdn, caddy_global_options,
+#   caddy_tls_directive, adabas_admin_bind, payload_base_url,
+#   basic_auth_username, basic_auth_secret_name, basic_auth_secret_kind,
+#   modern_app_upstream, terminal_natural_command
 # Every other dollar sign belongs to shell and is written as $VAR or $(...),
 # never as $${VAR}, so Terraform's template engine cannot eat it. If you ever
 # need a literal dollar-brace in shell here, you MUST escape it as $${...}
 # (an unescaped one makes templatefile fail at plan time, even inside a comment).
+#
+# NO SECRET IS RENDERED INTO THIS FILE. custom_data is readable by every process
+# on the VM through the instance metadata service, so what travels here is only
+# the NAME of a Key Vault secret and how to treat it; the values are fetched at
+# boot with the VM's managed identity.
+#
+# SIZE BUDGET: Azure caps custom_data at 65535 bytes decoded. This file renders
+# to roughly half of that, which is also why the legacy corpus is staged to blob
+# storage instead of embedded - it alone is 77 KB base64-encoded.
 #
 # custom_data is under lifecycle { ignore_changes }, so edits to this file do
 # NOT reach an already-created VM. Re-run /opt/sifap/bootstrap.sh over SSH
@@ -59,20 +70,109 @@ write_files:
     content: |
       This directory is mounted read-only into the Natural container as /corpus.
 
-      It is intentionally empty: copy the SIFAP legacy sources here from your
-      workstation, from the repository folder 01-archaeology/legacy-sifap/
+      NOTHING IS COPIED BY HAND ANY MORE. Terraform stages the frozen SIFAP
+      sources from 01-archaeology/legacy-sifap/ into a private blob container,
+      and /opt/sifap/fetch-payload.sh pulls them down at first boot using the
+      VM's managed identity, verifying every file against a SHA-256 manifest:
 
-        scp -r 01-archaeology/legacy-sifap/natural-programs/* \
-            <admin>@<lab-public-ip>:/opt/sifap/corpus/
+        natural-programs/   22 Natural members + 2 JCL jobs
+        adabas-ddms/        4 DDMs + the FDT for file 150
 
-      Then load them into Natural (library SIFAP) from inside the container.
+      If those directories are empty, the download failed. It says so in
+      /var/log/sifap-bootstrap.log, and the fix is to re-run:
+
+        sudo /opt/sifap/fetch-payload.sh
+
+      The usual cause is a missing "Storage Blob Data Reader" assignment for the
+      VM identity - see var.assign_vm_blob_role in the module.
+
+  # The landing page served at https://<fqdn>/. It exists so the demo URL opens on
+  # something that explains itself, instead of dropping an audience straight into
+  # the Adabas administration console - which is what the old configuration did.
+  #
+  # Served by file_server from a static file rather than an inline `respond` body
+  # on purpose: Caddy expands {...} placeholders in a respond body, and any real
+  # HTML or CSS would be mangled by it.
+  - path: /opt/sifap/www/index.html
+    owner: root:root
+    permissions: '0644'
+    content: |
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>SIFAP legacy lab</title>
+      <style>
+      body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+             background: #10151c; color: #e6edf3; margin: 0; padding: 2.5rem 1.5rem; }
+      main { max-width: 46rem; margin: 0 auto; }
+      h1 { font-size: 1.6rem; margin-bottom: 0.2rem; }
+      p.sub { color: #93a1b1; margin-top: 0; }
+      a.card { display: block; text-decoration: none; color: inherit;
+               border: 1px solid #2b3946; border-radius: 10px;
+               padding: 1rem 1.2rem; margin: 1rem 0; background: #161d26; }
+      a.card:hover { border-color: #4f8cc9; }
+      a.card h2 { margin: 0 0 0.3rem; font-size: 1.1rem; color: #7fb2e5; }
+      a.card p { margin: 0; color: #a9b6c3; font-size: 0.95rem; }
+      code { background: #0c1117; padding: 0.1rem 0.35rem; border-radius: 4px; }
+      footer { color: #6b7a89; font-size: 0.85rem; margin-top: 2rem;
+               border-top: 1px solid #2b3946; padding-top: 1rem; }
+      </style>
+      </head>
+      <body>
+      <main>
+      <h1>SIFAP &mdash; legacy and modern, side by side</h1>
+      <p class="sub">Adabas Community Edition + Natural Community Edition on one Azure VM.</p>
+
+      <a class="card" href="/terminal/">
+        <h2>Green screen &rarr; /terminal</h2>
+        <p>A Natural session in your browser: the 1980s benefit system as its
+           operators saw it. Library SIFAPPRD, programs such as CONSBENF.</p>
+      </a>
+
+      <a class="card" href="/app/">
+        <h2>Modern application &rarr; /app</h2>
+        <p>The Java + Next.js replacement built in Stage 3. Returns 502 until a
+           container answers on that upstream &mdash; the route is provisioned
+           first so the URL never changes.</p>
+      </a>
+
+      <a class="card" href="/admin/">
+        <h2>Adabas console &rarr; /admin</h2>
+        <p>The Adabas REST administration UI. Sign in as <code>admin</code> with
+           the password from Key Vault.</p>
+      </a>
+
+      <footer>
+        Everything except <code>/healthz</code> is behind HTTP basic
+        authentication. This is a disposable workshop lab: it auto-shuts down
+        daily and holds no production data.
+      </footer>
+      </main>
+      </body>
+      </html>
 
   # Caddy reverse proxy configuration: the whole reason the demo has an https:// URL.
   #
-  # The Adabas administration console speaks plaintext HTTP on 8190 and has no TLS of its
-  # own. Rather than publish that port and hand participants a http:// link, Caddy terminates
-  # TLS on 443 for the Azure-issued FQDN and proxies to the console over the container
-  # network, which never leaves the VM.
+  # It terminates TLS for the Azure-issued FQDN and fans out to four things that all live on
+  # the internal container network and are never published to the host:
+  #
+  #   /                the landing page below, explaining the demo
+  #   /terminal        ttyd -> a Natural session inside natural-ce (the green screen)
+  #   /app             the modern Java + Next.js application from Stage 3 (502 until built)
+  #   /admin           the Adabas REST administration console
+  #   /healthz         readiness, and the ONLY route without authentication
+  #
+  # AUTHENTICATION. Everything except /healthz sits behind HTTP basic auth. The directive is
+  # `basic_auth` - renamed from `basicauth` in Caddy 2.10, which still accepts the old spelling
+  # with a deprecation warning (verified in modules/caddyhttp/caddyauth/caddyfile.go at tag
+  # v2.10.2). With no algorithm argument it assumes bcrypt, and the second token in the block
+  # is the bcrypt hash itself, not base64.
+  #
+  # Neither the username nor the hash is written here. Both arrive as environment variables
+  # from /opt/sifap/caddy.env (mode 0600), which bootstrap.sh builds from Key Vault. {$VAR} is
+  # Caddy's own environment placeholder, resolved when the Caddyfile is parsed.
   #
   # Which certificate it serves is decided by Terraform, not here - see
   # var.enable_public_acme:
@@ -101,10 +201,53 @@ write_files:
 
       	# Public readiness probe: curl -sSf https://${demo_fqdn}/healthz
       	# Answers even while Adabas is still building the demo database, which
-      	# separates "the URL is live" from "the database is ready".
-      	respond /healthz "ok" 200
+      	# separates "the URL is live" from "the database is ready". Deliberately
+      	# outside the authenticated set so probes need no credential - it returns
+      	# a fixed string and reveals nothing.
+      	handle /healthz {
+      		respond "ok" 200
+      	}
 
-      	reverse_proxy adabas-db:8190
+      	# Everything else. `not path` keeps /healthz open without opening anything
+      	# adjacent to it.
+      	@protected not path /healthz /healthz/*
+      	basic_auth @protected {
+      		"{$SIFAP_BASIC_AUTH_USER}" "{$SIFAP_BASIC_AUTH_HASH}"
+      	}
+
+      	# The green screen. ttyd is told its own base path (-b /terminal) so it
+      	# emits correct asset and WebSocket URLs; nothing needs stripping here,
+      	# and Caddy upgrades the WebSocket transparently.
+      	redir /terminal /terminal/
+      	handle /terminal* {
+      		reverse_proxy ttyd:7681
+      	}
+
+      	# The modern application. Provisioned before it exists: until a container
+      	# answers on this address, Caddy returns 502 - the honest answer, and the
+      	# reason the demo URL never has to change once Stage 3 lands.
+      	redir /app /app/
+      	handle /app* {
+      		reverse_proxy ${modern_app_upstream}
+      	}
+
+      	# The Adabas console, reachable but no longer the default route. The prefix
+      	# is stripped because the console serves its UI from its own root; if its
+      	# assets turn out to use absolute URLs and the page renders half-broken,
+      	# the documented fallback is an SSH tunnel straight to 8190 (see
+      	# admin_console_direct_url in outputs.tf).
+      	redir /admin /admin/
+      	handle_path /admin* {
+      		reverse_proxy adabas-db:8190 {
+      			header_up X-Forwarded-Prefix /admin
+      		}
+      	}
+
+      	# Everything not matched above: the landing page.
+      	handle {
+      		root * /srv
+      		file_server
+      	}
       }
 
   - path: /opt/sifap/docker-compose.yml
@@ -185,6 +328,56 @@ write_files:
           networks:
             - sifap-lab
 
+        # The green screen, over HTTPS. Natural speaks a character terminal
+        # protocol and its port 2700 is the Natural Development Server (the
+        # protocol NaturalONE attaches to), NOT telnet - no browser can open
+        # either. ttyd serves an xterm.js terminal and runs one command per
+        # connection; that command opens a Natural session inside natural-ce.
+        #
+        # DELIBERATELY NO `ports:` BLOCK. ttyd is reachable only through Caddy,
+        # which requires authentication. Publishing 7681 on the host would put an
+        # interactive session one NSG edit away from the internet.
+        #
+        # THE TRADE-OFF, STATED PLAINLY: this container mounts the Docker socket,
+        # which is root-equivalent control of the host. It is how `docker exec`
+        # reaches into natural-ce, and the alternative - a second Natural
+        # container sharing the FUSER volume - risks corrupting the very library
+        # the workshop just compiled. What contains it: no published port, basic
+        # auth at the origin, and 80/443 restricted to allowed_source_cidrs
+        # unless enable_public_acme is on. Destroy the lab after the demo.
+        ttyd:
+          image: ${ttyd_image}
+          container_name: ttyd
+          restart: unless-stopped
+          # The image entrypoint is tini, so this is the full argv after it.
+          command:
+            - ttyd
+            - --port=7681
+            - --base-path=/terminal
+            # Without this the terminal is read-only and nobody can type.
+            - --writable
+            # Refuses WebSocket upgrades whose Origin does not match the Host.
+            # Caddy forwards the original Host, so they match. If the terminal
+            # connects and then immediately drops, drop this flag first.
+            - --check-origin
+            - --max-clients=10
+            - --ping-interval=20
+            - --terminal-type=xterm-256color
+            - /usr/local/bin/sifap-session
+          volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            # Alpine image, musl libc: the host's own Ubuntu (glibc) client will
+            # not run here, so bootstrap.sh copies the client out of the pinned
+            # Alpine-based Docker CLI image instead.
+            - /opt/sifap/bin/docker:/usr/local/bin/docker:ro
+            - /opt/sifap/terminal-session.sh:/usr/local/bin/sifap-session:ro
+          security_opt:
+            - no-new-privileges:true
+          depends_on:
+            - natural-ce
+          networks:
+            - sifap-lab
+
         # TLS termination for the public demo URL. The only container publishing
         # 80/443; everything it proxies stays on the internal bridge network.
         caddy:
@@ -196,12 +389,19 @@ write_files:
             - "443:443"
             # HTTP/3. Harmless when the NSG blocks UDP: clients fall back to TCP.
             - "443:443/udp"
+          # The basic-auth username and bcrypt hash, and nothing else. Written by
+          # bootstrap.sh with mode 0600 from Key Vault, so the credential never
+          # sits in a world-readable compose file or in custom_data.
+          env_file:
+            - ./caddy.env
           volumes:
             - /opt/sifap/Caddyfile:/etc/caddy/Caddyfile:ro
+            - /opt/sifap/www:/srv:ro
             - caddy-data:/data
             - caddy-config:/config
           depends_on:
             - adabas-db
+            - ttyd
           # Probes the container-internal :8081 endpoint, not the public site, so a
           # certificate that is still being issued does not read as a dead proxy.
           healthcheck:
@@ -212,6 +412,324 @@ write_files:
             start_period: 60s
           networks:
             - sifap-lab
+
+  # Runs INSIDE the ttyd container, once per browser connection. Its whole job is
+  # to hand the participant a Natural session and, when it cannot, to say why in
+  # words rather than dropping them at a bare prompt.
+  #
+  # The exact start-up line for Natural CE is the team's to determine - see
+  # var.terminal_natural_command - so this tries the operator's command first,
+  # then the binary where the image puts it, and finally falls back to a shell
+  # with instructions. A blank black rectangle is never an acceptable outcome.
+  - path: /opt/sifap/terminal-session.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      #!/bin/sh
+      # Alpine container: /bin/sh is busybox ash, not bash. Keep this POSIX.
+      set -u
+
+      CONTAINER=natural-ce
+
+      # Quoted heredoc: the operator's command arrives verbatim, so quotes and
+      # parentheses in a Natural session string cannot break this script.
+      NATURAL_CMD=$(cat <<'SIFAP_NATURAL_COMMAND'
+      ${terminal_natural_command}
+      SIFAP_NATURAL_COMMAND
+      )
+
+      say() { printf '%s\n' "$1"; }
+
+      if ! docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null | grep -q true; then
+        say "The Natural container ($CONTAINER) is not running."
+        say ""
+        say "Check it from the VM with:  sudo docker compose -f /opt/sifap/docker-compose.yml ps"
+        say "This window will close in 20 seconds."
+        sleep 20
+        exit 1
+      fi
+
+      say "Opening a Natural session in $CONTAINER ..."
+
+      if [ -n "$NATURAL_CMD" ]; then
+        exec docker exec -it "$CONTAINER" sh -lc "$NATURAL_CMD"
+      fi
+
+      # The Natural CE image installs under /opt/softwareag/Natural; `natural` is
+      # the session driver. Probed rather than assumed, so a moved binary
+      # degrades to the shell below instead of an exec failure.
+      for candidate in /opt/softwareag/Natural/bin/natural /opt/softwareag/Natural/bin/natrun; do
+        if docker exec "$CONTAINER" test -x "$candidate" 2>/dev/null; then
+          exec docker exec -it "$CONTAINER" "$candidate"
+        fi
+      done
+
+      say ""
+      say "Could not find the Natural session driver in $CONTAINER."
+      say "Dropping you into a shell inside the container instead."
+      say ""
+      say "  ls /opt/softwareag/Natural/bin      # find the session driver"
+      say "  ls /corpus                          # the SIFAP sources, read-only"
+      say ""
+      say "Set terminal_natural_command in terraform.tfvars once you know the"
+      say "correct line, or edit /opt/sifap/terminal-session.sh on the VM and run"
+      say "  sudo docker compose -f /opt/sifap/docker-compose.yml restart ttyd"
+      say ""
+      exec docker exec -it "$CONTAINER" /bin/bash -l
+
+  # Pulls the legacy corpus and the provisioning scripts down from the blob
+  # container Terraform staged them into. Idempotent - re-run it after any
+  # `terraform apply` that changed the sources:
+  #
+  #   sudo /opt/sifap/fetch-payload.sh
+  #
+  # Authentication is the VM's managed identity. There is no key, no SAS and no
+  # credential of any kind in this file.
+  - path: /opt/sifap/fetch-payload.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -Eeuo pipefail
+
+      BASE="${payload_base_url}"
+      STAGE=/opt/sifap/payload
+      CORPUS=/opt/sifap/corpus
+      PROVISIONING=/opt/sifap/provisioning
+      # Any version from 2017-11-09 onwards accepts an Entra bearer token; older
+      # ones only understand shared-key auth and answer 400.
+      BLOB_API=2021-08-06
+
+      rm -f /opt/sifap/PAYLOAD-FAILED
+      mkdir -p "$STAGE"
+
+      echo "--- payload: $BASE"
+
+      # One token, reused for every blob. Role assignments are eventually
+      # consistent, so the FIRST request is the one that legitimately 403s while
+      # "Storage Blob Data Reader" replicates - hence the retry loop rather than
+      # a hard failure.
+      TOKEN=""
+      for attempt in $(seq 1 30); do
+        # -s keeps the token off stdout; it is never echoed or written to disk.
+        TOKEN=$(curl -s --retry 3 --retry-delay 2 -H "Metadata:true" \
+          "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fstorage.azure.com%2F" \
+          | jq -r '.access_token // empty')
+
+        if [ -n "$TOKEN" ] && curl -sSf --max-time 30 \
+             -H "Authorization: Bearer $TOKEN" -H "x-ms-version: $BLOB_API" \
+             -o "$STAGE/manifest.sha256" "$BASE/manifest.sha256"; then
+          echo "manifest downloaded on attempt $attempt"
+          break
+        fi
+
+        echo "payload not readable yet (attempt $attempt/30); retrying"
+        TOKEN=""
+        sleep 10
+      done
+
+      if [ ! -s "$STAGE/manifest.sha256" ]; then
+        echo "############################################################"
+        echo "ERROR: could not read $BASE/manifest.sha256"
+        echo "ERROR: the corpus and the provisioning scripts will be MISSING."
+        echo "ERROR: almost always one of:"
+        echo "ERROR:   - the VM identity has no 'Storage Blob Data Reader' on the"
+        echo "ERROR:     payload container (var.assign_vm_blob_role = false, or the"
+        echo "ERROR:     assignment has not replicated yet - wait and re-run)"
+        echo "ERROR:   - the storage account firewall is blocking this VM"
+        echo "ERROR: re-run after fixing:  sudo /opt/sifap/fetch-payload.sh"
+        echo "############################################################"
+        date -Is > /opt/sifap/PAYLOAD-FAILED
+        logger -t sifap-payload -p user.err "SIFAP-PAYLOAD RESULT: FAILED (manifest unreadable)" || true
+        exit 1
+      fi
+
+      # The manifest is sha256sum(1) format, so it is both the file list and the
+      # integrity check. Names are generated by Terraform from a fileset and
+      # never contain spaces; anything that does is rejected rather than guessed.
+      COUNT=0
+      while read -r _hash name; do
+        [ -n "$name" ] || continue
+        case "$name" in
+          *' '*|/*|*..*)
+            echo "ERROR: refusing suspicious manifest entry: $name"
+            exit 1
+            ;;
+        esac
+        mkdir -p "$STAGE/$(dirname "$name")"
+        curl -sSf --retry 3 --retry-delay 2 --max-time 120 \
+          -H "Authorization: Bearer $TOKEN" -H "x-ms-version: $BLOB_API" \
+          -o "$STAGE/$name" "$BASE/$name"
+        COUNT=$((COUNT + 1))
+      done < "$STAGE/manifest.sha256"
+
+      echo "downloaded $COUNT files; verifying checksums"
+      ( cd "$STAGE" && sha256sum -c --quiet manifest.sha256 )
+      echo "checksums OK"
+
+      # --- install ---------------------------------------------------------
+      # The corpus is bind-mounted read-only into natural-ce, which runs as uid
+      # 1724, so it has to be world-readable. It is published source code, not a
+      # secret.
+      mkdir -p "$CORPUS"
+      if [ -d "$STAGE/corpus" ]; then
+        cp -a "$STAGE/corpus/." "$CORPUS/"
+        chmod -R a+rX "$CORPUS"
+        echo "corpus installed:"
+        find "$CORPUS" -mindepth 1 -maxdepth 1 -type d -printf '  %f: ' -exec sh -c 'ls -1 "$1" | wc -l' _ {} \;
+      else
+        echo "WARNING: the payload carried no corpus/ prefix - Adabas will have no SIFAP data."
+      fi
+
+      if [ -d "$STAGE/provisioning" ]; then
+        mkdir -p "$PROVISIONING"
+        cp -a "$STAGE/provisioning/." "$PROVISIONING/"
+        find "$PROVISIONING" -name '*.sh' -exec chmod 0755 {} +
+        echo "provisioning scripts installed: $(find "$PROVISIONING" -name '*.sh' | wc -l) shell scripts"
+      else
+        echo "############################################################"
+        echo "WARNING: the payload carried no provisioning/ prefix."
+        echo "WARNING: the corpus is on the VM but NOTHING WILL LOAD IT:"
+        echo "WARNING: no Adabas file 150, no compiled SIFAPPRD library."
+        echo "WARNING: infra/adabas-natural-lab/provisioning/ was empty at apply"
+        echo "WARNING: time. Add the scripts, re-apply, then on the VM run:"
+        echo "WARNING:   sudo /opt/sifap/fetch-payload.sh"
+        echo "WARNING:   sudo systemctl restart sifap-provisioning"
+        echo "############################################################"
+      fi
+
+      date -Is > /opt/sifap/PAYLOAD-OK
+      logger -t sifap-payload -p user.notice "SIFAP-PAYLOAD RESULT: SUCCESS ($COUNT files)" || true
+      echo "--- payload complete"
+
+  # Wrapper around provisioning/run-all.sh, which is what actually loads Adabas
+  # and compiles the Natural library. Run by systemd, never inline in cloud-init:
+  # Adabas needs several minutes to build its demo database before any ADALOD can
+  # succeed, and a cloud-init step that waits that long risks the boot timeout
+  # killing it halfway through a database load.
+  #
+  #   systemctl status sifap-provisioning     <- did it work?
+  #   systemctl restart sifap-provisioning    <- run it again (it is idempotent)
+  - path: /opt/sifap/run-provisioning.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -Eeuo pipefail
+
+      LOG=/var/log/sifap-provisioning.log
+      # Append, never truncate, and never world-readable - same treatment as the
+      # bootstrap log.
+      touch "$LOG"
+      chown root:adm "$LOG" 2>/dev/null || true
+      chmod 0640 "$LOG"
+      exec > >(tee -a "$LOG") 2>&1
+
+      ENTRYPOINT=/opt/sifap/provisioning/run-all.sh
+
+      rm -f /opt/sifap/PROVISIONED /opt/sifap/PROVISIONING-FAILED
+
+      # Same marker contract as bootstrap.sh: one line, greppable, mirrored to
+      # syslog so the Azure Monitor agent ships it and
+      # azurerm_monitor_scheduled_query_rules_alert_v2.provisioning_failed can
+      # alert on it. Keep the strings in sync with the KQL in main.tf.
+      on_exit() {
+        rc=$?
+        if [ "$rc" -eq 0 ]; then
+          echo "PROVISIONING RESULT: SUCCESS"
+          logger -t sifap-provisioning -p user.notice "SIFAP-PROVISIONING RESULT: SUCCESS" || true
+          date -Is > /opt/sifap/PROVISIONED
+        else
+          echo "PROVISIONING RESULT: FAILED (exit $rc at line $PROV_LINE)"
+          logger -t sifap-provisioning -p user.err "SIFAP-PROVISIONING RESULT: FAILED (exit $rc at line $PROV_LINE)" || true
+          printf 'failed at %s (exit %s, line %s)\n' "$(date -Is)" "$rc" "$PROV_LINE" \
+            > /opt/sifap/PROVISIONING-FAILED
+        fi
+      }
+      PROV_LINE=0
+      trap 'PROV_LINE=$LINENO' ERR
+      trap on_exit EXIT
+
+      echo "=== SIFAP provisioning started at $(date -Is) ==="
+
+      # The scripts are owned by sibling work and staged by fetch-payload.sh, so
+      # "not there" is a real state. Fail loudly and specifically: a unit in the
+      # `failed` state with this in its log is a signal; a unit that quietly does
+      # nothing is how a lab reaches a demo with an empty database.
+      if [ ! -f "$ENTRYPOINT" ]; then
+        echo "ERROR: $ENTRYPOINT is missing."
+        echo "ERROR: nothing has loaded Adabas and nothing has compiled Natural."
+        echo "ERROR: the corpus itself may still be present - check /opt/sifap/corpus."
+        echo "ERROR:"
+        echo "ERROR: fix: add the scripts under infra/adabas-natural-lab/provisioning/"
+        echo "ERROR:      (run-all.sh, 01-load-adabas.sh, 02-build-natural.sh,"
+        echo "ERROR:       03-smoke-test.sh, lib.sh, seed/), re-apply, then on the VM:"
+        echo "ERROR:        sudo /opt/sifap/fetch-payload.sh"
+        echo "ERROR:        sudo systemctl restart sifap-provisioning"
+        exit 3
+      fi
+
+      chmod 0755 "$ENTRYPOINT" 2>/dev/null || true
+
+      # Adabas builds its demo database on first boot; ADAFRM/ADALOD against a
+      # nucleus that is still starting fails in confusing ways. Wait for the
+      # container healthcheck (start_period 300s) before handing over.
+      echo "waiting for adabas-db to report healthy (up to 20 minutes)"
+      READY=0
+      for attempt in $(seq 1 80); do
+        state=$(docker inspect -f '{{.State.Health.Status}}' adabas-db 2>/dev/null || echo unknown)
+        if [ "$state" = "healthy" ]; then
+          READY=1
+          echo "adabas-db is healthy after $((attempt * 15))s"
+          break
+        fi
+        sleep 15
+      done
+      if [ "$READY" -ne 1 ]; then
+        echo "ERROR: adabas-db never became healthy; refusing to load into a database"
+        echo "ERROR: that is not accepting work. Check: docker compose logs adabas-db"
+        exit 4
+      fi
+
+      # Handed to the scripts so they do not have to hardcode what this module
+      # already knows. Everything here is a name or a path - no credentials.
+      export SIFAP_ADABAS_CONTAINER=adabas-db
+      export SIFAP_NATURAL_CONTAINER=natural-ce
+      export SIFAP_ADABAS_DBID="${adabas_dbid}"
+      export SIFAP_CORPUS_DIR=/opt/sifap/corpus
+      export SIFAP_PROVISIONING_DIR=/opt/sifap/provisioning
+      export SIFAP_LOG=/var/log/sifap-provisioning.log
+
+      cd /opt/sifap/provisioning
+      "$ENTRYPOINT"
+
+      echo "=== SIFAP provisioning finished at $(date -Is) ==="
+
+  # Why a unit and not a runcmd line: cloud-init runs runcmd synchronously and a
+  # first Adabas boot plus a full CATALL can run for a quarter of an hour. As a
+  # unit it survives the end of cloud-init, survives a reboot (the VM is
+  # auto-shut down nightly), and reports its state through systemctl instead of
+  # through a log nobody reads.
+  - path: /etc/systemd/system/sifap-provisioning.service
+    owner: root:root
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=SIFAP legacy provisioning (Adabas load + Natural compile)
+      Documentation=file:/var/log/sifap-provisioning.log
+      After=docker.service network-online.target
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      # Long enough for a slow first ADALOD plus a full CATALL. The default 90s
+      # would kill the load mid-flight and leave a half-populated file.
+      TimeoutStartSec=3600
+      ExecStart=/opt/sifap/run-provisioning.sh
+
+      [Install]
+      WantedBy=multi-user.target
 
   - path: /opt/sifap/install-docker.sh
     owner: root:root
@@ -382,28 +900,43 @@ write_files:
 
       sysctl --system
 
+      # --- key vault helper ------------------------------------------------
+      # Both secrets this VM needs are fetched the same way: an IMDS token for
+      # the vault audience, then a GET on the secret. The VM boots before
+      # Terraform has attached its Key Vault access policy (the policy depends on
+      # the VM's principal id), so the first attempts legitimately 403 - this
+      # retries for a few minutes rather than failing on them.
+      #
+      # Writes the secret to stdout and NOTHING else; every diagnostic goes to
+      # stderr, so callers can safely do VALUE=$(read_kv_secret name 30).
+      read_kv_secret() {
+        local name="$1" attempts="$2" token="" value=""
+        for attempt in $(seq 1 "$attempts"); do
+          # -s keeps the token off stdout; nothing here is ever echoed.
+          token=$(curl -s --retry 3 --retry-delay 2 -H "Metadata:true" \
+            "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net" \
+            | jq -r '.access_token // empty')
+
+          if [ -n "$token" ]; then
+            value=$(curl -s -H "Authorization: Bearer $token" \
+              "${key_vault_uri}secrets/$name?api-version=7.4" | jq -r '.value // empty')
+          fi
+
+          if [ -n "$value" ]; then
+            echo "key vault: read '$name' on attempt $attempt" >&2
+            printf '%s' "$value"
+            return 0
+          fi
+          echo "key vault: '$name' not readable yet (attempt $attempt/$attempts); retrying" >&2
+          sleep 10
+        done
+        return 1
+      }
+
       # --- adabas admin password from key vault ----------------------------
       # Pulled at boot through the VM managed identity so the secret never
       # travels through Terraform variables or state inputs.
-      # The VM boots before Terraform has attached its Key Vault access policy
-      # (the policy depends on the VM's principal id), so this retries for a few
-      # minutes instead of failing on the first 403.
-      ADMIN_PWD=""
-      for attempt in $(seq 1 30); do
-        # -s keeps the token off stdout; nothing here is ever echoed.
-        TOKEN=$(curl -s --retry 3 --retry-delay 2 -H "Metadata:true" \
-          "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net" \
-          | jq -r '.access_token // empty')
-
-        if [ -n "$TOKEN" ]; then
-          ADMIN_PWD=$(curl -s -H "Authorization: Bearer $TOKEN" \
-            "${key_vault_uri}secrets/${secret_name}?api-version=7.4" | jq -r '.value // empty')
-        fi
-
-        [ -n "$ADMIN_PWD" ] && { echo "secret retrieved on attempt $attempt"; break; }
-        echo "key vault not ready yet (attempt $attempt/30); retrying"
-        sleep 10
-      done
+      ADMIN_PWD=$(read_kv_secret "${secret_name}" 30 || true)
 
       FALLBACK=0
       if [ -z "$ADMIN_PWD" ]; then
@@ -435,7 +968,25 @@ write_files:
       chown root:root /opt/sifap/adabas.env
       chmod 0600 /opt/sifap/adabas.env
 
-      unset ADMIN_PWD ADMIN_HASH TOKEN
+      unset ADMIN_PWD ADMIN_HASH
+
+      # --- legacy corpus and provisioning scripts --------------------------
+      # Terraform staged both into a private blob container; this pulls them
+      # down as the VM's own identity and checksums every file. Runs BEFORE the
+      # containers start, because /opt/sifap/corpus is bind-mounted into
+      # natural-ce and an empty mount is exactly the "the legacy does not
+      # actually run" failure this module exists to avoid.
+      #
+      # Not fatal: a lab that boots without the corpus is still worth having on
+      # its feet so the operator can fix the role assignment and re-run. It is
+      # loud about it, and /opt/sifap/PAYLOAD-FAILED is left behind as evidence.
+      if ! /opt/sifap/fetch-payload.sh; then
+        echo "WARNING: payload download failed - see the block above."
+        echo "WARNING: the lab will start, but with NO SIFAP data and NO"
+        echo "WARNING: provisioning scripts. Re-run once fixed:"
+        echo "WARNING:   sudo /opt/sifap/fetch-payload.sh"
+        echo "WARNING:   sudo systemctl restart sifap-provisioning"
+      fi
 
       # --- containers ------------------------------------------------------
       # The daemon is enabled by install-docker.sh, but "systemctl enable --now"
@@ -470,6 +1021,85 @@ write_files:
         exit 1
       fi
 
+      # --- docker client for the web terminal -------------------------------
+      # ttyd runs `docker exec` into natural-ce, and its image is Alpine (musl),
+      # so the host's Ubuntu client cannot simply be bind-mounted - it is glibc
+      # and would fail to load. The client binary is lifted out of the pinned
+      # Alpine-based Docker CLI image instead, which is why docker_cli_image
+      # exists as a variable at all.
+      #
+      # This MUST happen before `compose up`: Docker creates a DIRECTORY at a
+      # bind-mount source that does not exist, and a directory mounted over
+      # /usr/local/bin/docker makes ttyd fail in a thoroughly confusing way.
+      mkdir -p /opt/sifap/bin
+      if [ ! -x /opt/sifap/bin/docker ]; then
+        echo "extracting the docker client from ${docker_cli_image}"
+        docker pull "${docker_cli_image}"
+        CLI_CID=$(docker create "${docker_cli_image}")
+        docker cp "$CLI_CID:/usr/local/bin/docker" /opt/sifap/bin/docker
+        docker rm -v "$CLI_CID" >/dev/null
+        chmod 0755 /opt/sifap/bin/docker
+        echo "docker client staged: $(/opt/sifap/bin/docker --version 2>/dev/null || echo 'version check failed')"
+      else
+        echo "docker client already staged at /opt/sifap/bin/docker"
+      fi
+
+      # --- basic auth for the public origin ---------------------------------
+      # Caddy reads the username and the bcrypt hash from this env file, so the
+      # credential lives in exactly one place on the VM, at mode 0600, and never
+      # in custom_data, the compose file or the Caddyfile.
+      #
+      # Two shapes are supported, decided by Terraform:
+      #   hash      - the operator supplied their own bcrypt hash; use verbatim.
+      #   password  - Terraform generated a random password and stored the
+      #               PLAINTEXT in Key Vault (so a human can be told it); this
+      #               hashes it here. `caddy hash-password` reads stdin when
+      #               stdin is not a TTY, which keeps the plaintext out of the
+      #               process table and out of `docker inspect`.
+      BASIC_AUTH_SECRET=$(read_kv_secret "${basic_auth_secret_name}" 30 || true)
+      BASIC_AUTH_HASH=""
+
+      if [ -n "$BASIC_AUTH_SECRET" ]; then
+        if [ "${basic_auth_secret_kind}" = "hash" ]; then
+          BASIC_AUTH_HASH="$BASIC_AUTH_SECRET"
+        else
+          # Piped, never passed as an argument. Trailing newline is required:
+          # hash-password reads one line from a non-interactive stdin.
+          BASIC_AUTH_HASH=$(printf '%s\n' "$BASIC_AUTH_SECRET" \
+            | docker run --rm -i "${caddy_image}" caddy hash-password 2>/dev/null | tr -d '\r\n')
+        fi
+      fi
+
+      if [ -z "$BASIC_AUTH_HASH" ]; then
+        # FAIL CLOSED. An unreadable credential must never degrade into an open
+        # origin, so the site gets a hash of a random string nobody holds: the
+        # URL stays up, /healthz still answers, and every other route is simply
+        # unenterable until this is fixed.
+        echo "############################################################"
+        echo "WARNING: could not build the basic-auth hash for the demo URL."
+        echo "WARNING: the site is being locked with an UNKNOWN password."
+        echo "WARNING: nobody can sign in until this is repaired - which is the"
+        echo "WARNING: intended failure mode; an open origin is not."
+        echo "WARNING: fix: confirm the VM identity has Get on the vault and"
+        echo "WARNING: that the '${basic_auth_secret_name}' secret exists, then"
+        echo "WARNING: re-run  sudo /opt/sifap/bootstrap.sh"
+        echo "############################################################"
+        BASIC_AUTH_HASH=$(head -c 32 /dev/urandom | base64 \
+          | docker run --rm -i "${caddy_image}" caddy hash-password 2>/dev/null | tr -d '\r\n')
+      fi
+
+      # Written whole on every run, umask first so it is never briefly readable.
+      # The hash is a verifier, not a password, but it is still bcrypt-crackable
+      # offline and gets the same 0600 treatment as adabas.env.
+      ( umask 077
+        printf 'SIFAP_BASIC_AUTH_USER=%s\n' '${basic_auth_username}' > /opt/sifap/caddy.env
+        printf 'SIFAP_BASIC_AUTH_HASH=%s\n' "$BASIC_AUTH_HASH" >> /opt/sifap/caddy.env )
+      chown root:root /opt/sifap/caddy.env
+      chmod 0600 /opt/sifap/caddy.env
+      echo "basic auth configured for user '${basic_auth_username}' (hash not logged)"
+
+      unset BASIC_AUTH_SECRET BASIC_AUTH_HASH
+
       docker compose up -d --remove-orphans
 
       # Bounded readiness probe. Deliberately NOT fatal: Adabas can take several
@@ -488,6 +1118,23 @@ write_files:
       echo "--- container state ---"
       docker compose ps
       echo "-----------------------"
+
+      # --- provisioning ------------------------------------------------------
+      # Hand off to systemd rather than running it here. run-all.sh loads Adabas
+      # and compiles the whole SIFAPPRD library, which takes far longer than
+      # cloud-init should be kept waiting; --no-block lets bootstrap.sh finish
+      # and report while the load continues in the background.
+      systemctl daemon-reload
+      systemctl enable sifap-provisioning.service >/dev/null 2>&1 || true
+      if [ -f /opt/sifap/provisioning/run-all.sh ]; then
+        echo "starting sifap-provisioning (Adabas load + Natural compile, runs in background)"
+      else
+        echo "WARNING: /opt/sifap/provisioning/run-all.sh is absent; the unit will"
+        echo "WARNING: start, fail immediately and say exactly why. That is"
+        echo "WARNING: deliberate - a silent no-op is how a demo reaches the room"
+        echo "WARNING: with an empty database."
+      fi
+      systemctl restart --no-block sifap-provisioning.service || true
 
       # --- demo url --------------------------------------------------------
       # Bounded and NOT fatal, same reasoning as the Adabas probe above. With
@@ -516,8 +1163,19 @@ write_files:
       if [ "$FALLBACK" -eq 1 ]; then
         echo "NOTE: started with the LOCAL fallback password, not the Key Vault one."
       fi
-      echo "Legacy sources go in /opt/sifap/corpus (mounted read-only as /corpus)."
-      echo "Demo URL: https://${demo_fqdn}"
+      echo ""
+      echo "  Demo URL      https://${demo_fqdn}/           landing page"
+      echo "  Green screen  https://${demo_fqdn}/terminal/  Natural session"
+      echo "  Modern app    https://${demo_fqdn}/app/       502 until Stage 3 ships"
+      echo "  Adabas admin  https://${demo_fqdn}/admin/     console"
+      echo "  Readiness     https://${demo_fqdn}/healthz    no authentication"
+      echo ""
+      echo "  Sign in as '${basic_auth_username}'. The password is in Key Vault -"
+      echo "  see the basic_auth_password_command output; it is never printed here."
+      echo ""
+      echo "  Legacy sources: /opt/sifap/corpus (read-only as /corpus in natural-ce)"
+      echo "  Provisioning:   systemctl status sifap-provisioning"
+      echo "                  tail -f /var/log/sifap-provisioning.log"
       echo "=== SIFAP lab bootstrap finished at $(date -Is) ==="
 
 runcmd:

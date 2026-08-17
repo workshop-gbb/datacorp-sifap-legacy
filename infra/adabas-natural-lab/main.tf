@@ -77,6 +77,60 @@ locals {
     replace(trimspace(c), "/\\/32$/", "")
   ]
 
+  # --- the legacy payload ---------------------------------------------------
+  # Two things have to reach the VM before the lab is anything more than an empty database:
+  # the frozen SIFAP sources, and the scripts that load and compile them.
+  #
+  # They cannot ride in cloud-init. Azure caps custom_data at 65535 bytes and the corpus
+  # alone is 77 KB once base64-encoded (256 KB raw, 57 KB gzipped) - measured, not estimated.
+  # So Terraform stages every file to a private blob container and the VM pulls them at first
+  # boot with its managed identity. See var.legacy_corpus_path for why this beats a git clone.
+  corpus_source_dirs = {
+    "natural-programs" = "${path.module}/${var.legacy_corpus_path}/natural-programs"
+    "adabas-ddms"      = "${path.module}/${var.legacy_corpus_path}/adabas-ddms"
+  }
+
+  # Blob name -> local file. The blob name is also the path under /opt/sifap on the VM, so
+  # the layout is decided here, once, and the download loop stays a dumb copy.
+  corpus_files = merge([
+    for target, dir in local.corpus_source_dirs : {
+      for f in fileset(dir, "**") : "corpus/${target}/${f}" => "${dir}/${f}"
+    }
+  ]...)
+
+  # Owned by sibling work in progress: provisioning/ holds run-all.sh and the 01/02/03 steps
+  # that create the Adabas file, import the DDMs and compile the Natural library. fileset()
+  # on a directory that does not exist returns an empty set rather than failing, which is
+  # what lets this module be applied before those scripts land - the VM then reports
+  # "provisioning scripts are missing" instead of silently doing nothing.
+  provisioning_dir = "${path.module}/provisioning"
+
+  provisioning_files = {
+    for f in fileset(local.provisioning_dir, "**") :
+    "provisioning/${f}" => "${local.provisioning_dir}/${f}"
+  }
+
+  payload_files = merge(local.corpus_files, local.provisioning_files)
+
+  # sha256sum(1) format, verbatim: "<hash><two spaces><path>". The VM runs `sha256sum -c` on
+  # it, so a truncated download or a half-written blob is caught on the box rather than three
+  # steps later inside an ADALOD that fails for no visible reason.
+  payload_manifest = join("", [
+    for name, src in local.payload_files : format("%s  %s\n", filesha256(src), name)
+  ])
+
+  payload_container_name = "sifap-payload"
+  payload_base_url       = "${azurerm_storage_account.payload.primary_blob_endpoint}${local.payload_container_name}"
+
+  # --- demo origin authentication -------------------------------------------
+  # Two supported shapes, one code path on the VM: Key Vault holds either the generated
+  # plaintext password (default - the VM bcrypts it locally at boot) or an operator-supplied
+  # bcrypt hash (used as-is). Neither ever reaches cloud-init; the VM only learns WHICH
+  # secret to read and how to treat it.
+  basic_auth_generate    = var.demo_basic_auth_password_hash == ""
+  basic_auth_secret_name = local.basic_auth_generate ? "demo-basic-auth-password" : "demo-basic-auth-hash"
+  basic_auth_secret_kind = local.basic_auth_generate ? "password" : "hash"
+
   tags = {
     project     = var.project
     environment = var.environment
@@ -88,6 +142,31 @@ locals {
 }
 
 data "azurerm_client_config" "current" {}
+
+# A SECOND, ALIASED azurerm provider, used only by the three payload resources below.
+#
+# Why it exists: the storage data plane (creating a container, writing a blob) is not covered
+# by ARM roles. With storage_use_azuread = true - which CI sets globally through
+# ARM_USE_AZUREAD - a deployer holding Contributor or even Owner still gets 403 on the first
+# blob unless it ALSO holds a "Storage Blob Data Contributor" assignment. Granting that from
+# inside this module means writing a role assignment and then racing Entra's replication;
+# `infra/bootstrap` needs a 60-second time_sleep for exactly that, and this module cannot add
+# one without pulling in the time provider - which would change .terraform.lock.hcl, and CI
+# runs `terraform init -lockfile=readonly`.
+#
+# So the upload authenticates with the account key instead, which the provider fetches over
+# ARM with the Contributor rights the deployer already has. The key is never written down: it
+# is read at apply time and lives only in provider memory.
+#
+# This applies to the UPLOAD only. The VM reads the payload as itself, through its managed
+# identity and the role assignment below - no key, no SAS, nothing to leak or rotate.
+provider "azurerm" {
+  alias = "payload_data_plane"
+
+  features {}
+
+  storage_use_azuread = false
+}
 
 resource "azurerm_resource_group" "lab" {
   name     = "${local.name_prefix}-rg-${local.suffix}"
@@ -451,6 +530,43 @@ resource "azurerm_monitor_scheduled_query_rules_alert_v2" "bootstrap_failed" {
   }
 }
 
+# "Did the legacy actually load?" - the second half of the same question. Loading Adabas and
+# compiling the Natural library happens in a systemd unit AFTER cloud-init has finished, so a
+# green bootstrap says nothing about whether CONSBENF compiles. run-provisioning.sh emits its
+# own marker; this turns a failed load into an alert instead of a discovery made live, in
+# front of an audience.
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "provisioning_failed" {
+  name                = "${local.name_prefix}-alert-provisioning-failed"
+  location            = azurerm_resource_group.lab.location
+  resource_group_name = azurerm_resource_group.lab.name
+  scopes              = [azurerm_log_analytics_workspace.lab.id]
+  description         = "SIFAP legacy provisioning (Adabas load + Natural compile) reported FAILED. Read /var/log/sifap-provisioning.log and re-run: sudo systemctl restart sifap-provisioning."
+  severity            = 1
+  tags                = local.tags
+
+  evaluation_frequency = "PT10M"
+  window_duration      = "PT30M"
+
+  criteria {
+    query                   = <<-KQL
+      Syslog
+      | where SyslogMessage has "SIFAP-PROVISIONING RESULT: FAILED"
+    KQL
+    time_aggregation_method = "Count"
+    threshold               = 0
+    operator                = "GreaterThan"
+
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [azurerm_monitor_action_group.lab.id]
+  }
+}
+
 # ---------------------------------------------------------------------------
 # Secrets
 #
@@ -566,6 +682,147 @@ resource "azurerm_key_vault_secret" "adabas_admin_password" {
   depends_on = [azurerm_key_vault_access_policy.deployer]
 }
 
+# --- demo origin credential --------------------------------------------------
+# The public URL is protected by HTTP basic authentication at the Caddy origin, and this is
+# the credential behind it. Generated by default so nothing has to be invented, agreed on in
+# a chat window, or committed.
+#
+# special = false is not laziness: this password is typed into a browser dialog by workshop
+# participants and pasted into curl commands, so alphanumeric removes an entire class of
+# quoting and transcription failures. 24 characters of [A-Za-z0-9] is ~143 bits.
+resource "random_password" "demo_basic_auth" {
+  count = local.basic_auth_generate ? 1 : 0
+
+  length  = 24
+  special = false
+}
+
+# Holds the PLAINTEXT password when Terraform generates it (the VM bcrypts it locally at
+# boot with the same Caddy build that will verify it), or the operator's own bcrypt HASH when
+# var.demo_basic_auth_password_hash is set. Either way the value travels Key Vault -> managed
+# identity -> a 0600 env file on the VM, and never through custom_data, a log line or an
+# output.
+resource "azurerm_key_vault_secret" "demo_basic_auth" {
+  name         = local.basic_auth_secret_name
+  value        = local.basic_auth_generate ? random_password.demo_basic_auth[0].result : var.demo_basic_auth_password_hash
+  key_vault_id = azurerm_key_vault.lab.id
+  tags         = local.tags
+
+  depends_on = [azurerm_key_vault_access_policy.deployer]
+}
+
+# ---------------------------------------------------------------------------
+# Payload staging
+#
+# The lab used to boot with an empty /opt/sifap/corpus and a README telling the participant to
+# scp the sources across. That made "the legacy runs" a manual step nobody performed, so the
+# demo was an empty Adabas and an uncompiled Natural library.
+#
+# Terraform now stages the corpus AND the provisioning scripts into a private blob container,
+# and the VM pulls them at first boot with its managed identity. The account is created and
+# destroyed with the lab, holds a few hundred kilobytes of published legacy source, and costs
+# fractions of a cent per month.
+# ---------------------------------------------------------------------------
+
+# Storage account names are globally unique, 3-24 characters, lowercase alphanumeric only.
+# "sifap" + "lab" + "st" + 6 random = 16 characters.
+#
+# ACCEPTED RISK: trivy AVD-AZU-0012 wants network rules with default_action = "Deny". Three
+# parties need the data plane and only one has a predictable address - the operator's laptop,
+# a GitHub-hosted runner with no stable egress, and the VM (whose public IP does not exist
+# until the VM does). This is the same trade-off, and the same reasoning, as the Key Vault
+# firewall above. The compensating controls: the container is private, anonymous access is
+# disabled account-wide, and the only thing stored is legacy source code that ships in this
+# repository anyway.
+#trivy:ignore:AVD-AZU-0012
+resource "azurerm_storage_account" "payload" {
+  name                = "${var.project}${var.environment}st${local.unique_suffix}"
+  resource_group_name = azurerm_resource_group.lab.name
+  location            = azurerm_resource_group.lab.location
+  tags                = local.tags
+
+  account_kind             = "StorageV2"
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+
+  # --- security posture -----------------------------------------------------
+  min_tls_version                 = "TLS1_2"
+  allow_nested_items_to_be_public = false
+  https_traffic_only_enabled      = true
+  public_network_access_enabled   = true
+
+  # Shared keys stay ON here, unlike infra/bootstrap where they are off. That is a deliberate
+  # difference, not an oversight: it is what lets the apply write these blobs without first
+  # granting itself a data-plane role and waiting out Entra replication. See the aliased
+  # provider at the top of this file. The VM never uses a key.
+  shared_access_key_enabled = true
+
+  # Nothing here is precious - every blob is regenerated from the repository on the next
+  # apply - so versioning and change feed would be cost with no recovery value.
+  blob_properties {
+    delete_retention_policy {
+      days = 7
+    }
+  }
+}
+
+# Containers are not taggable ARM resources; the tagged object is the account above.
+resource "azurerm_storage_container" "payload" {
+  provider = azurerm.payload_data_plane
+
+  name                  = local.payload_container_name
+  storage_account_name  = azurerm_storage_account.payload.name
+  container_access_type = "private"
+}
+
+# One blob per file rather than a single archive: Terraform has no tar function, and the
+# archive provider would add a fourth provider to a lock file CI reads in --lockfile=readonly
+# mode. `source` (not source_content) keeps binary seed data intact, and content_md5 is what
+# makes an edited file actually re-upload instead of silently keeping the old bytes.
+resource "azurerm_storage_blob" "payload" {
+  provider = azurerm.payload_data_plane
+
+  for_each = local.payload_files
+
+  name                   = each.key
+  storage_account_name   = azurerm_storage_account.payload.name
+  storage_container_name = azurerm_storage_container.payload.name
+  type                   = "Block"
+  source                 = each.value
+  content_md5            = filemd5(each.value)
+}
+
+# The index the VM reads first. It is both the file list and the integrity check: the VM
+# downloads every path named here and then runs `sha256sum -c` over the lot.
+resource "azurerm_storage_blob" "payload_manifest" {
+  provider = azurerm.payload_data_plane
+
+  name                   = "manifest.sha256"
+  storage_account_name   = azurerm_storage_account.payload.name
+  storage_container_name = azurerm_storage_container.payload.name
+  type                   = "Block"
+  content_type           = "text/plain"
+  source_content         = local.payload_manifest
+
+  # Written last, so a VM that fetches mid-apply cannot read a manifest describing blobs that
+  # are not there yet.
+  depends_on = [azurerm_storage_blob.payload]
+}
+
+# Managed identity, not a SAS token and not the account key: the same identity the VM already
+# uses for Key Vault, scoped to this one container and to reading only.
+#
+# Role assignments are eventually consistent - the VM's first few requests can 403 while the
+# grant replicates. fetch-payload.sh retries for five minutes rather than failing on the
+# first one, which is why this module needs no time_sleep (and therefore no time provider).
+resource "azurerm_role_assignment" "vm_payload_reader" {
+  count = var.assign_vm_blob_role ? 1 : 0
+
+  scope                = azurerm_storage_container.payload.resource_manager_id
+  role_definition_name = "Storage Blob Data Reader"
+  principal_id         = azurerm_linux_virtual_machine.lab.identity[0].principal_id
+}
+
 # ---------------------------------------------------------------------------
 # Compute
 # ---------------------------------------------------------------------------
@@ -636,6 +893,8 @@ resource "azurerm_linux_virtual_machine" "lab" {
     adabas_image         = var.adabas_image
     natural_image        = var.natural_image
     caddy_image          = var.caddy_image
+    ttyd_image           = var.ttyd_image
+    docker_cli_image     = var.docker_cli_image
     adabas_dbid          = var.adabas_dbid
     key_vault_uri        = azurerm_key_vault.lab.vault_uri
     secret_name          = "adabas-admin-password"
@@ -643,6 +902,18 @@ resource "azurerm_linux_virtual_machine" "lab" {
     caddy_global_options = local.caddy_global_options
     caddy_tls_directive  = local.caddy_tls_directive
     adabas_admin_bind    = local.adabas_admin_bind
+
+    # Where the corpus and the provisioning scripts come from, and how to prove they arrived
+    # intact. No credential: the VM authenticates as itself.
+    payload_base_url = local.payload_base_url
+
+    # WHICH secret to read and how to treat it - never the secret itself.
+    basic_auth_username    = var.demo_basic_auth_username
+    basic_auth_secret_name = local.basic_auth_secret_name
+    basic_auth_secret_kind = local.basic_auth_secret_kind
+
+    modern_app_upstream      = var.modern_app_upstream
+    terminal_natural_command = var.terminal_natural_command
   }))
 
   lifecycle {

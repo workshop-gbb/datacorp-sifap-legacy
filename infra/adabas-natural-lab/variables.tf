@@ -280,8 +280,13 @@ variable "natural_image" {
 
 variable "caddy_image" {
   description = <<-EOT
-    Caddy image used as the TLS-terminating reverse proxy in front of the Adabas
-    administration console. Pinned by digest, same rationale as the other two.
+    Caddy image used as the TLS-terminating reverse proxy for the whole demo origin: the
+    landing page, /terminal (the legacy green screen), /app (the modern application) and
+    /admin (the Adabas console). It also enforces the basic authentication in front of all
+    of them. Pinned by digest, same rationale as the other two.
+
+    The same image doubles as the bcrypt hasher at boot (`caddy hash-password`), so the
+    credential is hashed by exactly the build that will verify it.
   EOT
   type        = string
   default     = "caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d"
@@ -289,6 +294,52 @@ variable "caddy_image" {
   validation {
     condition     = can(regex("@sha256:[0-9a-f]{64}$", var.caddy_image))
     error_message = "caddy_image must be pinned by digest, e.g. caddy:2.10.2-alpine@sha256:<64 hex chars>."
+  }
+}
+
+variable "ttyd_image" {
+  description = <<-EOT
+    Web terminal image, pinned by digest. This is what turns the Natural green screen into
+    something a browser can open: Natural speaks a character-terminal protocol, and port 2700
+    on the Natural container is the Natural Development Server (NDV, for NaturalONE), NOT a
+    telnet listener - no browser can attach to either. ttyd serves an xterm.js terminal over
+    HTTP/WebSocket and runs one command per connection; here that command opens a Natural
+    session inside the natural-ce container.
+
+    Same re-pin command as the other images:
+      docker buildx imagetools inspect tsl0922/ttyd:<tag> --format '{{.Manifest.Digest}}'
+
+    Verified: 1.7.7 is the newest tagged release in the upstream repository, the image is
+    Alpine-based (busybox + bash + tini, ttyd at /usr/bin/ttyd) and publishes linux/amd64.
+  EOT
+  type        = string
+  default     = "tsl0922/ttyd:1.7.7-alpine@sha256:e17d5420fa78ea6271e32a06eec334adda6f54077e56e3969340fb47e604c24c"
+
+  validation {
+    condition     = can(regex("@sha256:[0-9a-f]{64}$", var.ttyd_image))
+    error_message = "ttyd_image must be pinned by digest, e.g. tsl0922/ttyd:1.7.7-alpine@sha256:<64 hex chars>."
+  }
+}
+
+variable "docker_cli_image" {
+  description = <<-EOT
+    Image the Docker CLI binary is copied out of at bootstrap, pinned by digest.
+
+    WHY THIS EXISTS: the ttyd container has to run `docker exec` against natural-ce, and the
+    ttyd image ships no Docker client. The host's own client cannot be bind-mounted into it -
+    the host is Ubuntu (glibc), the ttyd image is Alpine (musl). The official Docker CLI image
+    is Alpine-based, so the binary it carries at /usr/local/bin/docker runs unmodified inside
+    the ttyd container. bootstrap.sh copies it out with `docker cp` into /opt/sifap/bin and
+    bind-mounts it read-only.
+
+    Only the CLI is used. No daemon, no buildx, no compose plugin.
+  EOT
+  type        = string
+  default     = "docker:29.7.2-cli@sha256:000bb62ff495f986c9f5578eb67cc2cb98b91138eda81d7762d5371eb8a497fe"
+
+  validation {
+    condition     = can(regex("@sha256:[0-9a-f]{64}$", var.docker_cli_image))
+    error_message = "docker_cli_image must be pinned by digest, e.g. docker:29.7.2-cli@sha256:<64 hex chars>."
   }
 }
 
@@ -301,6 +352,142 @@ variable "adabas_dbid" {
     condition     = var.adabas_dbid >= 1 && var.adabas_dbid <= 65535
     error_message = "adabas_dbid must be between 1 and 65535."
   }
+}
+
+# ---------------------------------------------------------------------------
+# The legacy payload: corpus + provisioning scripts
+#
+# Everything in this section answers one question: how do the SIFAP sources and the scripts
+# that load them reach a VM that nobody logs into by hand?
+# ---------------------------------------------------------------------------
+
+variable "legacy_corpus_path" {
+  description = <<-EOT
+    Path to the frozen legacy sources, relative to this module directory. Terraform reads
+    <path>/natural-programs and <path>/adabas-ddms and stages every file to blob storage,
+    from where the VM pulls them at first boot with its managed identity.
+
+    This is a PATH, not a git ref, on purpose. The alternative - cloning a pinned commit on
+    the VM - only ships what has already been pushed, so the lab would boot with whatever the
+    remote happened to hold rather than the tree this apply is running from. Staging the
+    working tree makes "what Terraform saw" and "what the VM got" the same bytes, and the
+    per-file SHA-256 manifest proves it.
+
+    A directory that does not exist yields an empty file set rather than an error, so a
+    partial checkout fails loudly on the VM (with a clear message) instead of at plan time.
+  EOT
+  type        = string
+  default     = "../../01-archaeology/legacy-sifap"
+}
+
+variable "assign_vm_blob_role" {
+  description = <<-EOT
+    Create the "Storage Blob Data Reader" role assignment that lets the VM's managed identity
+    read the staged payload. Leave it true unless the tenant forbids role assignments.
+
+    Writing a role assignment needs Microsoft.Authorization/roleAssignments/write - Owner or
+    User Access Administrator - which some workshop subscriptions do not grant. Set this to
+    false there, have someone with the rights assign "Storage Blob Data Reader" to the VM
+    identity over the payload container out of band, and re-run
+    `sudo /opt/sifap/fetch-payload.sh` on the VM.
+
+    With no role at all the VM downloads nothing: the corpus never lands, provisioning never
+    runs, and both say so in /var/log/sifap-bootstrap.log. Nothing else breaks.
+
+    Why a role and not a SAS token: a SAS is a bearer credential with an expiry to manage and
+    a copy to leak. The managed identity already exists for Key Vault, so this reuses it.
+  EOT
+  type        = bool
+  default     = true
+}
+
+# ---------------------------------------------------------------------------
+# The public demo: routes and authentication
+# ---------------------------------------------------------------------------
+
+variable "demo_basic_auth_username" {
+  description = <<-EOT
+    Username for the HTTP basic authentication that guards the demo origin. Not a secret -
+    the password is, and it never appears here.
+
+    Everything on the public origin sits behind this except /healthz, which stays open so a
+    readiness probe (and the bootstrap script's own check) keeps working without credentials.
+  EOT
+  type        = string
+  default     = "sifap"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9._-]{2,32}$", var.demo_basic_auth_username))
+    error_message = "demo_basic_auth_username must be 2-32 characters of letters, digits, dot, underscore or hyphen."
+  }
+}
+
+variable "demo_basic_auth_password_hash" {
+  description = <<-EOT
+    OPTIONAL bcrypt hash of the demo password, for teams that already have a credential they
+    want to reuse. Leave it empty (the default) and Terraform generates a password, stores it
+    in Key Vault, and the VM hashes it locally at boot - no hash and no password ever touches
+    this repository, cloud-init or the Terraform inputs.
+
+    Produce one with the same Caddy build that will verify it:
+      docker run --rm -i caddy:2.10.2-alpine caddy hash-password <<<'your-password'
+
+    Supply it through the environment, never through a committed file:
+      export TF_VAR_demo_basic_auth_password_hash='$2a$14$...'
+
+    A bcrypt hash is not plaintext, but it is still the credential verifier: it goes into Key
+    Vault like everything else, and the VM reads it from there with its managed identity. It
+    is never rendered into custom_data, where any process on the VM could read it back out of
+    the instance metadata service.
+  EOT
+  type        = string
+  default     = ""
+  sensitive   = true
+
+  validation {
+    condition     = var.demo_basic_auth_password_hash == "" || can(regex("^\\$2[aby]\\$[0-9]{2}\\$[./A-Za-z0-9]{53}$", var.demo_basic_auth_password_hash))
+    error_message = "demo_basic_auth_password_hash must be empty or a bcrypt hash, e.g. $2a$14$<53 chars>. Generate it with: caddy hash-password."
+  }
+}
+
+variable "modern_app_upstream" {
+  description = <<-EOT
+    Upstream the /app route proxies to: the modern Java + Next.js application the team builds
+    in Stage 3, addressed by its Docker Compose service name and port.
+
+    The route is provisioned NOW, before the application exists, so the URL handed to an
+    audience never changes. Until a container answers on this address, https://<fqdn>/app
+    returns 502 from Caddy - which is the honest answer, and exactly what the modernisation
+    story looks like on day one.
+  EOT
+  type        = string
+  default     = "sifap-app:8080"
+
+  validation {
+    condition     = can(regex("^[a-z0-9]([a-z0-9._-]*[a-z0-9])?:[0-9]{1,5}$", var.modern_app_upstream))
+    error_message = "modern_app_upstream must be host:port, e.g. sifap-app:8080."
+  }
+}
+
+variable "terminal_natural_command" {
+  description = <<-EOT
+    Command the web terminal runs inside the natural-ce container to open a session. Empty
+    (the default) uses the fallback chain in /opt/sifap/terminal-session.sh: the Natural
+    binary if it is where the image puts it, otherwise an interactive shell with a banner
+    explaining what to run.
+
+    Deliberately overridable and deliberately not guessed at: the exact start-up line for
+    Natural CE (parameter module, session parameters, which library to LOGON to) is the
+    team's to determine from the image and from provisioning/02-build-natural.sh, not this
+    module's to assume. Example of the shape:
+
+      terminal_natural_command = "/opt/softwareag/Natural/bin/natural stack=(LOGON SIFAPPRD)"
+
+    custom_data carries ignore_changes, so changing this after the VM exists does not reach
+    it. Edit /opt/sifap/terminal-session.sh on the box and `docker compose restart ttyd`.
+  EOT
+  type        = string
+  default     = ""
 }
 
 # ---------------------------------------------------------------------------

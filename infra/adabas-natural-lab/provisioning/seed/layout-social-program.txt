@@ -1,0 +1,45 @@
+# ADACMP-style layout for social-program.dat
+# Derived from SIFAP DDM/FDT; groups are flattened, MU/PE fully expanded.
+# LEVEL CODE NAME FORMAT LENGTH OCCURS OPTIONS BYTE-WIDTH
+01 AA COD-PROGRAM                  A 4     1   -          4
+01 AB NAME-PROGRAM                 A 60    1   -          60
+01 AC ACRONYM-PROGRAM              A 10    1   -          10
+01 AD TYPE-PROGRAM                 A 1     1   -          1
+01 AE RESPONSIBLE-AGENCY           A 10    1   -          10
+01 AF CREATION-LAW                 A 20    1   -          20
+01 AG DT-CREATION                  N 8     1   -          8
+01 AH DT-CLOSURE                   N 8     1   -          8
+01 AI STAT-PROGRAM                 A 1     1   -          1
+01 BA AMT-BASE-INDIVIDUAL          P 7,2   1   -          4
+01 BB AMT-BASE-FAMILY              P 7,2   1   -          4
+01 BC AMT-CEILING-BENEF            P 9,2   1   -          5
+01 BD AMT-FLOOR-BENEF              P 7,2   1   -          4
+01 BE PCT-ANNUAL-ADJUST            P 3,2   1   -          2
+01 BF DT-LAST-ADJUST               N 8     1   -          8
+01 BG FACTOR-K                     P 5,4   1   -          3
+01 BH FACTOR-ADJUST                P 3,4   1   -          2
+01 CA MAX-PERCAP-INCOME            P 7,2   1   -          4
+01 CB AGE-MIN                      N 3     1   -          3
+01 CC AGE-MAX                      N 3     1   -          3
+01 CD IND-REQUIRES-CHILDREN        A 1     1   -          1
+01 CE QTY-MIN-CHILDREN             N 2     1   -          2
+01 CF IND-REQUIRES-SCHOOL          A 1     1   -          1
+01 CG IND-REQUIRES-VACCINE         A 1     1   -          1
+01 CH IND-REQUIRES-PRENATAL        A 1     1   -          1
+01 CI IND-REQUIRES-BIOMETRICS      A 1     1   -          1
+01 CJ COD-ELIGIBILITY              A 5     1   -          5
+01 DB INCOME-START                 P 7,2   5   -          20
+01 DC INCOME-END                   P 7,2   5   -          20
+01 DD FACTOR-MULTIPLIER            P 3,4   5   -          10
+01 DE AMT-ADDITIONAL               P 7,2   5   -          20
+01 DF IND-ACCUM                    A 1     5   -          5
+01 EA TYPE-DISC-APPLIC             A 3     8   MU         24
+01 FB COD-REGION                   A 2     6   -          12
+01 FC FACTOR-REGIONAL              P 3,4   6   -          12
+01 FD AMT-REG-COMPLEMENT           P 7,2   6   -          24
+01 FE IND-ACTIVE-REGION            A 1     6   -          6
+01 GA DT-INSERT                    N 8     1   -          8
+01 GB USR-INSERT                   A 8     1   -          8
+01 GC DT-LAST-UPDATE               N 8     1   -          8
+01 GD USR-LAST-UPDATE              A 8     1   -          8
+# RECORD-BYTES 361

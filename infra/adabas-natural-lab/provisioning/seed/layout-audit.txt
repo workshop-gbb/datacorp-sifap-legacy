@@ -1,0 +1,36 @@
+# ADACMP-style layout for audit.dat
+# Derived from SIFAP DDM/FDT; groups are flattened, MU/PE fully expanded.
+# LEVEL CODE NAME FORMAT LENGTH OCCURS OPTIONS BYTE-WIDTH
+01 AA NUM-AUDIT                    N 15    1   -          15
+01 AB DT-EVENT                     N 8     1   -          8
+01 AC HR-EVENT                     N 6     1   -          6
+01 AD TS-EVENT                     N 14    1   -          14
+01 AE NUM-TRANSACTION              A 8     1   -          8
+01 BA COD-ACTION                   A 2     1   -          2
+01 BB COD-MODULE                   A 8     1   -          8
+01 BC DESCR-ACTION                 A 80    1   -          80
+01 CA TYPE-ENTITY                  A 4     1   -          4
+01 CB ID-ENTITY                    A 15    1   -          15
+01 CC NUM-CPF-AFFECTED             A 11    1   -          11
+01 DB FIELD-UPDATED-PREV           A 30    20  MU         600
+01 DC VALUE-PREV                   A 80    20  MU         1600
+01 DE FIELD-UPDATED-AFTER          A 30    20  MU         600
+01 DF VALUE-AFTER                  A 80    20  MU         1600
+01 DG AMT-PREV                     A 60    1   -          60
+01 DH AMT-NEW                      A 60    1   -          60
+01 EA USR-EVENT                    A 8     1   -          8
+01 EB NAME-USER                    A 40    1   -          40
+01 EC COD-PROFILE                  A 3     1   -          3
+01 ED COD-ASSIGNMENT               A 10    1   -          10
+01 EE IP-ORIGIN                    A 15    1   -          15
+01 EF ID-SESSION                   A 20    1   -          20
+01 EG COD-TERMINAL                 A 8     1   -          8
+01 EH COD-LU                       A 8     1   -          8
+01 FA NUM-CYCLE-BATCH              N 6     1   -          6
+01 FB NUM-SEQ-BATCH                N 10    1   -          10
+01 FC NAME-JOB-BATCH               A 16    1   -          16
+01 FD STAT-BATCH                   A 1     1   -          1
+01 FE DESCR-ERR-BATCH              A 120   1   -          120
+01 GA ID-CORRELATION               A 36    1   -          36
+01 GB NUM-SEQ-CORRELATION          N 3     1   -          3
+# RECORD-BYTES 4995
