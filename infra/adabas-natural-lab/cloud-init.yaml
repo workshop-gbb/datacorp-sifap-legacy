@@ -649,13 +649,22 @@ write_files:
       STATE_DIR=/opt/sifap/state
       FUSER=/mnt/sifap-data/natural-fuser
       DDM_BACKUP=/mnt/sifap-data/state/ddm-gp-backup.tgz
+      DDM_MEMBERS=(BENEFIC SOCPROG PAYMENT AUDIT)
       SIFAP_PHASE="$${SIFAP_PHASE:-auto}"
 
       rm -f /opt/sifap/PROVISIONING-FAILED
 
+      ddms_present() {
+        local member
+        for member in "$${DDM_MEMBERS[@]}"; do
+          find "$FUSER" -path "*/GP/$member.NGD" -type f -print -quit 2>/dev/null | grep -q . \
+            || return 1
+        done
+      }
+
       restore_ddm_backup_if_empty() {
         mkdir -p "$FUSER" "$STATE_DIR"
-        if find "$FUSER" -path '*/GP/*.NGD' -type f -print -quit 2>/dev/null | grep -q .; then
+        if ddms_present; then
           echo "Natural DDMs already present in FUSER; restore not needed"
           return 0
         fi
@@ -663,19 +672,29 @@ write_files:
           echo "restoring Natural DDM GP backup into persistent FUSER"
           tar -xzf "$DDM_BACKUP" -C "$FUSER"
           chown -R 1724:1724 "$FUSER"
+          ddms_present || { echo "DDM backup is incomplete"; rm -f "$STATE_DIR/DDMS-READY"; return 1; }
+          date -Is > "$STATE_DIR/DDMS-READY"
         else
           echo "no DDM backup available yet; a fresh lab needs the NaturalONE DDM step"
+          rm -f "$STATE_DIR/DDMS-READY"
         fi
       }
 
       backup_ddms_if_present() {
+        local member found
+        local files=()
         mkdir -p "$STATE_DIR"
-        if ! find "$FUSER" -path '*/GP/*.NGD' -type f -print -quit 2>/dev/null | grep -q .; then
-          echo "no Natural DDM objects found to back up"
-          return 0
-        fi
+        for member in "$${DDM_MEMBERS[@]}"; do
+          found=$(find "$FUSER" -path "*/GP/$member.NGD" -type f -print -quit 2>/dev/null || true)
+          if [ -z "$found" ]; then
+            echo "DDM $member is not present; backup remains pending"
+            rm -f "$STATE_DIR/DDMS-READY" "$DDM_BACKUP"
+            return 0
+          fi
+          files+=("$${found#"$FUSER"/}")
+        done
         tmp="$STATE_DIR/ddm-gp-backup.new.tgz"
-        ( cd "$FUSER" && find . -path './*/GP/*.NGD' -type f -print0 | tar --null -czf "$tmp" --files-from - )
+        ( cd "$FUSER" && printf '%s\0' "$${files[@]}" | tar --null -czf "$tmp" --files-from - )
         mv "$tmp" "$DDM_BACKUP"
         chown 1724:1724 "$DDM_BACKUP"
         date -Is > "$STATE_DIR/DDMS-READY"
@@ -1179,14 +1198,15 @@ write_files:
       # Written whole on every run, umask first so it is never briefly readable.
       # The hash is a verifier, not a password, but it is still bcrypt-crackable
       # offline and gets the same 0600 treatment as adabas.env.
+      COMPOSE_BASIC_AUTH_HASH=$(printf '%s' "$BASIC_AUTH_HASH" | sed 's/\$/$$/g')
       ( umask 077
         printf 'SIFAP_BASIC_AUTH_USER=%s\n' '${basic_auth_username}' > /opt/sifap/caddy.env
-        printf 'SIFAP_BASIC_AUTH_HASH=%s\n' "$BASIC_AUTH_HASH" >> /opt/sifap/caddy.env )
+        printf 'SIFAP_BASIC_AUTH_HASH=%s\n' "$COMPOSE_BASIC_AUTH_HASH" >> /opt/sifap/caddy.env )
       chown root:root /opt/sifap/caddy.env
       chmod 0600 /opt/sifap/caddy.env
       echo "basic auth configured for user '${basic_auth_username}' (hash not logged)"
 
-      unset BASIC_AUTH_SECRET BASIC_AUTH_HASH BASIC_AUTH_KIND
+      unset BASIC_AUTH_SECRET BASIC_AUTH_HASH BASIC_AUTH_KIND COMPOSE_BASIC_AUTH_HASH
 
       docker compose up -d --remove-orphans
       /opt/sifap/update-www-status.sh || true
@@ -1236,7 +1256,8 @@ write_files:
         # -k because the internal-CA certificate is not in the VM's trust store.
         # This only proves the proxy is answering over TLS, not that the chain is
         # publicly trusted - a browser is the judge of that.
-        if curl -sSk --max-time 10 -o /dev/null "https://$DEMO_FQDN/healthz"; then
+           if curl -sSk --max-time 10 --resolve "$DEMO_FQDN:443:127.0.0.1" \
+             -o /dev/null "https://$DEMO_FQDN/healthz"; then
           DEMO_OK=1
           echo "demo URL answered after $((attempt * 10))s"
           break
