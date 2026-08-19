@@ -69,14 +69,6 @@ locals {
 
   alert_emails = var.auto_shutdown_notification_email != "" ? [var.auto_shutdown_notification_email] : []
 
-  # Azure Key Vault rejects /31 and /32 masks in ip_rules and wants the bare address instead,
-  # which is exactly the form people copy out of `curl ifconfig.me`. Normalise rather than
-  # make every operator rediscover it from a 400.
-  key_vault_ip_rules = [
-    for c in var.key_vault_allowed_ip_rules :
-    replace(trimspace(c), "/\\/32$/", "")
-  ]
-
   # The DDM workstation gets its own subnet rather than sharing the lab's, so the rule that
   # opens the Natural Development Server to it names a network instead of a host address
   # that does not exist until the VM does.
@@ -88,15 +80,16 @@ locals {
   #
   # They cannot ride in cloud-init. Azure caps custom_data at 65535 bytes and the corpus
   # alone is 77 KB once base64-encoded (256 KB raw, 57 KB gzipped) - measured, not estimated.
-  # So Terraform stages every file to a private blob container and the VM pulls them at first
-  # boot with its managed identity. See var.legacy_corpus_path for why this beats a git clone.
+  # deploy-local.sh packages these files with a SHA-256 manifest and uploads the archive over
+  # the same allow-listed SSH path used for operations. This also complies with the tenant
+  # policy that forces Storage publicNetworkAccess=Disabled.
   corpus_source_dirs = {
     "natural-programs" = "${path.module}/${var.legacy_corpus_path}/natural-programs"
     "adabas-ddms"      = "${path.module}/${var.legacy_corpus_path}/adabas-ddms"
   }
 
-  # Blob name -> local file. The blob name is also the path under /opt/sifap on the VM, so
-  # the layout is decided here, once, and the download loop stays a dumb copy.
+  # Archive path -> local file. The path is also the location under /opt/sifap/payload on the
+  # VM, so Terraform outputs and deploy-local.sh share one inventory contract.
   corpus_files = merge([
     for target, dir in local.corpus_source_dirs : {
       for f in fileset(dir, "**") : "corpus/${target}/${f}" => "${dir}/${f}"
@@ -123,31 +116,6 @@ locals {
     if length([for p in local.provisioning_scratch_prefixes : true if startswith(f, p)]) == 0
     && !strcontains(f, "/__pycache__/")
   }
-
-  # Static content that USED to live inline in cloud-init.yaml. Azure caps custom_data at 65535
-  # bytes and the worst-case render was within 15 bytes of that ceiling, so the landing page, the
-  # /app placeholder and the corpus README moved out here. cloud-init still writes a small inline
-  # fallback landing page, which the payload overwrites on arrival - so a failed download degrades
-  # to "still provisioning, read this log" instead of an empty web root.
-  static_dir = "${path.module}/payload-static"
-
-  static_files = {
-    for f in fileset(local.static_dir, "**") : f => "${local.static_dir}/${f}"
-  }
-
-  payload_files = merge(local.corpus_files, local.provisioning_files, local.static_files)
-
-  # sha256sum(1) format, verbatim: "<hash><two spaces><path>". The VM runs `sha256sum -c` on
-  # it, so a truncated download or a half-written blob is caught on the box rather than three
-  # steps later inside an ADALOD that fails for no visible reason.
-  payload_manifest = join("", [
-    for name, src in local.payload_files : format("%s  %s\n", filesha256(src), name)
-  ])
-
-  payload_container_name = "sifap-payload"
-  payload_base_url       = "${azurerm_storage_account.payload.primary_blob_endpoint}${local.payload_container_name}"
-  state_container_name   = "sifap-state"
-  state_base_url         = "${azurerm_storage_account.payload.primary_blob_endpoint}${local.state_container_name}"
 
   # --- demo origin authentication -------------------------------------------
   # Two supported shapes, one code path on the VM: Key Vault holds either the generated
@@ -176,31 +144,6 @@ locals {
 
 data "azurerm_client_config" "current" {}
 
-# A SECOND, ALIASED azurerm provider, used only by the three payload resources below.
-#
-# Why it exists: the storage data plane (creating a container, writing a blob) is not covered
-# by ARM roles. With storage_use_azuread = true - which CI sets globally through
-# ARM_USE_AZUREAD - a deployer holding Contributor or even Owner still gets 403 on the first
-# blob unless it ALSO holds a "Storage Blob Data Contributor" assignment. Granting that from
-# inside this module means writing a role assignment and then racing Entra's replication;
-# `infra/bootstrap` needs a 60-second time_sleep for exactly that, and this module cannot add
-# one without pulling in the time provider - which would change .terraform.lock.hcl, and CI
-# runs `terraform init -lockfile=readonly`.
-#
-# So the upload authenticates with the account key instead, which the provider fetches over
-# ARM with the Contributor rights the deployer already has. The key is never written down: it
-# is read at apply time and lives only in provider memory.
-#
-# This applies to the UPLOAD only. The VM reads the payload as itself, through its managed
-# identity and the role assignment below - no key, no SAS, nothing to leak or rotate.
-provider "azurerm" {
-  alias = "payload_data_plane"
-
-  features {}
-
-  storage_use_azuread = false
-}
-
 resource "azurerm_resource_group" "lab" {
   name     = "${local.name_prefix}-rg-${local.suffix}"
   location = var.location
@@ -226,6 +169,10 @@ resource "azurerm_subnet" "lab" {
   resource_group_name  = azurerm_resource_group.lab.name
   virtual_network_name = azurerm_virtual_network.lab.name
   address_prefixes     = ["10.42.1.0/24"]
+
+  # The Key Vault endpoint lives in this subnet. Disable endpoint policies so the vault's
+  # private NIC is governed by Private Link rather than the VM's deny-all NSG.
+  private_endpoint_network_policies = "Disabled"
 }
 
 resource "azurerm_network_security_group" "lab" {
@@ -660,39 +607,27 @@ moved {
 #                                    retention window after `terraform destroy`. The documented
 #                                    teardown for this lab is destroy-and-forget, so it stays off.
 #                                    In any non-lab environment this MUST be true.
-#   enable_rbac_authorization  = false  Access-policy model keeps the grant to the VM's managed
-#                                    identity inside this state, with no dependency on the
-#                                    deployer holding "User Access Administrator" to create
-#                                    role assignments - a common blocker on workshop tenants.
+#   enable_rbac_authorization  = false  Access-policy model grants only the VM identity Get/Set
+#                                    and avoids role-assignment privileges in workshop tenants.
 #
-# Network exposure: with var.key_vault_allowed_ip_rules empty (the default) the vault stays on
-# its open public endpoint, because three parties need the data plane and only one of them has
-# a predictable address - see that variable for the full reasoning. Set it to switch the
-# firewall to default-Deny.
-#
-# ACCEPTED RISK: trivy AVD-AZU-0013 wants default_action = "Deny" on the vault firewall. The
-# compensating controls are the access policies below, which grant exactly two principals
-# (the deployer and the VM identity) and nothing else, on a vault holding one generated
-# password with no value outside this lab. Revisit before reusing this pattern anywhere real.
-#trivy:ignore:AVD-AZU-0013
+# The corporate management-group policy forces publicNetworkAccess=Disabled. The explicit
+# private endpoint and DNS zone below make that policy part of the design instead of allowing
+# it to mutate the vault after apply and strand the bootstrap.
 resource "azurerm_key_vault" "lab" {
-  name                       = "${var.project}${var.environment}kv${local.unique_suffix}"
-  location                   = azurerm_resource_group.lab.location
-  resource_group_name        = azurerm_resource_group.lab.name
-  tenant_id                  = data.azurerm_client_config.current.tenant_id
-  sku_name                   = "standard"
-  soft_delete_retention_days = 7
-  purge_protection_enabled   = false
-  enable_rbac_authorization  = false
-  tags                       = local.tags
+  name                          = "${var.project}${var.environment}kv${local.unique_suffix}"
+  location                      = azurerm_resource_group.lab.location
+  resource_group_name           = azurerm_resource_group.lab.name
+  tenant_id                     = data.azurerm_client_config.current.tenant_id
+  sku_name                      = "standard"
+  soft_delete_retention_days    = 7
+  purge_protection_enabled      = false
+  enable_rbac_authorization     = false
+  public_network_access_enabled = false
+  tags                          = local.tags
 
-  # Always emitted so the firewall posture is explicit in state rather than implied by
-  # absence. With an empty allow-list this behaves exactly like no block at all; populate
-  # var.key_vault_allowed_ip_rules to flip it to default-Deny.
   network_acls {
-    default_action = length(local.key_vault_ip_rules) > 0 ? "Deny" : "Allow"
+    default_action = "Deny"
     bypass         = "AzureServices"
-    ip_rules       = local.key_vault_ip_rules
   }
 
   lifecycle {
@@ -707,41 +642,51 @@ resource "azurerm_key_vault" "lab" {
   }
 }
 
-# Access policies carry no tags argument; the vault they attach to is tagged.
-# Deployer policy is what lets the secret below be written; the VM policy is Get-only.
-resource "azurerm_key_vault_access_policy" "deployer" {
-  key_vault_id = azurerm_key_vault.lab.id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = data.azurerm_client_config.current.object_id
-
-  secret_permissions = ["Get", "List", "Set", "Delete", "Purge", "Recover"]
-}
-
+# Access policies carry no tags argument; the vault they attach to is tagged. The VM writes
+# generated secrets once through a protected VM Extension, then reads them during bootstrap.
 resource "azurerm_key_vault_access_policy" "vm" {
   key_vault_id = azurerm_key_vault.lab.id
   tenant_id    = data.azurerm_client_config.current.tenant_id
   object_id    = azurerm_linux_virtual_machine.lab.identity[0].principal_id
 
-  secret_permissions = ["Get"]
+  secret_permissions = ["Get", "Set"]
 }
 
-resource "azurerm_key_vault_secret" "adabas_admin_password" {
-  name         = "adabas-admin-password"
-  value        = random_password.adabas_admin.result
-  key_vault_id = azurerm_key_vault.lab.id
-  tags         = local.tags
-
-  depends_on = [azurerm_key_vault_access_policy.deployer]
+resource "azurerm_private_dns_zone" "key_vault" {
+  name                = "privatelink.vaultcore.azure.net"
+  resource_group_name = azurerm_resource_group.lab.name
+  tags                = local.tags
 }
 
-# --- demo origin credential --------------------------------------------------
-# The public URL is protected by HTTP basic authentication at the Caddy origin, and this is
-# the credential behind it. Generated by default so nothing has to be invented, agreed on in
-# a chat window, or committed.
-#
-# special = false is not laziness: this password is typed into a browser dialog by workshop
-# participants and pasted into curl commands, so alphanumeric removes an entire class of
-# quoting and transcription failures. 24 characters of [A-Za-z0-9] is ~143 bits.
+resource "azurerm_private_dns_zone_virtual_network_link" "key_vault" {
+  name                  = "${local.name_prefix}-link-keyvault"
+  resource_group_name   = azurerm_resource_group.lab.name
+  private_dns_zone_name = azurerm_private_dns_zone.key_vault.name
+  virtual_network_id    = azurerm_virtual_network.lab.id
+  registration_enabled  = false
+  tags                  = local.tags
+}
+
+resource "azurerm_private_endpoint" "key_vault" {
+  name                = "${local.name_prefix}-pe-keyvault"
+  location            = azurerm_resource_group.lab.location
+  resource_group_name = azurerm_resource_group.lab.name
+  subnet_id           = azurerm_subnet.lab.id
+  tags                = local.tags
+
+  private_service_connection {
+    name                           = "${local.name_prefix}-psc-keyvault"
+    private_connection_resource_id = azurerm_key_vault.lab.id
+    subresource_names              = ["vault"]
+    is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "default"
+    private_dns_zone_ids = [azurerm_private_dns_zone.key_vault.id]
+  }
+}
+
 resource "random_password" "demo_basic_auth" {
   count = local.basic_auth_generate ? 1 : 0
 
@@ -749,160 +694,20 @@ resource "random_password" "demo_basic_auth" {
   special = false
 }
 
-# Holds the PLAINTEXT password when Terraform generates it (the VM bcrypts it locally at
-# boot with the same Caddy build that will verify it), or the operator's own bcrypt HASH when
-# var.demo_basic_auth_password_hash is set. Either way the value travels Key Vault -> managed
-# identity -> a 0600 env file on the VM, and never through custom_data, a log line or an
-# output.
-resource "azurerm_key_vault_secret" "demo_basic_auth" {
-  name         = local.basic_auth_secret_name
-  value        = local.basic_auth_generate ? random_password.demo_basic_auth[0].result : var.demo_basic_auth_password_hash
-  key_vault_id = azurerm_key_vault.lab.id
-  tags         = local.tags
-
-  depends_on = [azurerm_key_vault_access_policy.deployer]
-}
-
-# ---------------------------------------------------------------------------
-# Payload staging
-#
-# The lab used to boot with an empty /opt/sifap/corpus and a README telling the participant to
-# scp the sources across. That made "the legacy runs" a manual step nobody performed, so the
-# demo was an empty Adabas and an uncompiled Natural library.
-#
-# Terraform now stages the corpus AND the provisioning scripts into a private blob container,
-# and the VM pulls them at first boot with its managed identity. The account is created and
-# destroyed with the lab, holds a few hundred kilobytes of published legacy source, and costs
-# fractions of a cent per month.
-# ---------------------------------------------------------------------------
-
-# Storage account names are globally unique, 3-24 characters, lowercase alphanumeric only.
-# "sifap" + "lab" + "st" + 6 random = 16 characters.
-#
-# ACCEPTED RISK: trivy AVD-AZU-0012 wants network rules with default_action = "Deny". Three
-# parties need the data plane and only one has a predictable address - the operator's laptop,
-# a GitHub-hosted runner with no stable egress, and the VM (whose public IP does not exist
-# until the VM does). This is the same trade-off, and the same reasoning, as the Key Vault
-# firewall above. The compensating controls: the container is private, anonymous access is
-# disabled account-wide, and the only thing stored is legacy source code that ships in this
-# repository anyway.
-#trivy:ignore:AVD-AZU-0012
-resource "azurerm_storage_account" "payload" {
-  name                = "${var.project}${var.environment}st${local.unique_suffix}"
-  resource_group_name = azurerm_resource_group.lab.name
-  location            = azurerm_resource_group.lab.location
-  tags                = local.tags
-
-  account_kind             = "StorageV2"
-  account_tier             = "Standard"
-  account_replication_type = "LRS"
-
-  # --- security posture -----------------------------------------------------
-  min_tls_version                 = "TLS1_2"
-  allow_nested_items_to_be_public = false
-  https_traffic_only_enabled      = true
-  public_network_access_enabled   = true
-
-  # Shared keys stay ON here, unlike infra/bootstrap where they are off. That is a deliberate
-  # difference, not an oversight: it is what lets the apply write these blobs without first
-  # granting itself a data-plane role and waiting out Entra replication. See the aliased
-  # provider at the top of this file. The VM never uses a key.
-  shared_access_key_enabled = true
-
-  # Nothing here is precious - every blob is regenerated from the repository on the next
-  # apply - so versioning and change feed would be cost with no recovery value.
-  blob_properties {
-    delete_retention_policy {
-      days = 7
-    }
-  }
-}
-
-# Containers are not taggable ARM resources; the tagged object is the account above.
-resource "azurerm_storage_container" "payload" {
-  provider = azurerm.payload_data_plane
-
-  name                  = local.payload_container_name
-  storage_account_name  = azurerm_storage_account.payload.name
-  container_access_type = "private"
-}
-
-resource "azurerm_storage_container" "state" {
-  provider = azurerm.payload_data_plane
-
-  name                  = local.state_container_name
-  storage_account_name  = azurerm_storage_account.payload.name
-  container_access_type = "private"
-}
-
-# One blob per file rather than a single archive: Terraform has no tar function, and the
-# archive provider would add a fourth provider to a lock file CI reads in --lockfile=readonly
-# mode. `source` (not source_content) keeps binary seed data intact, and content_md5 is what
-# makes an edited file actually re-upload instead of silently keeping the old bytes.
-resource "azurerm_storage_blob" "payload" {
-  provider = azurerm.payload_data_plane
-
-  for_each = local.payload_files
-
-  name                   = each.key
-  storage_account_name   = azurerm_storage_account.payload.name
-  storage_container_name = azurerm_storage_container.payload.name
-  type                   = "Block"
-  source                 = each.value
-  content_md5            = filemd5(each.value)
-}
-
-# The index the VM reads first. It is both the file list and the integrity check: the VM
-# downloads every path named here and then runs `sha256sum -c` over the lot.
-resource "azurerm_storage_blob" "payload_manifest" {
-  provider = azurerm.payload_data_plane
-
-  name                   = "manifest.sha256"
-  storage_account_name   = azurerm_storage_account.payload.name
-  storage_container_name = azurerm_storage_container.payload.name
-  type                   = "Block"
-  content_type           = "text/plain"
-  source_content         = local.payload_manifest
-
-  # Written last, so a VM that fetches mid-apply cannot read a manifest describing blobs that
-  # are not there yet.
-  depends_on = [azurerm_storage_blob.payload]
-}
-
-# Managed identity, not a SAS token and not the account key: the same identity the VM already
-# uses for Key Vault, scoped to this one container and to reading only.
-#
-# Role assignments are eventually consistent - the VM's first few requests can 403 while the
-# grant replicates. fetch-payload.sh retries for five minutes rather than failing on the
-# first one, which is why this module needs no time_sleep (and therefore no time provider).
-resource "azurerm_role_assignment" "vm_payload_reader" {
-  count = var.assign_vm_blob_role ? 1 : 0
-
-  scope                = azurerm_storage_container.payload.resource_manager_id
-  role_definition_name = "Storage Blob Data Reader"
-  principal_id         = azurerm_linux_virtual_machine.lab.identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "vm_state_contributor" {
-  count = var.assign_vm_blob_role ? 1 : 0
-
-  scope                = azurerm_storage_container.state.resource_manager_id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azurerm_linux_virtual_machine.lab.identity[0].principal_id
-}
-
 # ---------------------------------------------------------------------------
 # Compute
 # ---------------------------------------------------------------------------
 
 resource "azurerm_managed_disk" "adabas_data" {
-  name                 = "${local.name_prefix}-disk-adabasdata"
-  location             = azurerm_resource_group.lab.location
-  resource_group_name  = azurerm_resource_group.lab.name
-  storage_account_type = "Premium_LRS"
-  create_option        = "Empty"
-  disk_size_gb         = var.data_disk_size_gb
-  tags                 = local.tags
+  name                          = "${local.name_prefix}-disk-adabasdata"
+  location                      = azurerm_resource_group.lab.location
+  resource_group_name           = azurerm_resource_group.lab.name
+  storage_account_type          = "Premium_LRS"
+  create_option                 = "Empty"
+  disk_size_gb                  = var.data_disk_size_gb
+  network_access_policy         = "DenyAll"
+  public_network_access_enabled = false
+  tags                          = local.tags
 }
 
 # On-demand backup of the Adabas containers. Incremental, so a second snapshot of a mostly
@@ -971,11 +776,6 @@ resource "azurerm_linux_virtual_machine" "lab" {
     caddy_tls_directive  = local.caddy_tls_directive
     adabas_admin_bind    = local.adabas_admin_bind
 
-    # Where the corpus and the provisioning scripts come from, and how to prove they arrived
-    # intact. No credential: the VM authenticates as itself.
-    payload_base_url = local.payload_base_url
-    state_base_url   = local.state_base_url
-
     # WHICH secret to read and how to treat it - never the secret itself.
     basic_auth_username    = var.demo_basic_auth_username
     basic_auth_secret_name = local.basic_auth_secret_name
@@ -988,6 +788,83 @@ resource "azurerm_linux_virtual_machine" "lab" {
   lifecycle {
     ignore_changes = [custom_data]
   }
+}
+
+# Terraform cannot reach this tenant's private-only Key Vault data plane. The VM can: its
+# managed identity has Get/Set through the access policy above and resolves the vault through
+# the private DNS zone. protected_settings encrypts this command to the guest; no credential
+# enters custom_data, an ARM property readable by every process on the VM.
+resource "azurerm_virtual_machine_extension" "seed_key_vault" {
+  name                       = "seed-private-key-vault"
+  virtual_machine_id         = azurerm_linux_virtual_machine.lab.id
+  publisher                  = "Microsoft.Azure.Extensions"
+  type                       = "CustomScript"
+  type_handler_version       = "2.1"
+  auto_upgrade_minor_version = true
+  tags                       = local.tags
+
+  protected_settings = jsonencode({
+    commandToExecute = join(" ", [
+      "printf '%s'",
+      base64encode(<<-SCRIPT
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        mkdir -p /opt/sifap
+        for attempt in $(seq 1 120); do
+          command -v curl >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1 && break
+          echo "waiting for cloud-init packages (attempt $attempt/120)"
+          sleep 5
+        done
+        command -v curl >/dev/null 2>&1 || { echo "curl unavailable" >&2; exit 1; }
+        command -v python3 >/dev/null 2>&1 || { echo "python3 unavailable" >&2; exit 1; }
+
+        write_secret() {
+          local name="$1" encoded="$2" attempt token body status
+          body="$(python3 - "$encoded" <<'PY'
+        import base64
+        import json
+        import sys
+        print(json.dumps({"value": base64.b64decode(sys.argv[1]).decode("utf-8")}))
+        PY
+          )"
+          for attempt in $(seq 1 60); do
+            token="$(curl -s -H 'Metadata:true' \
+              'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net' \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin).get("access_token", ""))' 2>/dev/null || true)"
+            if [ -n "$token" ]; then
+              status="$(curl -sS -o /tmp/sifap-key-vault-response -w '%%{http_code}' \
+                -X PUT -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+                --data "$body" "${azurerm_key_vault.lab.vault_uri}secrets/$name?api-version=7.4" || true)"
+              if [ "$status" = "200" ]; then
+                echo "seeded Key Vault secret: $name"
+                return 0
+              fi
+            fi
+            echo "Key Vault not ready for $name (attempt $attempt/60, status=$${status:-none})"
+            sleep 5
+          done
+          cat /tmp/sifap-key-vault-response >&2 2>/dev/null || true
+          return 1
+        }
+
+        write_secret "adabas-admin-password" "${base64encode(random_password.adabas_admin.result)}"
+        write_secret "${local.basic_auth_secret_name}" "${base64encode(local.basic_auth_generate ? random_password.demo_basic_auth[0].result : var.demo_basic_auth_password_hash)}"
+        if [ -n "${var.enable_ddm_workstation ? base64encode(random_password.workstation_admin[0].result) : ""}" ]; then
+          write_secret "ddm-workstation-password" "${var.enable_ddm_workstation ? base64encode(random_password.workstation_admin[0].result) : ""}"
+        fi
+        touch /opt/sifap/SECRETS-READY
+      SCRIPT
+      ),
+      "| base64 -d | bash",
+    ])
+  })
+
+  depends_on = [
+    azurerm_key_vault_access_policy.vm,
+    azurerm_private_endpoint.key_vault,
+    azurerm_private_dns_zone_virtual_network_link.key_vault,
+  ]
 }
 
 # Data disk attachment is a link, not a taggable object; the disk itself carries local.tags.
@@ -1078,8 +955,8 @@ resource "azurerm_consumption_budget_resource_group" "lab" {
 # port 2700 - and ships for Windows, not macOS or arm64.
 #
 # So the workstation lives here instead of on someone's laptop. It is needed once: after the
-# DDMs exist, 05-backup-restore.sh archives them to the sifap-state container and restores
-# them on later boots, so this whole section can be turned off and destroyed.
+# DDMs exist, the FUSER and its DDM archive live on the managed data disk, so this whole
+# section can be turned off and destroyed.
 # ---------------------------------------------------------------------------
 
 resource "azurerm_subnet" "workstation" {
@@ -1185,17 +1062,6 @@ resource "random_password" "workstation_admin" {
   override_special = "-_.~"
 }
 
-resource "azurerm_key_vault_secret" "workstation_admin_password" {
-  count = var.enable_ddm_workstation ? 1 : 0
-
-  name         = "ddm-workstation-password"
-  value        = random_password.workstation_admin[0].result
-  key_vault_id = azurerm_key_vault.lab.id
-  tags         = local.tags
-
-  depends_on = [azurerm_key_vault_access_policy.deployer]
-}
-
 resource "azurerm_windows_virtual_machine" "workstation" {
   count = var.enable_ddm_workstation ? 1 : 0
 
@@ -1212,6 +1078,10 @@ resource "azurerm_windows_virtual_machine" "workstation" {
   computer_name = "sifap-ddm-ws"
 
   network_interface_ids = [azurerm_network_interface.workstation[0].id]
+
+  identity {
+    type = "SystemAssigned"
+  }
 
   os_disk {
     caching              = "ReadWrite"

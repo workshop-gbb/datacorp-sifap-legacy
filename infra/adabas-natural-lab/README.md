@@ -30,11 +30,11 @@ The Terraform in this directory creates an isolated environment with a functiona
 - A Linux VM (Ubuntu 22.04 LTS) with Docker installed on first boot;
 - The `adabas-db` container with Adabas Community Edition and a demonstration database;
 - The `natural-ce` container with Natural Community Edition, already mapped to Adabas;
-- **The frozen SIFAP legacy sources, shipped automatically** — staged to a private blob container at `apply` time and pulled down by the VM's managed identity at boot, checksum-verified;
+- **The frozen SIFAP legacy sources, shipped automatically** — packaged from the working tree with a SHA-256 manifest and uploaded over the allow-listed SSH path by `deploy-local.sh`;
 - **A provisioning unit that loads and compiles them** — `systemd` runs the scripts that create the Adabas file, load the data, import the DDMs and compile the `SIFAPPRD` library, then smoke-test it;
 - **A `ttyd` web terminal**, so the Natural green screen is reachable in a browser over HTTPS rather than only through a telnet-era client;
 - A **Caddy reverse proxy** that terminates TLS and requires authentication, routing `/` to a landing page, `/terminal` to the green screen, `/app` to the modern application from Stage 3, and `/admin` to the Adabas console;
-- A Key Vault that stores the Adabas administration password and the demo URL password, both generated during `apply`;
+- A private-only Key Vault that stores the generated Adabas, demo URL and optional Windows workstation credentials, reachable only through a Private Endpoint;
 - A Network Security Group that opens the lab ports only to the IPs you declare;
 - A Log Analytics workspace, diagnostic settings, the Azure Monitor agent, and alerts for VM availability, bootstrap failure and provisioning failure;
 - A resource-group budget with notifications at 50%, 80%, and 100%;
@@ -84,7 +84,8 @@ flowchart LR
     NAT["natural-ce container<br/>Natural CE · port 2700"]:::result
     ADA["adabas-db container<br/>Adabas CE · DBID 12"]:::result
     KV["Lab Key Vault<br/>adabas-admin-password<br/>demo-basic-auth-password"]:::muted
-    BLOB["Payload storage account<br/>legacy corpus + provisioning scripts"]:::muted
+    PAYLOAD["Checksummed SSH payload<br/>legacy corpus + provisioning scripts"]:::muted
+    WS["Optional Windows VM<br/>NaturalONE · RDP allow-list"]:::alt
     PROV["systemd sifap-provisioning<br/>ADALOD · CATALL · smoke test"]:::alt
     LAW["Log Analytics<br/>metrics · alerts · diagnostics"]:::muted
 
@@ -98,8 +99,9 @@ flowchart LR
     VM --> NAT
     NAT -->|"adatcp://adabas-db:60001"| ADA
     VM -.->|"managed identity"| KV
-    VM -.->|"managed identity"| BLOB
-    BLOB --> PROV
+    DEV -->|"deploy-local.sh"| PAYLOAD -->|"SSH"| VM
+    VM --> PROV
+    DEV -->|"RDP"| WS -->|"private :2700"| NAT
     PROV -->|"loads + compiles"| ADA
     VM -.->|"Azure Monitor agent"| LAW
 ```
@@ -156,7 +158,7 @@ Every route except `/healthz` is behind HTTP basic auth, using Caddy's `basic_au
 
 Neither the username nor the hash appears in this repository, in `cloud-init.yaml` or in `custom_data`. The flow is:
 
-1. Terraform generates a random password and stores the **plaintext** in Key Vault as `demo-basic-auth-password`.
+1. Terraform generates a random password; a protected VM Extension stores it in Key Vault as `demo-basic-auth-password` through the VM identity and private endpoint.
 2. At boot the VM reads it with its managed identity and pipes it through `caddy hash-password` **on stdin** — so the plaintext never appears in the process table or in `docker inspect`.
 3. The resulting hash is written to `/opt/sifap/caddy.env`, mode `0600`, and read by Caddy as `{$SIFAP_BASIC_AUTH_HASH}`.
 
@@ -173,7 +175,7 @@ To bring your own credential instead, hash it yourself and pass it through the e
 ```bash
 caddy hash-password                     # or: docker run --rm -it caddy caddy hash-password
 export TF_VAR_demo_basic_auth_password_hash='$2a$14$...'   # single quotes: the hash contains $
-terraform apply
+SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh apply
 ```
 
 Terraform then stores only the hash, as `demo-basic-auth-hash`, and the plaintext stays with you.
@@ -206,7 +208,7 @@ terraform output -raw trust_demo_ca_command
 
 ### Confirming the URL is live
 
-`terraform apply` returns while cloud-init is still pulling container images. The URL answers a few minutes later. Check it rather than guessing:
+`deploy-local.sh apply` returns after cloud-init, payload upload and provisioning restart. The URL can answer before the Adabas load and Natural catalog are complete; check it rather than guessing:
 
 ```bash
 # Prints a ready-to-run curl for your deployment
@@ -229,7 +231,7 @@ Bootstrap writes a machine-readable verdict to syslog on the way out — `SIFAP-
 
 ## Prerequisites
 
-- [ ] **Have an Azure subscription with permission to create resources.** You must be able to create a resource group, VM, Key Vault, access policies, a Log Analytics workspace, and a consumption budget. Confirm with `az account show`.
+- [ ] **Have an Azure subscription with permission to create resources.** You must be able to create a resource group, VMs, a Key Vault, access policies, a Private Endpoint and DNS zone, a Log Analytics workspace, and a consumption budget. Confirm with `az account show`.
 - [ ] **Install and authenticate the Azure CLI.** Run `az login` and, if you have more than one subscription, `az account set --subscription "<SUBSCRIPTION-ID>"`.
 - [ ] **Install Terraform 1.14.x.** The requirement is in `versions.tf` (`required_version = "~> 1.14.0"`). Check with `terraform version`.
 - [ ] **Prepare to protect local state.** This tenant forces Storage Account `publicNetworkAccess=Disabled` at management-group scope, so the Azure Blob backend is not reachable from laptops or GitHub-hosted runners. Local `terraform.tfstate` is the supported default; keep it on the facilitator workstation and back it up after every apply.
@@ -245,7 +247,7 @@ Run this **before** every first apply in a new region or subscription. It takes 
 az vm list-usage --location eastus2 -o table
 ```
 
-Look for the `Standard DSv3 Family vCPUs` row. The default `Standard_D2s_v3` needs 2 vCPUs available. If the limit is 0, request an increase before applying — Terraform will otherwise create the resource group, Key Vault, disk, and network, then fail on the VM and leave you with exactly the half-applied state this module now works to avoid.
+Look for the `Standard Dsv7 Family vCPUs` row. The default `Standard_D2s_v7` needs 2 vCPUs per enabled VM (4 when the DDM workstation is enabled). If the limit is too low, request an increase before applying — Terraform will otherwise create the resource group, Key Vault, disk, and network, then fail on a VM and leave you with exactly the half-applied state this module now works to avoid.
 
 The same quota check runs in the manual preflight job of [`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml), and the command is available as an output:
 
@@ -257,7 +259,7 @@ Confirm the region and size too:
 
 ```bash
 az account show --output table
-az vm list-skus --location eastus2 --size Standard_D2s_v3 --all --output table
+az vm list-skus --location eastus2 --size Standard_D2s_v7 --all --output table
 ```
 
 ---
@@ -389,58 +391,44 @@ allowed_source_cidrs = [
 ]
 ```
 
-- [ ] **Step 5 — Run the quota preflight.** See [Quota preflight](#quota-preflight). Ten seconds now, or a half-applied environment later.
+- [ ] **Step 5 — Run the complete preflight and review the plan.** This checks the subscription, providers, Contributor-or-higher RBAC, pinned Windows image, SKU restrictions, aggregate quota for both VMs, Terraform formatting and validation.
 
 ```bash
-az vm list-usage --location eastus2 -o table
+SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh plan
 ```
 
-- [ ] **Step 6 — Initialize with local state.** Do not pass `-backend-config` in the Microsoft corporate tenant; management-group policy makes the Blob backend unreachable.
+- [ ] **Step 6 — Apply and deliver the payload.** The script re-runs preflight, applies the reviewed configuration, backs up local state with mode `0600`, waits for SSH, uploads the checksummed working-tree payload, verifies it on the VM and starts provisioning.
 
 ```bash
-terraform init
+SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh apply
 ```
 
-A different tenant that permits reachable state storage can opt in by uncommenting the `backend "azurerm"` block in `versions.tf` and supplying the backend config from [`infra/bootstrap`](../bootstrap/README.md). Do not do that here.
+A different tenant that permits reachable state storage can opt in by uncommenting the `backend "azurerm"` block in `versions.tf` and supplying the backend config from [`infra/bootstrap`](../bootstrap/README.md). Do not do that in the Microsoft corporate tenant: management-group policy forces Storage `publicNetworkAccess=Disabled`.
 
-- [ ] **Step 6.5 — Back up the state location before the first apply.** The first `apply` creates `terraform.tfstate`; every later `apply` updates it. It is gitignored because state can contain sensitive values.
+- [ ] **Step 7 — Check bootstrap and base provisioning.** The command shows cloud-init, systemd and the four marker files without hiding a failed base phase.
 
 ```bash
-mkdir -p ../../.local-state-backups/adabas-natural-lab
+./deploy-local.sh status
 ```
 
-- [ ] **Step 7 — Generate and review the plan.**
-
-```bash
-terraform plan -out=lab.tfplan
-```
-
-- [ ] **Step 8 — Apply.**
-
-```bash
-terraform apply lab.tfplan
-mkdir -p ../../.local-state-backups/adabas-natural-lab
-cp terraform.tfstate "../../.local-state-backups/adabas-natural-lab/terraform.tfstate.$(date -u +%Y%m%dT%H%M%SZ)"
-```
-
-- [ ] **Step 9 — Read the outputs, starting with the demo URL.**
+- [ ] **Step 8 — Read the outputs, starting with the demo URL.**
 
 ```bash
 terraform output
 terraform output -raw demo_url
 ```
 
-`apply` returns while the VM is still pulling images and loading Adabas. The next three steps are what turn a running VM into a running mainframe; skipping them leaves an empty `SIFAPPRD` library.
+`apply` returns only after payload installation and the provisioning unit has been restarted, but Adabas and Natural can still be processing. The next two steps turn the base runtime into the complete mainframe; skipping them leaves DDM-dependent members uncataloged.
 
-- [ ] **Step 10 — Wait for the base phase to finish.** It loads Adabas files 150-153 and catalogs the three data areas. It exits successfully with the DDMs still missing — that is the expected state, not a failure.
+- [ ] **Step 9 — Wait for the base phase to finish.** It loads Adabas files 150-153 and catalogs the three data areas. It exits successfully with the DDMs still missing — that is the expected state, not a failure.
 
 ```bash
 eval "$(terraform output -raw provisioning_status_command)"
 ```
 
-- [ ] **Step 11 — Create the four DDMs once, in NaturalONE.** This is the only manual step in the whole deployment, and Natural CE cannot automate it. If you do not have a Windows machine, [Creating the DDMs](#creating-the-ddms) provisions one in the lab VNet. Generate `BENEFIC` (150), `SOCPROG` (151), `PAYMENT` (152) and `AUDIT` (153) against `DBID 12`.
+- [ ] **Step 10 — Create the four DDMs once, in NaturalONE.** This is the only manual step in the whole deployment, and Natural CE cannot automate it. If you do not have a Windows machine, [Creating the DDMs](#creating-the-ddms) uses the workstation created by `SIFAP_ENABLE_DDM_WORKSTATION=true`. Generate `BENEFIC` (150), `SOCPROG` (151), `PAYMENT` (152) and `AUDIT` (153) against `DBID 12`.
 
-- [ ] **Step 12 — Re-run provisioning to finalize.** `auto` detects the four `.NGD` objects, catalogs the subprograms and programs, runs the smoke tests, archives the DDMs to the `sifap-state` container, and writes `/opt/sifap/PROVISIONED`.
+- [ ] **Step 11 — Re-run provisioning to finalize.** `auto` detects the four `.NGD` objects, catalogs the subprograms and programs, runs the smoke tests, archives the DDMs on the managed data disk, and writes `/opt/sifap/PROVISIONED`.
 
 ```bash
 eval "$(terraform output -raw provisioning_rerun_command)"
@@ -453,7 +441,7 @@ The lab is a working mainframe only once `/opt/sifap/PROVISIONED` exists. See [C
 
 ### Protecting and recovering local state
 
-Local state is the source of truth for the lab. Losing `terraform.tfstate` does not delete Azure resources; it only makes Terraform forget them. The intended cleanup is always `terraform destroy` from the same working copy that applied the lab.
+Local state is the source of truth for the lab. Losing `terraform.tfstate` does not delete Azure resources; it only makes Terraform forget them. `deploy-local.sh apply` and `destroy` automatically copy it to `.local-state-backups/adabas-natural-lab/` with mode `0600`; the intended cleanup is always the same script from the same working copy.
 
 - `*.tfstate*`, `.terraform/`, `*.tfvars`, `*.tfplan`, `plan.txt`, `backend.hcl`, `override.tf`, and `.local-state-backups/` are ignored; verify before every workshop with `git check-ignore`.
 - Back up `infra/adabas-natural-lab/terraform.tfstate` after every successful `apply` or `destroy` to an encrypted drive or private, access-controlled store.
@@ -477,7 +465,7 @@ The `apply` finishes while the VM is still running the bootstrap: installing Doc
 | Adabas REST administration | `admin_console_url` | `/admin/` on the demo origin, proxied over TLS. Sign in to the console as `admin` |
 | Adabas console without the proxy | `admin_console_tunnel_command` | `ssh -L` tunnel, for when the `/admin/` prefix breaks the console's assets |
 | **Demo URL username** | `demo_basic_auth_username` | Required on every route except `/healthz` |
-| **Demo URL password** | `demo_basic_auth_password_command` | Prints the `az keyvault secret show` command with the vault name filled in |
+| **Demo URL password** | `demo_basic_auth_password_command` | Prints an SSH command that reads the private vault through the VM identity |
 | Readiness endpoint | `healthz_url` | Unauthenticated, for uptime probes |
 | Which certificate you will get | `tls_mode` | Tells you whether to expect a browser warning |
 | Trust the internal CA | `trust_demo_ca_command` | Removes the warning without widening the NSG |
@@ -485,15 +473,14 @@ The `apply` finishes while the VM is still running the bootstrap: installing Doc
 | SSH session on the VM | `ssh_command` | `ssh sifapadmin@<FQDN>` |
 | VM public IP | `public_ip` | For tools that accept only an address |
 | Natural Development Server endpoint | `natural_development_server` | Register it as a remote server in NaturalONE |
-| Adabas administration password | `adabas_admin_password_command` | Prints the `az keyvault secret show` command with the vault name filled in |
+| Adabas administration password | `adabas_admin_password_command` | Prints an SSH command that reads the private vault through the VM identity |
 | Bootstrap log | `bootstrap_log_command` | Prints the `tail -f` command for the VM log |
 | Bootstrap verdict in Log Analytics | `bootstrap_status_query` | KQL to run in the workspace |
 | **Did the legacy load and compile?** | `provisioning_status_command` | `systemctl status sifap-provisioning` |
 | **Provisioning log** | `provisioning_log_command` | Follows the Adabas load and the Natural compile |
 | **Re-run the load and compile** | `provisioning_rerun_command` | Idempotent; safe to repeat |
 | Provisioning verdict in Log Analytics | `provisioning_status_query` | KQL to run in the workspace |
-| What was staged for the VM | `payload_file_count` | Corpus and provisioning file counts |
-| Payload storage account | `payload_storage_account_name` | For `az storage blob list` |
+| What is packaged for the VM | `payload_file_count` | Corpus and provisioning file counts |
 | Log Analytics workspace | `log_analytics_workspace_name` | For queries and alert rules |
 | Data-disk snapshot | `data_disk_snapshot_name` | Name of the snapshot, when one was requested |
 | Resource group name | `resource_group_name` | For `az` commands and to confirm removal |
@@ -509,10 +496,10 @@ terraform output -raw natural_development_server
 
 ### Read the Adabas password from Key Vault
 
-The password is generated by Terraform, stored in Key Vault, and read by the VM through its managed identity. It never appears in input variables, in outputs, or in this repository.
+The password is generated by Terraform, stored in the private-only Key Vault by a protected VM Extension, and read through the VM managed identity. The value never appears in Terraform outputs or this repository; protect local state because generated credentials are stateful Terraform values.
 
 ```bash
-# 1. Print the ready-to-use command with the actual vault name
+# 1. Print the ready-to-use SSH command
 terraform output -raw adabas_admin_password_command
 
 # 2. Run the command printed above to view the password in the terminal
@@ -521,7 +508,7 @@ terraform output -raw adabas_admin_password_command
 The printed command has this form:
 
 ```bash
-az keyvault secret show --vault-name <KEY-VAULT-NAME> --name adabas-admin-password --query value -o tsv
+ssh sifapadmin@<FQDN> 'sudo /opt/sifap/read-secret.sh adabas-admin-password'
 ```
 
 > [!WARNING]
@@ -529,7 +516,7 @@ az keyvault secret show --vault-name <KEY-VAULT-NAME> --name adabas-admin-passwo
 
 ### The legacy sources: shipped automatically
 
-You do not copy anything by hand. Terraform stages the frozen SIFAP corpus from `../../01-archaeology/legacy-sifap/` into a private blob container at apply time, and the VM pulls it down at first boot using its managed identity, verifying every file against a SHA-256 manifest:
+You do not copy individual files. `deploy-local.sh` packages the frozen SIFAP corpus, provisioning scripts and static pages from the current working tree, writes a SHA-256 manifest, uploads one archive over SSH, verifies it on the VM, and starts provisioning:
 
 ```text
 /opt/sifap/corpus/natural-programs/   22 Natural members + 2 JCL jobs
@@ -538,19 +525,19 @@ You do not copy anything by hand. Terraform stages the frozen SIFAP corpus from 
 
 `/opt/sifap/corpus` is mounted read-only at `/corpus` inside `natural-ce`.
 
-**Why blob storage and not `cloud-init`.** Azure caps `custom_data` at 65535 bytes decoded. The corpus alone is roughly 77 KB once base64-encoded — over the limit before a single line of configuration is added. Staging it as blobs keeps `cloud-init` at about 55 KB and ships exactly the tree the apply is running from, which a `git clone` pinned to a ref could not do for sources that are not yet on a public branch.
+**Why SSH and not `cloud-init` or Blob Storage.** Azure caps `custom_data` at 65535 bytes decoded. The corpus alone is roughly 77 KB once base64-encoded — over the limit before a single line of configuration is added. The corporate management-group policy also forces Storage Account `publicNetworkAccess=Disabled`, making a new Blob data plane unreachable from both the facilitator and a GitHub-hosted runner without private networking. SSH already exists, is allow-listed, and ships exactly the working-tree bytes rather than a stale git ref.
 
-Confirm what was staged and what arrived:
+Confirm what was packaged and what arrived:
 
 ```bash
 terraform output -raw payload_file_count
 ssh "$(terraform output -raw demo_fqdn)" 'ls -R /opt/sifap/corpus | head -40'
 ```
 
-If the directories are empty the download failed — almost always a missing `Storage Blob Data Reader` assignment (see [Permissions the payload needs](#permissions-the-payload-needs)). Re-run it in place:
+If the directories are empty, payload upload or verification did not complete. Re-run it from the repository:
 
 ```bash
-ssh "sifapadmin@$(terraform output -raw demo_fqdn)" 'sudo /opt/sifap/fetch-payload.sh'
+infra/adabas-natural-lab/deploy-local.sh upload
 ```
 
 To work with the sources directly:
@@ -628,7 +615,7 @@ Use this when you do not have a Windows machine, which includes every Apple Sili
 - [ ] **Create it.** Roughly USD 0.19/hour including the Windows licence, and it shares the lab's auto-shutdown.
 
 ```bash
-terraform apply -var 'enable_ddm_workstation=true'
+SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh apply
 ```
 
 - [ ] **Connect over RDP.** On macOS, install **Windows App** from the App Store first. The username is in `ddm_workstation_admin_username`; the password never leaves Key Vault.
@@ -645,10 +632,10 @@ eval "$(terraform output -raw ddm_workstation_password_command)"
 terraform output -raw ddm_workstation_ndv_endpoint
 ```
 
-- [ ] **Destroy it when the DDMs are archived.** The DDMs survive in the `sifap-state` container, so nothing is lost.
+- [ ] **Destroy it when the DDMs are archived.** The Natural FUSER and compact DDM archive survive on the managed data disk, so nothing is lost.
 
 ```bash
-terraform apply -var 'enable_ddm_workstation=false'
+SIFAP_ENABLE_DDM_WORKSTATION=false ./deploy-local.sh apply
 ```
 
 #### Option B — a Windows machine you already have
@@ -670,11 +657,7 @@ A long name that does not match the listing breaks every `VIEW OF` in the corpus
 
 ### Permissions the payload needs
 
-The VM reads the staging container as itself, so Terraform grants its managed identity `Storage Blob Data Reader` on that container. It also grants `Storage Blob Data Contributor` on a separate `sifap-state` container so the VM can archive the manually created Natural DDM objects after finalize and restore them on a later boot. **Creating a role assignment requires Owner or User Access Administrator on the subscription** — Contributor is not enough, and the apply fails on that one resource.
-
-If you only have Contributor, set `assign_vm_blob_role = false` and have someone with the rights create the assignment. Nothing else in the module needs elevated rights.
-
-Note that role assignments are eventually consistent. `fetch-payload.sh` retries for five minutes precisely because the first request legitimately returns 403 while the assignment replicates.
+Payload delivery needs no Azure data-plane role and creates no role assignment. The facilitator needs Contributor-or-higher to deploy resources and an SSH key accepted by the Linux VM. `allowed_source_cidrs` must contain the facilitator's current public address; otherwise Terraform can create the VM but `deploy-local.sh` cannot upload the archive.
 
 ---
 
@@ -717,7 +700,7 @@ Only two variables are required. The others have defaults defined in `variables.
 | `cost_center` | No | `workshop-legacy-modernization` | Cost allocation tag |
 | `location` | No | `eastus2` | Azure region. Also drives the name suffix |
 | `location_short` | No | `""` | Name suffix. Empty derives it from `location` — leave it empty |
-| `vm_size` | No | `Standard_D2s_v3` | 2 vCPU / 8 GB, the practical minimum for Adabas CE and Natural CE together |
+| `vm_size` | No | `Standard_D2s_v7` | 2 vCPU / 8 GB, the practical minimum for Adabas CE and Natural CE together |
 | `source_image_version` | No | `22.04.202608060` | Ubuntu image version. See [Reproducible builds](#reproducible-builds) |
 | `admin_username` | No | `sifapadmin` | VM administrator. `cloud-init.yaml` adds `sifapadmin` to the `docker` group explicitly, so changing this value requires `sudo` for Docker commands |
 | `ssh_public_key_path` | No | `~/.ssh/id_rsa.pub` | Path to the authorized public key |
@@ -725,7 +708,6 @@ Only two variables are required. The others have defaults defined in `variables.
 | `enable_public_acme` | No | `false` | `true` opens 80/443 to the internet for a Let's Encrypt certificate. See [Choosing a certificate mode](#choosing-a-certificate-mode) |
 | `acme_contact_email` | No | `""` | Expiry-notice address, used only when `enable_public_acme` is `true` |
 | `expose_adabas_admin_port` | No | `false` | `true` reopens plaintext 8190. Prefer the HTTPS proxy |
-| `key_vault_allowed_ip_rules` | No | `[]` | Key Vault firewall allow-list. Empty leaves the vault on its public endpoint |
 | `data_disk_size_gb` | No | `32` | Size of the managed disk that stores Adabas data, Natural FUSER, and provisioning state |
 | `data_disk_snapshot_label` | No | `""` | Non-empty takes a snapshot of the data disk. See [Data protection](#data-protection) |
 | `adabas_image` | No | `softwareag/adabas-ce:7.4.0@sha256:...` | Adabas Community Edition image, pinned by digest |
@@ -737,10 +719,9 @@ Only two variables are required. The others have defaults defined in `variables.
 | `demo_basic_auth_password_hash` | No | `""` | Bring your own bcrypt hash. Empty makes Terraform generate a password into Key Vault. **Pass it via `TF_VAR_`, never in a file** |
 | `modern_app_upstream` | No | `sifap-app:8080` | What `/app/` proxies to. Returns 502 until Stage 3 answers there |
 | `terminal_natural_command` | No | `""` | Command the terminal runs to open a Natural session. Empty probes the known paths and falls back to a shell |
-| `legacy_corpus_path` | No | `../../01-archaeology/legacy-sifap` | Frozen legacy sources staged to the VM |
-| `assign_vm_blob_role` | No | `true` | Grants the VM `Storage Blob Data Reader` on the payload container. Needs Owner or UAA — see [Permissions the payload needs](#permissions-the-payload-needs) |
+| `legacy_corpus_path` | No | `../../01-archaeology/legacy-sifap` | Frozen legacy sources packaged for the VM |
 | `enable_ddm_workstation` | No | `false` | `true` creates a Windows VM in the lab VNet for running NaturalONE. Required only to create the DDMs, and only if you have no Windows machine. See [Creating the DDMs](#creating-the-ddms) |
-| `ddm_workstation_size` | No | `Standard_D2s_v3` | Size of the NaturalONE workstation |
+| `ddm_workstation_size` | No | `Standard_D2s_v7` | Size of the NaturalONE workstation |
 | `ddm_workstation_admin_username` | No | `sifapadmin` | Local administrator on the workstation. Windows reserved names are rejected |
 | `ddm_workstation_image_version` | No | `20348.5499.260809` | Windows Server 2022 Gen2 image version, pinned |
 | `adabas_dbid` | No | `12` | Adabas DBID mapped by Natural |
@@ -756,7 +737,7 @@ Only two variables are required. The others have defaults defined in `variables.
 
 ## Cost and spending control
 
-The `estimated_cost_note` output carries the module's estimate: roughly **USD 0.20 per hour** while the VM runs and roughly **USD 0.04 per hour** while it is deallocated, for `Standard_D2s_v3`, Premium SSD disks, and a static IP in `eastus2`. These are estimates from public pay-as-you-go retail pricing. Confirm against your own agreement before relying on them.
+The `estimated_cost_note` output carries the module's estimate for the Linux VM, Premium SSD disks, and a static IP in `eastus2`. The optional Windows workstation adds its VM and Windows licence while enabled. These are estimates only; confirm current retail prices and your own agreement before relying on them.
 
 Four mechanisms protect the budget, from weakest to strongest:
 
@@ -765,7 +746,7 @@ Four mechanisms protect the budget, from weakest to strongest:
 | Budget alerts | E-mails at 50%, 80%, and 100% of `monthly_budget_amount` | Always on. Tells you, does not stop you |
 | Automatic shutdown | Shuts the VM down daily at 20:00 in `auto_shutdown_timezone` | Always on; a safety net, not an operating plan |
 | `az vm deallocate` | Stops compute charges, preserves the environment | Pausing between sessions |
-| `terraform destroy` | Removes everything | When you have finished with the lab |
+| `SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy` | Removes everything | When you have finished with the lab |
 
 The budget is scoped to the resource group and is deliberately independent of the VM. That matters: in the `brazilsouth` failure the VM was never created, so a VM-scoped control would not have existed either. A resource-group budget starts working as soon as the group does.
 
@@ -785,7 +766,7 @@ az vm start \
 ```
 
 > [!IMPORTANT]
-> `az vm deallocate` stops compute charges, but the managed disks (64 GB OS and 32 GB data, both Premium SSD) and the static public IP keep charging. To eliminate the cost, use `terraform destroy`.
+> `az vm deallocate` stops compute charges, but the managed disks (64 GB OS and 32 GB data, both Premium SSD) and the static public IP keep charging. To eliminate the cost, use `SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy`.
 
 The public IP is static and keeps its DNS label, so the demo URL is the same after a stop and start.
 
@@ -820,10 +801,9 @@ Both alerts notify the address in `auto_shutdown_notification_email`. Without it
 |---|---|---|
 | `prevent_destroy` | Lab Key Vault | The one resource holding a credential |
 | Local state backup | Facilitator workstation | Losing `terraform.tfstate` orphans every resource it tracked |
-| Blob versioning + soft delete | State container | Recovers a corrupted or truncated state file |
 | `azurerm_snapshot` | Adabas data disk | On-demand copy before a risky change |
 | Managed data disk bind mounts | Adabas `/data`, Natural FUSER, `/opt/sifap/state` | Keeps database files, cataloged Natural objects, DDM markers, and phase state off the OS disk |
-| DDM GP archive | `sifap-state/ddm-gp-backup.tgz` | Backs up manually created `*.NGD` DDM objects after finalize and restores them when the FUSER is empty |
+| DDM GP archive | `/mnt/sifap-data/state/ddm-gp-backup.tgz` | Backs up manually created `*.NGD` DDM objects after finalize and restores them when the FUSER is empty |
 
 **Intentional exceptions.** The VM, its OS and data disks, the public IP, and the network carry no `prevent_destroy`. This lab is disposable by design, and guarding everything would make the documented teardown impossible. The guard is on the two things whose loss is not recoverable by re-running `apply`: the credential store and the state.
 
@@ -836,7 +816,7 @@ data_disk_snapshot_label = "before-catall-2026-08-17"
 ```
 
 ```bash
-terraform apply
+SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh apply
 terraform output -raw data_disk_snapshot_name
 ```
 
@@ -877,8 +857,6 @@ length(templatefile("cloud-init.yaml", {
   key_vault_uri = "https://example.vault.azure.net/", secret_name = "x",
   demo_fqdn = "example.eastus2.cloudapp.azure.com", caddy_global_options = "",
   caddy_tls_directive = "tls internal", adabas_admin_bind = "127.0.0.1:8190",
-  payload_base_url = "https://example.blob.core.windows.net/sifap-payload",
-  state_base_url = "https://example.blob.core.windows.net/sifap-state",
   basic_auth_username = "sifap", basic_auth_secret_name = "x",
   basic_auth_secret_kind = "password", modern_app_upstream = "sifap-app:8080",
   terminal_natural_command = "",
@@ -886,7 +864,7 @@ length(templatefile("cloud-init.yaml", {
 EOF
 ```
 
-Anything large — sources, seed data, binaries — belongs in the blob payload instead. That is exactly why the legacy corpus is staged rather than embedded: it is 77 KB base64-encoded on its own, and the provisioning seed data is another 3.5 MB.
+Anything large — sources, seed data, binaries — belongs in the checksummed SSH payload instead. That is exactly why the legacy corpus is uploaded after apply rather than embedded: it is 77 KB base64-encoded on its own, and the provisioning seed data is another 3.5 MB.
 
 **The VM image version is pinned.** `source_image_version` defaults to `22.04.202608060` for the Canonical Ubuntu 22.04 LTS Gen2 image in East US 2. To bump it, list the available versions and then verify the exact URN before editing the default:
 
@@ -940,7 +918,7 @@ az ad app federated-credential create --id "<APP-OBJECT-ID>" --parameters '{
 }'
 ```
 
-The service principal used for validation needs enough Azure rights to check providers, quota, and RBAC. The facilitator identity that runs local `terraform apply` needs `Owner` or `Contributor` plus `User Access Administrator` on the subscription or lab resource group, because the module creates role assignments for managed identities.
+The service principal used for validation needs enough Azure rights to check providers, quota, and RBAC. The facilitator identity that runs `deploy-local.sh` needs Owner or Contributor on the subscription or lab resource group. The lab creates no role assignments.
 
 ### Security gates
 
@@ -983,18 +961,17 @@ This module requires `~> 1.14.0`. Every workflow that runs Terraform pins `1.14.
 | Terminal opens a shell instead of Natural | The Natural start-up path was not found | Follow the instructions it prints, then set `terminal_natural_command` |
 | `/app/` returns 502 | Nothing is answering on `modern_app_upstream` | Expected until Stage 3. Attach the app container to the `sifap-lab` network |
 | `/admin/` renders half-broken | The console's assets assume a root path | Use `terraform output -raw admin_console_tunnel_command` |
-| `/corpus` is empty in `natural-ce` | The payload download failed | `sudo /opt/sifap/fetch-payload.sh` — see [Permissions the payload needs](#permissions-the-payload-needs) |
-| `sifap-provisioning` is `failed` with exit 3 | `provisioning/run-all.sh` was not staged | `provisioning/` was empty at apply time. Add the scripts, re-apply, then re-run |
-| `apply` fails on `azurerm_role_assignment.vm_payload_reader` | Your account has Contributor, not Owner or UAA | Set `assign_vm_blob_role = false` and have someone with the rights create it |
+| `/corpus` is empty in `natural-ce` | The SSH payload upload or verification failed | Run `infra/adabas-natural-lab/deploy-local.sh upload` from the repository |
+| `sifap-provisioning` is `failed` with exit 3 | `provisioning/run-all.sh` was not delivered | Run `infra/adabas-natural-lab/deploy-local.sh upload` from the repository |
 | `https://` refused, bootstrap finished | Caddy container did not start | `sudo docker compose logs caddy` on the VM |
 | Let's Encrypt certificate never issues | ACME challenge cannot reach port 80 | Confirm `enable_public_acme = true` and that the DNS label resolves publicly |
 | `terraform plan` fails while reading the SSH key | The file at `ssh_public_key_path` does not exist | Generate the key pair or set the variable to the correct path |
 | SSH times out | Your public IP changed and is no longer in `allowed_source_cidrs` | Update `terraform.tfvars` and apply again |
 | `Permission denied (publickey)` | The private key does not match the submitted public key | Connect with `ssh -i ~/.ssh/id_rsa sifapadmin@<FQDN>` |
 | Ports 2700 or 60001 do not respond | Bootstrap still running, or a container stopped | Follow the bootstrap log and check the containers |
-| Key Vault password rejected by Adabas | Bootstrap could not read the secret and generated a local one | Search the log for `could not read the Key Vault secret`; if confirmed, `terraform apply -replace=azurerm_linux_virtual_machine.lab` |
+| Key Vault password rejected by Adabas | The private seed extension or bootstrap read failed | Check `azurerm_virtual_machine_extension.seed_key_vault` and `/var/log/sifap-bootstrap.log`; then run `SIFAP_TERRAFORM_EXTRA_ARGS='-replace=azurerm_virtual_machine_extension.seed_key_vault' ./deploy-local.sh apply` |
 | `docker` returns `permission denied` | Docker group membership applies only in a new session | Reconnect through SSH, or use `sudo docker ...` |
-| `apply` fails with an SKU or quota error | The region lacks `Standard_D2s_v3` or sufficient vCPU quota | Run the [quota preflight](#quota-preflight), then request an increase or change size |
+| `apply` fails with an SKU or quota error | The region lacks `Standard_D2s_v7`, the SKU is restricted for the subscription, or quota is insufficient | Run the [quota preflight](#quota-preflight), then request capacity or change size |
 | Key Vault name already exists | A soft-deleted vault still holds the name | `az keyvault purge --name <NAME> --location eastus2` |
 | `terraform init` tries to reach an Azure Blob backend | A previous `.terraform/` directory still remembers the old backend | Run `terraform init -reconfigure` after the backend block has been commented out; do not pass `-backend-config` in this tenant |
 | `destroy` stops on the Key Vault | `prevent_destroy` is doing its job | See [Destroy the environment](#destroy-the-environment) |
@@ -1032,7 +1009,7 @@ Marker files answer the same question without parsing anything:
 
 | File | Meaning |
 |---|---|
-| `/opt/sifap/PAYLOAD-OK` | The corpus and scripts downloaded and checksummed cleanly |
+| `/opt/sifap/PAYLOAD-OK` | The corpus and scripts were uploaded and checksummed cleanly |
 | `/opt/sifap/PAYLOAD-FAILED` | They did not — the VM has no legacy sources |
 | `/opt/sifap/PROVISIONED` | `run-all.sh` finished successfully |
 | `/opt/sifap/PROVISIONING-FAILED` | It ran and failed; the file records when and where |
@@ -1049,7 +1026,7 @@ curl -s https://api.ipify.org
 grep -A3 allowed_source_cidrs terraform.tfvars
 
 # 3. If they differ, update the file and apply again
-terraform apply
+SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh apply
 ```
 
 The `apply` changes only the NSG rules. The VM and containers keep running.
@@ -1072,7 +1049,7 @@ All three containers share the `sifap-lab` bridge network. `natural-ce` reaches 
 
 ### Region without quota or VM size
 
-Not every region offers `Standard_D2s_v3`, and new subscriptions often have a low quota. Confirm with the [quota preflight](#quota-preflight). To change regions, set `location` alone — the name suffix follows automatically:
+Not every region or subscription offers `Standard_D2s_v7`, and new subscriptions often have a low quota. Confirm both restrictions and quota with the [quota preflight](#quota-preflight). To change regions, set `location` alone — the name suffix follows automatically:
 
 ```hcl
 location = "westeurope"
@@ -1084,32 +1061,16 @@ If your region is not in the suffix map in `main.tf`, set `location_short` as we
 
 ## Destroy the environment
 
-- [ ] **Step 1 — Save the resource group name.** After `destroy`, the outputs no longer exist.
+- [ ] **Step 1 — Destroy through the state-owning orchestrator.** It backs up state, temporarily lifts only the Key Vault guard, destroys with the same workstation flag used by apply, removes the override and purges any soft-deleted SIFAP vault.
 
 ```bash
 cd infra/adabas-natural-lab
-terraform output -raw resource_group_name
+SIFAP_ENABLE_DDM_WORKSTATION=true \
+  SIFAP_CONFIRM_DESTROY=DESTROY \
+  ./deploy-local.sh destroy
 ```
 
-- [ ] **Step 2 — Lift the Key Vault guard.** The vault carries `prevent_destroy`, so `destroy` stops there by design. Terraform merges override files argument by argument, so copying the shipped template flips exactly one flag and changes nothing else.
-
-```bash
-cp teardown.tf.disabled override.tf
-```
-
-- [ ] **Step 3 — Destroy everything.** Confirm by typing `yes` when Terraform prompts.
-
-```bash
-terraform destroy
-```
-
-- [ ] **Step 4 — Put the guard back.** `override.tf` is git-ignored, so a lifted guard cannot be committed, but leaving it lying around defeats the point.
-
-```bash
-rm override.tf
-```
-
-- [ ] **Step 5 — Confirm that nothing remains.** The command should fail and report that the group does not exist.
+- [ ] **Step 2 — Confirm that nothing remains.** The command should fail and report that the group does not exist.
 
 ```bash
 az group show --name "<RESOURCE-GROUP-NAME>"
@@ -1118,7 +1079,7 @@ az group show --name "<RESOURCE-GROUP-NAME>"
 Run destroy locally from the workstation that holds `terraform.tfstate`. The GitHub workflow intentionally has no destroy job because a hosted runner does not have the persistent local state needed to know what to destroy.
 
 > [!CAUTION]
-> `terraform destroy` removes the VM, disks, and all data loaded into Adabas. If the lab contains work you want to keep, copy it out first, or take a snapshot with `data_disk_snapshot_label`. Never use `terraform state rm` to get past the guard — that leaves real Azure resources running with nothing tracking them, and nothing to bill against.
+> `deploy-local.sh destroy` removes the VM, disks, and all data loaded into Adabas. If the lab contains work you want to keep, copy it out first, or take a snapshot with `data_disk_snapshot_label`. Never use `terraform state rm` to get past the guard — that leaves real Azure resources running with nothing tracking them, and nothing to bill against.
 
 ### Key Vault and the soft-delete window
 
@@ -1154,7 +1115,7 @@ Note the `--location` argument: it is the region the vault was deleted *from*. W
 - [ ] `terraform state list` reads from `infra/adabas-natural-lab/terraform.tfstate`, and that file has been backed up outside git.
 - [ ] `terraform.tfvars` remains outside version control.
 - [ ] The budget exists and `auto_shutdown_notification_email` is set.
-- [ ] When finished, you ran `az vm deallocate` (pause) or `terraform destroy` (removal).
+- [ ] When finished, you ran `az vm deallocate` (pause) or `SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy` (removal).
 
 ---
 

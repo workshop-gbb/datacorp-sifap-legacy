@@ -18,6 +18,11 @@ on:
         default: preflight
         type: choice
         options: [preflight, plan]
+      include_ddm_workstation:
+        description: "Include the temporary Windows/NaturalONE workstation in quota checks and plan"
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -30,6 +35,7 @@ env:
   ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
   ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  TF_VAR_enable_ddm_workstation: ${{ inputs.include_ddm_workstation }}
   LAB_DIR: infra/adabas-natural-lab
 
 jobs:
@@ -122,84 +128,17 @@ jobs:
 
           az account show --query "{subscriptionId:id,state:state}" -o table
 
-      - name: Verify required resource providers
-        run: |
-          set -euo pipefail
-          fail() { echo "::error::$*"; exit 1; }
-          providers=(
-            Microsoft.Authorization
-            Microsoft.Compute
-            Microsoft.Consumption
-            Microsoft.DevTestLab
-            Microsoft.Insights
-            Microsoft.KeyVault
-            Microsoft.Network
-            Microsoft.OperationalInsights
-            Microsoft.Resources
-            Microsoft.Storage
-          )
-          for provider in "${providers[@]}"; do
-            state="$(az provider show --namespace "$provider" --query registrationState -o tsv 2>/dev/null || true)"
-            [ "$state" = "Registered" ] || fail "Resource provider ${provider} is ${state:-not registered}. Register it with: az provider register --namespace ${provider} --wait"
-            echo "${provider}: ${state}"
-          done
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
 
-      - name: Verify RBAC for local facilitator deployment
-        run: |
-          set -euo pipefail
-          fail() { echo "::error::$*"; exit 1; }
-          subscription_scope="/subscriptions/${ARM_SUBSCRIPTION_ID}"
-          roles_json="$(az role assignment list --assignee "$ARM_CLIENT_ID" --include-inherited --scope "$subscription_scope" --query "[].roleDefinitionName" -o json)" \
-            || fail "Cannot list role assignments for the federated identity at ${subscription_scope}."
-          has_role() {
-            python3 -c 'import json,sys; roles=set(json.loads(sys.argv[2] or "[]")); sys.exit(0 if sys.argv[1] in roles else 1)' "$1" "$roles_json"
-          }
-          if ! has_role Owner && ! has_role Contributor; then
-            fail "The identity needs Owner or Contributor on ${subscription_scope} to create the lab resources."
-          fi
-          if ! has_role Owner && ! has_role "User Access Administrator"; then
-            fail "The module creates role assignments, so the identity needs Owner or User Access Administrator on ${subscription_scope}."
-          fi
-          echo "Required subscription RBAC assignments are present. No remote-state backend is checked because deployment uses local state."
-
-      - name: Verify East US 2 VM quota and SKU capacity
-        run: |
-          set -euo pipefail
-          fail() { echo "::error::$*"; exit 1; }
-          vm_size="$(awk '
-            $0 ~ /^variable "vm_size"/ { in_block=1 }
-            in_block && $1 == "default" {
-              gsub(/"/, "", $3)
-              print $3
-              exit
-            }
-          ' "${LAB_DIR}/variables.tf")"
-          [ -n "$vm_size" ] || fail "Could not derive vm_size from ${LAB_DIR}/variables.tf."
-          sku_json="$(timeout 120s az vm list-skus --location eastus2 --resource-type virtualMachines --size "$vm_size" --all --query "[?name=='${vm_size}'].{name:name,capabilities:capabilities,restrictions:restrictions}" -o json)" \
-            || fail "Timed out or failed while reading SKU restrictions for ${vm_size} in eastus2."
-          required_vcpus="$(python3 - "$vm_size" "$sku_json" <<'PY'
-          import json, sys
-          vm_size = sys.argv[1]
-          skus = json.loads(sys.argv[2] or "[]")
-          if not skus:
-              print(f"VM SKU {vm_size} is not offered in eastus2.", file=sys.stderr)
-              sys.exit(1)
-          sku = skus[0]
-          restrictions = sku.get("restrictions") or []
-          if restrictions:
-              print(f"VM SKU {vm_size} is restricted in eastus2: {json.dumps(restrictions)}", file=sys.stderr)
-              sys.exit(1)
-          print(next(c.get("value") for c in sku.get("capabilities", []) if c.get("name") == "vCPUs"))
-          PY
-          )" || fail "VM SKU ${vm_size} is not usable in eastus2."
-          quota_json="$(az vm list-usage --location eastus2 --query "[?name.value=='standardDSv3Family'] | [0].{current:currentValue,limit:limit}" -o json)"
-          current="$(python3 -c 'import json,sys; print(int(json.load(sys.stdin)["current"]))' <<< "$quota_json")"
-          limit="$(python3 -c 'import json,sys; print(int(json.load(sys.stdin)["limit"]))' <<< "$quota_json")"
-          available=$((limit - current))
-          echo "VM size: ${vm_size}"
-          echo "Required vCPUs: ${required_vcpus}"
-          echo "standardDSv3Family quota in eastus2: used=${current}, limit=${limit}, available=${available}"
-          [ "$available" -ge "$required_vcpus" ] || fail "East US 2 standardDSv3Family has ${available} available vCPUs, but ${vm_size} requires ${required_vcpus}."
+      - name: Run the reusable deployment preflight
+        env:
+          SIFAP_AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          SIFAP_AZURE_LOCATION: eastus2
+        run: infra/adabas-natural-lab/preflight-local.sh
 
   plan:
     name: Ephemeral local-state plan preview — do not apply here
@@ -248,6 +187,7 @@ jobs:
           set -euo pipefail
           terraform plan -no-color -out=tfplan -detailed-exitcode && code=$? || code=$?
           if [ "$code" -eq 1 ]; then exit 1; fi
+          terraform show -json tfplan | python3 audit-plan.py
           terraform show -no-color tfplan > plan.txt
           {
             echo "## Ephemeral plan preview only"

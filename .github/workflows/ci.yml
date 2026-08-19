@@ -83,8 +83,6 @@ jobs:
               "caddy_tls_directive": 90 + 45,   # embeds demo_fqdn plus a comment prefix
               "caddy_global_options": 80,       # "email <address>"
               "key_vault_uri": 80,
-              "payload_base_url": 96,
-              "state_base_url": 96,
               "terminal_natural_command": 120,
               "modern_app_upstream": 64,
               "adabas_admin_bind": 32,
@@ -138,7 +136,7 @@ jobs:
               print(
                   f"::error file={template}::rendered cloud-init would be {size} bytes, "
                   f"{-headroom} over Azure's {LIMIT}-byte custom_data limit. Move content to the "
-                  f"payload blob (see fetch-payload.sh) instead of inlining it."
+                  f"checksummed SSH payload instead of inlining it."
               )
               sys.exit(1)
 
@@ -147,14 +145,14 @@ jobs:
           if headroom < 512:
               print(
                   f"::error file={template}::only {headroom} bytes of custom_data headroom "
-                  f"remain (minimum 512). Move something to the payload blob."
+                  f"remain (minimum 512). Move something to the SSH payload."
               )
               sys.exit(1)
 
           if headroom < 2048:
               print(
                   f"::warning file={template}::custom_data headroom is down to {headroom} "
-                  f"bytes. Prefer the payload blob for anything new."
+                  f"bytes. Prefer the SSH payload for anything new."
               )
           PY
 
@@ -218,6 +216,27 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m pytest tests -m "not live" -q
+          python3 -m py_compile audit-plan.py
+      - name: Lint provisioning and deployment shell scripts
+        run: |
+          set -euo pipefail
+          shellcheck \
+            infra/adabas-natural-lab/preflight-local.sh \
+            infra/adabas-natural-lab/deploy-local.sh \
+            infra/adabas-natural-lab/provisioning/*.sh
+      - name: Build and verify the SSH payload archive
+        run: |
+          set -euo pipefail
+          archive="${RUNNER_TEMP}/sifap-payload.tar.gz"
+          stage="${RUNNER_TEMP}/sifap-payload"
+          SIFAP_PAYLOAD_ARCHIVE="$archive" infra/adabas-natural-lab/deploy-local.sh package
+          mkdir -p "$stage"
+          tar -xzf "$archive" -C "$stage"
+          ( cd "$stage" && sha256sum -c --quiet manifest.sha256 )
+          leaked=$(find "$stage" \
+            \( -path '*/ngd-work/*' -o -path '*/ddm-work/*' -o -path '*/__pycache__/*' -o -name ngd_encoder.py \) \
+            -print -quit)
+          [ -z "$leaked" ] || { echo "::error::Scratch leaked into payload: $leaked"; exit 1; }
       - name: Verify no scratch or dead code reaches the VM payload
         run: |
           set -euo pipefail

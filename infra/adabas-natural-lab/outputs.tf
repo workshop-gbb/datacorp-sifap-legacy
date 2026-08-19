@@ -72,10 +72,10 @@ output "demo_basic_auth_username" {
 # Same discipline as the Adabas password: emit the COMMAND, never the value, so nothing
 # secret lands in `terraform output`, in CI logs or in the state's output map.
 output "demo_basic_auth_password_command" {
-  description = "Reads the demo URL password from Key Vault. Returns a usable password only when Terraform generated one; if you supplied demo_basic_auth_password_hash yourself, the vault holds that hash and only you know the plaintext."
+  description = "Reads the demo URL password through the Linux VM identity and private Key Vault endpoint."
   value = local.basic_auth_generate ? join("", [
-    "az keyvault secret show --vault-name ${azurerm_key_vault.lab.name} ",
-    "--name ${local.basic_auth_secret_name} --query value -o tsv",
+    "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} ",
+    "'sudo /opt/sifap/read-secret.sh demo-basic-auth-password'",
     ]) : join("", [
     "not generated: you supplied demo_basic_auth_password_hash, so only the bcrypt hash ",
     "is stored. Use the password you hashed.",
@@ -127,8 +127,8 @@ output "natural_development_server" {
 # stays in Key Vault and never lands in `terraform output`, CI logs or the state's output map.
 # That is also why no output here needs `sensitive = true`: none carries a secret value.
 output "adabas_admin_password_command" {
-  description = "Reads the generated Adabas administration password from Key Vault."
-  value       = "az keyvault secret show --vault-name ${azurerm_key_vault.lab.name} --name adabas-admin-password --query value -o tsv"
+  description = "Reads the generated Adabas administration password through the Linux VM identity and private Key Vault endpoint."
+  value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'sudo /opt/sifap/read-secret.sh adabas-admin-password'"
 }
 
 output "bootstrap_log_command" {
@@ -155,10 +155,7 @@ output "provisioning_log_command" {
 
 output "provisioning_rerun_command" {
   description = "Re-runs auto provisioning. Use it after fixing a failure, after an apply that changed the corpus, or after creating the DDMs in NaturalONE."
-  value = join(" && ", [
-    "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'sudo /opt/sifap/fetch-payload.sh",
-    "sudo systemctl restart sifap-provisioning'",
-  ])
+  value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'sudo systemctl restart sifap-provisioning'"
 }
 
 output "provisioning_status_query" {
@@ -166,18 +163,18 @@ output "provisioning_status_query" {
   value       = "Syslog | where SyslogMessage has \"SIFAP-PROVISIONING RESULT\" | project TimeGenerated, SyslogMessage | order by TimeGenerated desc"
 }
 
-output "payload_storage_account_name" {
-  description = "Storage account holding the staged legacy corpus and provisioning scripts. The VM reads it with its managed identity; there is no key, no SAS and no anonymous access. Useful for checking what actually got uploaded: az storage blob list --auth-mode login --account-name <this> -c sifap-payload -o table"
-  value       = azurerm_storage_account.payload.name
-}
-
 output "payload_file_count" {
-  description = "How many files Terraform staged for the VM, split between the frozen legacy corpus and the provisioning scripts. A provisioning count of 0 means infra/adabas-natural-lab/provisioning/ was empty at apply time and nothing will load the legacy - see README.md."
+  description = "How many files deploy-local.sh packages for the VM, split between the frozen legacy corpus and provisioning scripts."
   value = join("", [
     "${length(local.corpus_files)} corpus files, ",
     "${length(local.provisioning_files)} provisioning files",
     length(local.provisioning_files) == 0 ? " (WARNING: no provisioning scripts staged)" : "",
   ])
+}
+
+output "admin_username" {
+  description = "SSH administrator used by deploy-local.sh when it uploads the checksummed payload archive."
+  value       = var.admin_username
 }
 
 # ---------------------------------------------------------------------------
@@ -196,7 +193,7 @@ output "bootstrap_status_query" {
 
 output "quota_preflight_command" {
   description = "Run this BEFORE the first apply. A vCPU quota of zero in the target region is the failure that left the previous attempt half-applied."
-  value       = "az vm list-usage --location ${var.location} -o table | grep -i 'Standard DSv3'"
+  value       = "az vm list-usage --location ${var.location} -o table | grep -i 'Standard Dsv7'"
 }
 
 output "data_disk_snapshot_name" {
@@ -238,10 +235,10 @@ output "ddm_workstation_rdp_command" {
 }
 
 output "ddm_workstation_password_command" {
-  description = "Reads the generated workstation administrator password from Key Vault. The value itself is never an output."
+  description = "Reads the generated workstation password through the Linux VM identity and private Key Vault endpoint."
   value = var.enable_ddm_workstation ? join("", [
-    "az keyvault secret show --vault-name ${azurerm_key_vault.lab.name} ",
-    "--name ddm-workstation-password --query value -o tsv",
+    "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} ",
+    "'sudo /opt/sifap/read-secret.sh ddm-workstation-password'",
   ]) : "disabled (enable_ddm_workstation = false)"
 }
 

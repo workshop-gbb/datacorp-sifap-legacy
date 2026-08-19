@@ -57,7 +57,7 @@ variable "location_short" {
 variable "vm_size" {
   description = "VM size. Adabas CE plus Natural CE need roughly 4-6 GB RAM combined, so 2 vCPU / 8 GB is the practical floor."
   type        = string
-  default     = "Standard_D2s_v3"
+  default     = "Standard_D2s_v7"
 }
 
 variable "source_image_version" {
@@ -363,42 +363,20 @@ variable "adabas_dbid" {
 
 variable "legacy_corpus_path" {
   description = <<-EOT
-    Path to the frozen legacy sources, relative to this module directory. Terraform reads
-    <path>/natural-programs and <path>/adabas-ddms and stages every file to blob storage,
-    from where the VM pulls them at first boot with its managed identity.
+    Path to the frozen legacy sources, relative to this module directory. deploy-local.sh
+    reads <path>/natural-programs and <path>/adabas-ddms, puts the exact working-tree bytes
+    in a checksummed archive, and uploads it to the VM over SSH after Terraform apply.
 
     This is a PATH, not a git ref, on purpose. The alternative - cloning a pinned commit on
     the VM - only ships what has already been pushed, so the lab would boot with whatever the
     remote happened to hold rather than the tree this apply is running from. Staging the
-    working tree makes "what Terraform saw" and "what the VM got" the same bytes, and the
+    working tree makes "what the deploy ran" and "what the VM got" the same bytes, and the
     per-file SHA-256 manifest proves it.
 
-    A directory that does not exist yields an empty file set rather than an error, so a
-    partial checkout fails loudly on the VM (with a clear message) instead of at plan time.
+    The deploy script rejects a missing or empty directory before applying anything.
   EOT
   type        = string
   default     = "../../01-archaeology/legacy-sifap"
-}
-
-variable "assign_vm_blob_role" {
-  description = <<-EOT
-    Create the "Storage Blob Data Reader" role assignment that lets the VM's managed identity
-    read the staged payload. Leave it true unless the tenant forbids role assignments.
-
-    Writing a role assignment needs Microsoft.Authorization/roleAssignments/write - Owner or
-    User Access Administrator - which some workshop subscriptions do not grant. Set this to
-    false there, have someone with the rights assign "Storage Blob Data Reader" to the VM
-    identity over the payload container out of band, and re-run
-    `sudo /opt/sifap/fetch-payload.sh` on the VM.
-
-    With no role at all the VM downloads nothing: the corpus never lands, provisioning never
-    runs, and both say so in /var/log/sifap-bootstrap.log. Nothing else breaks.
-
-    Why a role and not a SAS token: a SAS is a bearer credential with an expiry to manage and
-    a copy to leak. The managed identity already exists for Key Vault, so this reuses it.
-  EOT
-  type        = bool
-  default     = true
 }
 
 # ---------------------------------------------------------------------------
@@ -595,26 +573,6 @@ variable "log_daily_quota_gb" {
   }
 }
 
-variable "key_vault_allowed_ip_rules" {
-  description = <<-EOT
-    Public IP allow-list for the Key Vault firewall, in CIDR or bare-IP form. Empty (the
-    default) leaves the vault on its open public endpoint with default_action = "Allow".
-
-    Empty is the default for a reason, not an oversight. Three parties need the data plane:
-    the operator's laptop, the lab VM (through its own public IP, which does not exist until
-    the VM does), and the CI runner that writes the secret during apply - and GitHub-hosted
-    runners have no stable egress IP. A default-Deny firewall with an incomplete list turns
-    every apply into a 403.
-
-    Set it once you know all three addresses, or when you run applies from fixed egress. The
-    vault is still protected by access policies scoped to exactly two principals, and holds
-    one generated lab password. Azure rejects /31 and /32 masks here, so the module strips a
-    /32 down to the bare address for you.
-  EOT
-  type        = list(string)
-  default     = []
-}
-
 # ---------------------------------------------------------------------------
 # DDM workstation
 #
@@ -625,9 +583,9 @@ variable "key_vault_allowed_ip_rules" {
 # missing workstation, inside the VNet, so the one manual step in the whole deployment does
 # not depend on what laptop the facilitator happens to own.
 #
-# It is needed ONCE. After the DDMs exist, 05-backup-restore.sh archives them to the
-# sifap-state container and restores them on later boots, so the workstation can be turned
-# off with enable_ddm_workstation = false and destroyed.
+# It is needed ONCE. After the DDMs exist, the FUSER and a compact DDM archive persist on the
+# managed data disk, so the workstation can be turned off with
+# enable_ddm_workstation = false and destroyed.
 # ---------------------------------------------------------------------------
 
 variable "enable_ddm_workstation" {
@@ -650,7 +608,7 @@ variable "enable_ddm_workstation" {
 variable "ddm_workstation_size" {
   description = "VM size for the NaturalONE workstation. Eclipse wants 8 GB to be comfortable, which is what the default provides."
   type        = string
-  default     = "Standard_D2s_v3"
+  default     = "Standard_D2s_v7"
 }
 
 variable "ddm_workstation_admin_username" {

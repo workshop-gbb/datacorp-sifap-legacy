@@ -22,7 +22,7 @@
 # is what left the previous attempt half-applied, with a resource group and a Key
 # Vault created and no VM:
 #
-#   az vm list-usage --location eastus2 -o table | grep -i 'Standard DSv3'
+#   az vm list-usage --location eastus2 -o table | grep -i 'Standard Dsv7'
 #
 # And confirm the remote state backend exists (infra/bootstrap), then:
 #
@@ -130,21 +130,14 @@ allowed_source_cidrs = [
 # ---------------------------------------------------------------------------
 # The legacy corpus and provisioning
 # ---------------------------------------------------------------------------
-# The frozen SIFAP sources and the provisioning scripts are staged to a private blob
-# container at apply time and pulled down by the VM's managed identity at boot. They
-# are NOT embedded in cloud-init: base64-encoded they are ~77 KB on their own, over
-# Azure's 65535-byte custom_data limit.
+# deploy-local.sh packages the frozen SIFAP sources and provisioning scripts with a
+# SHA-256 manifest and uploads one archive over the allow-listed SSH path after apply.
+# They are NOT embedded in cloud-init: base64-encoded they exceed Azure's 65535-byte
+# custom_data limit.
 
 # Where the frozen legacy lives, relative to this module. Change it only if you are
 # running the lab against a different corpus.
 # legacy_corpus_path = "../../01-archaeology/legacy-sifap"
-
-# Terraform grants the VM identity "Storage Blob Data Reader" on the payload container
-# so it can fetch that staging area. Creating a role assignment needs Owner or User
-# Access Administrator on the subscription; if your account has only Contributor, the
-# apply fails on this one resource. Set it to false and have someone with the rights
-# create the assignment - the output tells you the exact command.
-# assign_vm_blob_role = false
 
 # Upstream the /app route proxies to, once Stage 3 has something to run. Until then
 # the route returns 502, which is deliberate: the URL is provisioned first so it never
@@ -162,7 +155,7 @@ allowed_source_cidrs = [
 # ---------------------------------------------------------------------------
 
 # 2 vCPU / 8 GB is the practical floor for Adabas CE and Natural CE together.
-# vm_size = "Standard_D2s_v3"
+# vm_size = "Standard_D2s_v7"
 
 # Premium SSD holding the Adabas database containers, mounted at /mnt/adabas-data.
 # 32 GB fits the demo database with room to load the SIFAP corpus; raise it before a
@@ -222,7 +215,7 @@ allowed_source_cidrs = [
 # --- DDM workstation ---------------------------------------------------------
 # Natural CE cannot create DDMs, and NaturalONE - the tool that can - ships only for Windows.
 # Set this to true to get a Windows VM inside the lab VNet for that one manual step, then set
-# it back to false once the DDMs are archived to the sifap-state container.
+# it back to false once the DDMs are archived on the managed data disk.
 # See README.md -> "Creating the DDMs".
 #
 # enable_ddm_workstation = true

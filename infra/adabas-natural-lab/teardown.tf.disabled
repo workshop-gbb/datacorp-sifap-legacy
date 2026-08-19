@@ -11,13 +11,11 @@
 # with no owner and nothing tracking them - never do that here.
 #
 #   cd infra/adabas-natural-lab
-#   cp teardown.tf.disabled override.tf     # guard lifted, this resource only
-#   terraform destroy
-#   rm override.tf                          # put the guard back
+#   SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy
 #
 # override.tf is listed in .gitignore, so a lifted guard cannot be committed by
-# accident. The destroy job in .github/workflows/deploy-lab.yml performs exactly
-# these steps, behind a GitHub environment approval and a typed confirmation.
+# accident. deploy-local.sh performs these steps locally, where the persistent
+# terraform.tfstate exists, behind a typed confirmation.
 #
 # The extension is .disabled on purpose: Terraform only loads files ending in .tf,
 # so this one is inert where it sits and the guard stays on until someone acts.
