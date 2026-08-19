@@ -68,6 +68,20 @@ run_compile_group() {
   fi
 }
 
+run_missing_compile_group() {
+  local library="$1" label="$2" member
+  shift 2
+  local missing=()
+  while IFS= read -r member; do
+    [ -n "$member" ] && missing+=("$member")
+  done < <(missing_cataloged_members "$library" "$@" || true)
+  if [ "${#missing[@]}" -eq 0 ]; then
+    info "Skipping ${label}; every requested object is already cataloged"
+    return 0
+  fi
+  run_compile_group "$library" "$label" "${missing[@]}"
+}
+
 main() {
   require_command docker
   load_adabas_env
@@ -82,24 +96,24 @@ main() {
 
   case "$BUILD_PHASE" in
     base)
-      run_compile_group "$NATURAL_LIBRARY" data-areas "${DATA_AREAS[@]}"
+      run_missing_compile_group "$NATURAL_LIBRARY" data-areas "${DATA_AREAS[@]}"
       assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}"
       info "Copycodes installed as source only: ${COPYCODES[*]}"
       info "DDMs are created manually once in NaturalONE; base phase intentionally stops before DDM-dependent objects: ${DDMS[*]}"
       ;;
     finalize)
       require_ddms_cataloged "$NATURAL_LIBRARY" "${DDMS[@]}"
-      run_compile_group "$NATURAL_LIBRARY" subprograms "${SUBPROGRAMS[@]}"
-      run_compile_group "$NATURAL_LIBRARY" programs "${PROGRAMS[@]}"
+      run_missing_compile_group "$NATURAL_LIBRARY" subprograms "${SUBPROGRAMS[@]}"
+      run_missing_compile_group "$NATURAL_LIBRARY" programs "${PROGRAMS[@]}"
       assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}" "${SUBPROGRAMS[@]}" "${PROGRAMS[@]}"
       ;;
     auto|all)
-      run_compile_group "$NATURAL_LIBRARY" data-areas "${DATA_AREAS[@]}"
+      run_missing_compile_group "$NATURAL_LIBRARY" data-areas "${DATA_AREAS[@]}"
       assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}"
       info "Copycodes installed as source only: ${COPYCODES[*]}"
       if ddms_cataloged "$NATURAL_LIBRARY" "${DDMS[@]}"; then
-        run_compile_group "$NATURAL_LIBRARY" subprograms "${SUBPROGRAMS[@]}"
-        run_compile_group "$NATURAL_LIBRARY" programs "${PROGRAMS[@]}"
+        run_missing_compile_group "$NATURAL_LIBRARY" subprograms "${SUBPROGRAMS[@]}"
+        run_missing_compile_group "$NATURAL_LIBRARY" programs "${PROGRAMS[@]}"
         assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}" "${SUBPROGRAMS[@]}" "${PROGRAMS[@]}"
       else
         info "Skipping subprograms and programs until DDMs are created in NaturalONE: ${DDMS[*]}"
