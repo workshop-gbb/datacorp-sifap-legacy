@@ -1208,6 +1208,13 @@ write_files:
 
       unset BASIC_AUTH_SECRET BASIC_AUTH_HASH BASIC_AUTH_KIND COMPOSE_BASIC_AUTH_HASH
 
+      # The data disk outlives the VM by design, so an abrupt VM replacement leaves the
+      # nucleus concurrency lock behind naming a container host that no longer exists.
+      # Adabas then aborts with ADANUC-F-CONCURRLOCKHOST on every start. Safe to clear
+      # here because no nucleus can be running before compose starts it.
+      find /mnt/sifap-data/adabas-data -path '*/_DB_LOCK' -type f -delete 2>/dev/null || true
+      find /mnt/sifap-data/adabas-data -name 'NUCTMP*' -type f -delete 2>/dev/null || true
+
       docker compose up -d --remove-orphans
       /opt/sifap/update-www-status.sh || true
 
