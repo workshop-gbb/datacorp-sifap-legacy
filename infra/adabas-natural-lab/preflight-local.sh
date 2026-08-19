@@ -12,6 +12,32 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "Required command not found: $1"
 }
 
+az_with_timeout() {
+  python3 - "$@" <<'PY'
+import os
+import subprocess
+import sys
+
+timeout = int(os.environ.get("SIFAP_AZURE_COMMAND_TIMEOUT", "120"))
+try:
+    result = subprocess.run(
+        ["az", *sys.argv[1:]],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=timeout,
+        check=False,
+    )
+except subprocess.TimeoutExpired:
+    print(f"Azure CLI timed out after {timeout}s: az {' '.join(sys.argv[1:])}", file=sys.stderr)
+    raise SystemExit(124)
+if result.stderr:
+    print(result.stderr, end="", file=sys.stderr)
+print(result.stdout, end="")
+raise SystemExit(result.returncode)
+PY
+}
+
 variable_default() {
   local variable_name="$1"
   awk -v variable_name="$variable_name" '
@@ -64,7 +90,7 @@ PY
 
 check_vm_capacity() {
   local vm_size workstation_size workstation_image_version size sku_json sku_details usage_json
-  local requirements_file
+  local requirements_file sku_cache_dir sku_cache_file
   vm_size="$(variable_default vm_size)"
   [ -n "$vm_size" ] || fail "Could not derive vm_size from variables.tf."
   local vm_sizes=("$vm_size")
@@ -75,7 +101,7 @@ check_vm_capacity() {
     [ -n "$workstation_size" ] || fail "Could not derive ddm_workstation_size from variables.tf."
     [ -n "$workstation_image_version" ] || fail "Could not derive ddm_workstation_image_version from variables.tf."
     vm_sizes+=("$workstation_size")
-    az vm image show --location "$LOCATION" \
+    az_with_timeout vm image show --location "$LOCATION" \
       --urn "MicrosoftWindowsServer:WindowsServer:2022-datacenter-g2:${workstation_image_version}" \
       --query urn -o tsv >/dev/null \
       || fail "Pinned Windows image ${workstation_image_version} is unavailable in ${LOCATION}."
@@ -83,12 +109,19 @@ check_vm_capacity() {
   fi
 
   requirements_file="$(mktemp)"
-  trap 'rm -f "${requirements_file:-}"; trap - RETURN' RETURN
+  sku_cache_dir="$(mktemp -d)"
+  trap 'rm -f "${requirements_file:-}"; rm -rf "${sku_cache_dir:-}"; trap - RETURN' RETURN
   for size in "${vm_sizes[@]}"; do
-    sku_json="$(az vm list-skus --location "$LOCATION" --resource-type virtualMachines \
-      --size "$size" --all \
-      --query "[?name=='${size}'].{name:name,family:family,capabilities:capabilities,restrictions:restrictions}" \
-      -o json)" || fail "Failed while reading SKU restrictions for ${size} in ${LOCATION}."
+    sku_cache_file="$sku_cache_dir/$size.json"
+    if [ -s "$sku_cache_file" ]; then
+      sku_json="$(cat "$sku_cache_file")"
+    else
+      sku_json="$(az_with_timeout vm list-skus --location "$LOCATION" --resource-type virtualMachines \
+        --size "$size" --all \
+        --query "[?name=='${size}'].{name:name,family:family,capabilities:capabilities,restrictions:restrictions}" \
+        -o json)" || fail "Failed while reading SKU restrictions for ${size} in ${LOCATION}."
+      printf '%s' "$sku_json" > "$sku_cache_file"
+    fi
     sku_details="$(python3 - "$size" "$sku_json" <<'PY'
 import json
 import sys
@@ -111,7 +144,7 @@ PY
     printf 'VM size %s: %s vCPU(s), quota family %s\n' "$size" "${sku_details##* }" "${sku_details% *}"
   done
 
-  usage_json="$(az vm list-usage --location "$LOCATION" -o json)"
+  usage_json="$(az_with_timeout vm list-usage --location "$LOCATION" -o json)"
   python3 - "$requirements_file" "$usage_json" "$LOCATION" <<'PY' || fail "Insufficient VM quota."
 import collections
 import json
