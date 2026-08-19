@@ -895,14 +895,10 @@ Checkov is advisory on purpose. Its Azure pack assumes a production estate — p
 
 ### Terraform version alignment
 
-This module requires `~> 1.14.0`, and `deploy-lab.yml` pins `1.14.6` to match.
+This module requires `~> 1.14.0`. Every workflow that runs Terraform pins `1.14.6` to match: [`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml) through `env.TERRAFORM_VERSION`, plus the `infra` job in [`ci.yml`](../../.github/workflows/ci.yml) and [`copilot-setup-steps.yml`](../../.github/workflows/copilot-setup-steps.yml).
 
 > [!IMPORTANT]
-> `.github/workflows/ci.yml` still pins Terraform `1.9.5`, which cannot read a `~> 1.14.0` module and will fail its infra job. One line fixes it, at **line 129**:
->
-> ```yaml
-> terraform_version: "1.14.6"
-> ```
+> Bump all four together. Terraform state is forward-only, so a CLI older than the version that last wrote the state cannot read it, and the failure lands mid-command against the lab.
 
 ---
 
