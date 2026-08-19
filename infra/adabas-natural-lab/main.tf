@@ -77,6 +77,11 @@ locals {
     replace(trimspace(c), "/\\/32$/", "")
   ]
 
+  # The DDM workstation gets its own subnet rather than sharing the lab's, so the rule that
+  # opens the Natural Development Server to it names a network instead of a host address
+  # that does not exist until the VM does.
+  workstation_subnet_cidr = "10.42.2.0/24"
+
   # --- the legacy payload ---------------------------------------------------
   # Two things have to reach the VM before the lab is anything more than an empty database:
   # the frozen SIFAP sources, and the scripts that load and compile them.
@@ -314,10 +319,29 @@ resource "azurerm_network_security_group" "lab" {
     }
   }
 
+  # The NaturalONE workstation reaches the Natural Development Server over the VNet, never
+  # over the public IP: its egress address is its own and would not be in
+  # allowed_source_cidrs anyway. Without this rule DenyAllOtherInbound below shadows it.
+  dynamic "security_rule" {
+    for_each = var.enable_ddm_workstation ? [1] : []
+    content {
+      name                       = "AllowNaturalDevelopmentServerFromWorkstation"
+      priority                   = 111
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_range     = "2700"
+      source_address_prefix      = local.workstation_subnet_cidr
+      destination_address_prefix = "*"
+    }
+  }
+
   # Explicit deny backstop. 4096 is the last usable priority, so it sits after every rule
   # above and before Azure's defaults (AllowVnetInBound 65000, AllowAzureLoadBalancerInBound
   # 65001, DenyAllInBound 65500). It therefore also shadows intra-vnet inbound traffic, which
-  # is intended: this lab is a single VM with no peer that needs to reach it.
+  # is intended: the only peer that may exist is the optional DDM workstation, and it is
+  # allowed explicitly above rather than by a blanket VNet rule.
   security_rule {
     name                       = "DenyAllOtherInbound"
     priority                   = 4096
@@ -1042,5 +1066,184 @@ resource "azurerm_consumption_budget_resource_group" "lab" {
     # local.budget_start_date is derived from timestamp() when the variable is empty, which
     # would otherwise show a diff on every plan.
     ignore_changes = [time_period]
+  }
+}
+
+# ---------------------------------------------------------------------------
+# DDM workstation (optional)
+#
+# The one manual step in this deployment is creating four DDMs, and Natural CE cannot do it:
+# the image carries no SYSDDM objects, no DDM utility and not a single sample .NGD. Software
+# AG's supported answer is NaturalONE, which attaches to the Natural Development Server on
+# port 2700 - and ships for Windows, not macOS or arm64.
+#
+# So the workstation lives here instead of on someone's laptop. It is needed once: after the
+# DDMs exist, 05-backup-restore.sh archives them to the sifap-state container and restores
+# them on later boots, so this whole section can be turned off and destroyed.
+# ---------------------------------------------------------------------------
+
+resource "azurerm_subnet" "workstation" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  name                 = "${local.name_prefix}-snet-workstation"
+  resource_group_name  = azurerm_resource_group.lab.name
+  virtual_network_name = azurerm_virtual_network.lab.name
+  address_prefixes     = [local.workstation_subnet_cidr]
+}
+
+# A separate NSG, not a rule bolted onto the lab's. The workstation exposes RDP and nothing
+# else, and keeping that in its own object means widening RDP can never accidentally widen
+# the database host.
+resource "azurerm_network_security_group" "workstation" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  name                = "${local.name_prefix}-nsg-workstation"
+  location            = azurerm_resource_group.lab.location
+  resource_group_name = azurerm_resource_group.lab.name
+  tags                = local.tags
+
+  security_rule {
+    name                       = "AllowRdpFromWorkshop"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3389"
+    source_address_prefixes    = var.allowed_source_cidrs
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "DenyAllOtherInbound"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+
+resource "azurerm_subnet_network_security_group_association" "workstation" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  subnet_id                 = azurerm_subnet.workstation[0].id
+  network_security_group_id = azurerm_network_security_group.workstation[0].id
+}
+
+# No DNS label: this is a machine one person RDPs into for an hour, not an endpoint anyone
+# needs a stable name for.
+resource "azurerm_public_ip" "workstation" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  name                = "${local.name_prefix}-pip-workstation"
+  location            = azurerm_resource_group.lab.location
+  resource_group_name = azurerm_resource_group.lab.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags                = local.tags
+}
+
+resource "azurerm_network_interface" "workstation" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  name                = "${local.name_prefix}-nic-workstation"
+  location            = azurerm_resource_group.lab.location
+  resource_group_name = azurerm_resource_group.lab.name
+  tags                = local.tags
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.workstation[0].id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.workstation[0].id
+  }
+}
+
+resource "azurerm_network_interface_security_group_association" "workstation" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  network_interface_id      = azurerm_network_interface.workstation[0].id
+  network_security_group_id = azurerm_network_security_group.workstation[0].id
+}
+
+# Same discipline as the Adabas password: generated here, stored in Key Vault, never an
+# output and never an input. Windows wants 3 of 4 character classes; the special set is
+# trimmed to characters that survive being typed into an RDP prompt.
+resource "random_password" "workstation_admin" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  length           = 24
+  special          = true
+  min_upper        = 2
+  min_lower        = 2
+  min_numeric      = 2
+  min_special      = 2
+  override_special = "-_.~"
+}
+
+resource "azurerm_key_vault_secret" "workstation_admin_password" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  name         = "ddm-workstation-password"
+  value        = random_password.workstation_admin[0].result
+  key_vault_id = azurerm_key_vault.lab.id
+  tags         = local.tags
+
+  depends_on = [azurerm_key_vault_access_policy.deployer]
+}
+
+resource "azurerm_windows_virtual_machine" "workstation" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  name                = "${local.name_prefix}-vm-ddmws"
+  location            = azurerm_resource_group.lab.location
+  resource_group_name = azurerm_resource_group.lab.name
+  size                = var.ddm_workstation_size
+  admin_username      = var.ddm_workstation_admin_username
+  admin_password      = random_password.workstation_admin[0].result
+  tags                = local.tags
+
+  # Windows caps the NetBIOS name at 15 characters and the resource name above is longer,
+  # so it must be set explicitly or the apply fails on a name Azure derived for us.
+  computer_name = "sifap-ddm-ws"
+
+  network_interface_ids = [azurerm_network_interface.workstation[0].id]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Premium_LRS"
+    disk_size_gb         = 128
+  }
+
+  source_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2022-datacenter-g2"
+    version   = var.ddm_workstation_image_version
+  }
+
+  boot_diagnostics {}
+}
+
+# The workstation is idle most of its short life, and a forgotten Windows VM bills for the
+# licence as well as the compute. It shares the lab's shutdown time.
+resource "azurerm_dev_test_global_vm_shutdown_schedule" "workstation" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  virtual_machine_id    = azurerm_windows_virtual_machine.workstation[0].id
+  location              = azurerm_resource_group.lab.location
+  enabled               = true
+  daily_recurrence_time = var.auto_shutdown_time
+  timezone              = var.auto_shutdown_timezone
+  tags                  = local.tags
+
+  notification_settings {
+    enabled         = var.auto_shutdown_notification_email != ""
+    email           = var.auto_shutdown_notification_email != "" ? var.auto_shutdown_notification_email : null
+    time_in_minutes = 30
   }
 }

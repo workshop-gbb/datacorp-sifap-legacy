@@ -221,3 +221,34 @@ output "estimated_cost_note" {
     To stop ALL charges, destroy the lab: see README.md -> "Destroy the environment".
   EOT
 }
+
+# ---------------------------------------------------------------------------
+# DDM workstation
+# ---------------------------------------------------------------------------
+
+output "ddm_workstation_rdp_command" {
+  description = "Opens the NaturalONE workstation over RDP. macOS: install Windows App from the App Store, then use the address below. Only reachable from allowed_source_cidrs."
+  value = var.enable_ddm_workstation ? join("", [
+    "open rdp://full%20address=s:${azurerm_public_ip.workstation[0].ip_address}:3389",
+    "\\&username=s:${var.ddm_workstation_admin_username}",
+    ]) : join("", [
+    "disabled (set enable_ddm_workstation = true to create the Windows VM that runs ",
+    "NaturalONE, the only supported way to create the four SIFAP DDMs)",
+  ])
+}
+
+output "ddm_workstation_password_command" {
+  description = "Reads the generated workstation administrator password from Key Vault. The value itself is never an output."
+  value = var.enable_ddm_workstation ? join("", [
+    "az keyvault secret show --vault-name ${azurerm_key_vault.lab.name} ",
+    "--name ddm-workstation-password --query value -o tsv",
+  ]) : "disabled (enable_ddm_workstation = false)"
+}
+
+# The workstation reaches Natural over the VNet, so this is the address to register in
+# NaturalONE - not the public endpoint, whose NSG rule allows the workshop CIDRs and not the
+# workstation's own egress address.
+output "ddm_workstation_ndv_endpoint" {
+  description = "Private Natural Development Server endpoint to register in NaturalONE from the workstation. Use this, not natural_development_server, when connecting from inside the VNet."
+  value       = "${azurerm_network_interface.lab.private_ip_address}:2700"
+}

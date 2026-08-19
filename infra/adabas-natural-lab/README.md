@@ -438,7 +438,7 @@ terraform output -raw demo_url
 eval "$(terraform output -raw provisioning_status_command)"
 ```
 
-- [ ] **Step 11 — Create the four DDMs once, in NaturalONE.** This is the only manual step, and Natural CE cannot automate it. Register the server from `terraform output -raw natural_development_server`, then generate `BENEFIC` (150), `SOCPROG` (151), `PAYMENT` (152) and `AUDIT` (153) against `DBID 12`. The verified limitations and the full procedure are in [`provisioning/README.md`](provisioning/README.md#manual-ddm-creation).
+- [ ] **Step 11 — Create the four DDMs once, in NaturalONE.** This is the only manual step in the whole deployment, and Natural CE cannot automate it. If you do not have a Windows machine, [Creating the DDMs](#creating-the-ddms) provisions one in the lab VNet. Generate `BENEFIC` (150), `SOCPROG` (151), `PAYMENT` (152) and `AUDIT` (153) against `DBID 12`.
 
 - [ ] **Step 12 — Re-run provisioning to finalize.** `auto` detects the four `.NGD` objects, catalogs the subprograms and programs, runs the smoke tests, archives the DDMs to the `sifap-state` container, and writes `/opt/sifap/PROVISIONED`.
 
@@ -605,6 +605,69 @@ terraform output -raw provisioning_rerun_command
 
 **If the scripts are absent it fails loudly.** `provisioning/` may be empty at apply time. In that case `payload_file_count` says so, and the unit starts, fails immediately with exit code 3, and writes an explanation naming the missing file to `/var/log/sifap-provisioning.log`. That is deliberate: a unit in the `failed` state is a signal, whereas a silent no-op is how a demo reaches the room with an empty database.
 
+### Creating the DDMs
+
+This is the one step nothing in this module can automate, and it is worth understanding why before working around it. Verified against `softwareag/natural-ce:9.3.3`:
+
+| Attempted route | Result |
+|---|---|
+| `SYSDDM` utility | The library does not exist in the image; `LOGON SYSDDM` succeeds into an empty library |
+| Any sample DDM to copy | The image contains zero `.NGD` objects and only the `SAMP4ONE` library |
+| `ftouch lib=SYSDDM` | Return code 6149 |
+| Cataloging a `.ddm` listing as source | `NAT4225 Invalid level` — a `LISTDDM` report is not compilable Natural source |
+| Forging the compiled `.NGD` byte by byte | 15 × `NAT0002`; abandoned, see [failure #8](../../docs/failures/README.md) |
+
+Software AG's own answer is NaturalONE, the Eclipse IDE that attaches to the Natural Development Server. Its [Docker Hub page for `natural-ce`](https://hub.docker.com/r/softwareag/natural-ce) states the image "will be used together with the NaturalONE development environment", and [NaturalONE Community Edition](https://tech.forums.softwareag.com/t/adabas-natural-community-edition-for-docker-download/235228) is a free download that needs a TECHcommunity account.
+
+**NaturalONE ships for Windows. There is no macOS build, and none for arm64.** That is what `enable_ddm_workstation` exists for.
+
+#### Option A — a Windows workstation in the lab VNet
+
+Use this when you do not have a Windows machine, which includes every Apple Silicon Mac.
+
+- [ ] **Create it.** Roughly USD 0.19/hour including the Windows licence, and it shares the lab's auto-shutdown.
+
+```bash
+terraform apply -var 'enable_ddm_workstation=true'
+```
+
+- [ ] **Connect over RDP.** On macOS, install **Windows App** from the App Store first. The username is in `ddm_workstation_admin_username`; the password never leaves Key Vault.
+
+```bash
+terraform output -raw ddm_workstation_rdp_command
+eval "$(terraform output -raw ddm_workstation_password_command)"
+```
+
+- [ ] **Install NaturalONE** on the workstation from the TECHcommunity download above.
+- [ ] **Register the development server** using the **private** endpoint. The public one is allow-listed to the workshop CIDRs, which do not include the workstation's own egress address.
+
+```bash
+terraform output -raw ddm_workstation_ndv_endpoint
+```
+
+- [ ] **Destroy it when the DDMs are archived.** The DDMs survive in the `sifap-state` container, so nothing is lost.
+
+```bash
+terraform apply -var 'enable_ddm_workstation=false'
+```
+
+#### Option B — a Windows machine you already have
+
+Register `terraform output -raw natural_development_server` instead. It works with no extra infrastructure, provided that machine's public IP is in `allowed_source_cidrs`.
+
+#### Either way
+
+Generate the DDMs from the live database (`DBID 12`) rather than typing them, then correct the long names against the corpus listings. The member names are constrained by Natural's 8-character limit:
+
+| FNR | DDM member | Corpus listing |
+|---|---|---|
+| 150 | `BENEFIC` | `BENEFIC.ddm` |
+| 151 | `SOCPROG` | `SOCPROG.ddm` |
+| 152 | `PAYMENT` | `PAYMENT.ddm` |
+| 153 | `AUDIT` | `AUDIT.ddm` |
+
+A long name that does not match the listing breaks every `VIEW OF` in the corpus. When all four exist as `SIFAPPRD/GP/*.NGD`, provisioning writes `/opt/sifap/state/DDMS-READY` and the finalize phase can run. Full reference: [`provisioning/README.md`](provisioning/README.md#manual-ddm-creation).
+
 ### Permissions the payload needs
 
 The VM reads the staging container as itself, so Terraform grants its managed identity `Storage Blob Data Reader` on that container. It also grants `Storage Blob Data Contributor` on a separate `sifap-state` container so the VM can archive the manually created Natural DDM objects after finalize and restore them on a later boot. **Creating a role assignment requires Owner or User Access Administrator on the subscription** — Contributor is not enough, and the apply fails on that one resource.
@@ -676,6 +739,10 @@ Only two variables are required. The others have defaults defined in `variables.
 | `terminal_natural_command` | No | `""` | Command the terminal runs to open a Natural session. Empty probes the known paths and falls back to a shell |
 | `legacy_corpus_path` | No | `../../01-archaeology/legacy-sifap` | Frozen legacy sources staged to the VM |
 | `assign_vm_blob_role` | No | `true` | Grants the VM `Storage Blob Data Reader` on the payload container. Needs Owner or UAA — see [Permissions the payload needs](#permissions-the-payload-needs) |
+| `enable_ddm_workstation` | No | `false` | `true` creates a Windows VM in the lab VNet for running NaturalONE. Required only to create the DDMs, and only if you have no Windows machine. See [Creating the DDMs](#creating-the-ddms) |
+| `ddm_workstation_size` | No | `Standard_D2s_v3` | Size of the NaturalONE workstation |
+| `ddm_workstation_admin_username` | No | `sifapadmin` | Local administrator on the workstation. Windows reserved names are rejected |
+| `ddm_workstation_image_version` | No | `20348.5499.260809` | Windows Server 2022 Gen2 image version, pinned |
 | `adabas_dbid` | No | `12` | Adabas DBID mapped by Natural |
 | `auto_shutdown_time` | No | `2000` | Daily shutdown time in HHmm format |
 | `auto_shutdown_timezone` | No | `Eastern Standard Time` | Shutdown schedule time zone |

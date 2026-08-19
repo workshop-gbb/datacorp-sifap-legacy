@@ -218,3 +218,11 @@ allowed_source_cidrs = [
 # data disk is created and tracked in state:
 #   terraform apply -var 'data_disk_snapshot_label=before-catall'
 # data_disk_snapshot_label = "before-catall"
+
+# --- DDM workstation ---------------------------------------------------------
+# Natural CE cannot create DDMs, and NaturalONE - the tool that can - ships only for Windows.
+# Set this to true to get a Windows VM inside the lab VNet for that one manual step, then set
+# it back to false once the DDMs are archived to the sifap-state container.
+# See README.md -> "Creating the DDMs".
+#
+# enable_ddm_workstation = true

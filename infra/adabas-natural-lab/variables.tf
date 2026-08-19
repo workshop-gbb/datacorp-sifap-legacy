@@ -614,3 +614,75 @@ variable "key_vault_allowed_ip_rules" {
   type        = list(string)
   default     = []
 }
+
+# ---------------------------------------------------------------------------
+# DDM workstation
+#
+# Natural CE cannot create DDMs: the image ships no SYSDDM objects, no DDM utility and not
+# one sample .NGD (verified against softwareag/natural-ce:9.3.3). Software AG's answer is
+# NaturalONE, the Eclipse IDE that attaches to the Natural Development Server on port 2700 -
+# and it is published for Windows, not for macOS or arm64. This optional Windows VM is that
+# missing workstation, inside the VNet, so the one manual step in the whole deployment does
+# not depend on what laptop the facilitator happens to own.
+#
+# It is needed ONCE. After the DDMs exist, 05-backup-restore.sh archives them to the
+# sifap-state container and restores them on later boots, so the workstation can be turned
+# off with enable_ddm_workstation = false and destroyed.
+# ---------------------------------------------------------------------------
+
+variable "enable_ddm_workstation" {
+  description = <<-EOT
+    Create a Windows VM in the lab VNet for running NaturalONE, the only supported way to
+    create the four SIFAP DDMs.
+
+    Off by default: it is a second VM with a Windows licence charge, and it is dead weight
+    once the DDMs are archived. Turn it on, create the DDMs, run the finalize phase, then
+    turn it off again.
+
+    NaturalONE Community Edition is a free download from the Software AG TECHcommunity and
+    requires a forum account, so the installer cannot be staged by Terraform. Download it on
+    the workstation itself - see README.md, "Creating the DDMs".
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "ddm_workstation_size" {
+  description = "VM size for the NaturalONE workstation. Eclipse wants 8 GB to be comfortable, which is what the default provides."
+  type        = string
+  default     = "Standard_D2s_v3"
+}
+
+variable "ddm_workstation_admin_username" {
+  description = "Local administrator for the NaturalONE workstation. Windows reserves 'admin' and 'administrator', so neither is accepted."
+  type        = string
+  default     = "sifapadmin"
+
+  validation {
+    condition     = !contains(["admin", "administrator", "guest", "root"], lower(var.ddm_workstation_admin_username))
+    error_message = "ddm_workstation_admin_username must not be a Windows reserved name (admin, administrator, guest, root)."
+  }
+
+  validation {
+    condition     = can(regex("^[a-zA-Z][a-zA-Z0-9_-]{1,19}$", var.ddm_workstation_admin_username))
+    error_message = "ddm_workstation_admin_username must be 2-20 characters, start with a letter, and contain only letters, digits, hyphen or underscore."
+  }
+}
+
+variable "ddm_workstation_image_version" {
+  description = <<-EOT
+    Pinned version of the Windows Server 2022 Gen2 marketplace image, so a rebuild months
+    from now boots the same image rather than whatever "latest" resolves to that day.
+
+    Re-pin with:
+      az vm image list --publisher MicrosoftWindowsServer --offer WindowsServer \
+        --location <region> --all --query "[?sku=='2022-datacenter-g2'].version | [-3:]" -o tsv
+  EOT
+  type        = string
+  default     = "20348.5499.260809"
+
+  validation {
+    condition     = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", var.ddm_workstation_image_version))
+    error_message = "ddm_workstation_image_version must be an exact version such as 20348.5499.260809, never \"latest\"."
+  }
+}
