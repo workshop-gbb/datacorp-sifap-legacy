@@ -8,7 +8,7 @@ PLAN_FILE="$SCRIPT_DIR/lab.tfplan"
 STATE_FILE="$SCRIPT_DIR/terraform.tfstate"
 BACKUP_DIR="${SIFAP_STATE_BACKUP_DIR:-$REPO_ROOT/.local-state-backups/adabas-natural-lab}"
 ENABLE_DDM_WORKSTATION="${SIFAP_ENABLE_DDM_WORKSTATION:-true}"
-SSH_OPTIONS=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new)
+GITHUB_REPOSITORY="${SIFAP_GITHUB_REPOSITORY:-paulasilvatech/datacorp-sifap-team-kit-pt-br}"
 
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
@@ -26,6 +26,7 @@ Environment:
   SIFAP_CONFIRM_DESTROY=DESTROY            Required for destroy
   SIFAP_STATE_BACKUP_DIR=<path>            Encrypted/private state backup location
   SIFAP_PAYLOAD_ARCHIVE=<path>             Destination used by package
+  SIFAP_PAYLOAD_COMMIT=<40-char SHA>        Public commit delivered by Azure Run Command
 USAGE
 }
 
@@ -45,8 +46,7 @@ run_preflight() {
   local current_ip
   current_ip="$(curl -fsS --max-time 15 https://api.ipify.org)" \
     || fail "Could not determine the facilitator public IP."
-  python3 - "$TFVARS" "$current_ip" <<'PY' \
-    || fail "The current public IP is not covered by allowed_source_cidrs in terraform.tfvars."
+  python3 - "$TFVARS" "$current_ip" <<'PY'
 import ipaddress
 import pathlib
 import re
@@ -55,15 +55,23 @@ import sys
 text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
 match = re.search(r"allowed_source_cidrs\s*=\s*\[(.*?)\]", text, re.DOTALL)
 if not match:
-    raise SystemExit(1)
+  raise SystemExit("allowed_source_cidrs block not found in terraform.tfvars")
 networks = [
     ipaddress.ip_network(value, strict=False)
     for value in re.findall(r'["\']([^"\']+)["\']', match.group(1))
 ]
 address = ipaddress.ip_address(sys.argv[2])
-raise SystemExit(0 if any(address in network for network in networks) else 1)
+if any(address in network for network in networks):
+  print("Facilitator CIDR: current public IP is already allowed")
+else:
+  body = match.group(1)
+  if body and not body.endswith("\n"):
+    body += "\n"
+  body += f'  "{address}/32",\n'
+  updated = text[:match.start(1)] + body + text[match.end(1):]
+  pathlib.Path(sys.argv[1]).write_text(updated, encoding="utf-8")
+  print("Facilitator CIDR: appended current public IP to ignored terraform.tfvars")
 PY
-  printf 'Facilitator CIDR: current public IP is allowed\n'
   TF_VAR_enable_ddm_workstation="$ENABLE_DDM_WORKSTATION" "$SCRIPT_DIR/preflight-local.sh"
 }
 
@@ -106,42 +114,28 @@ PY
   tar -C "$stage" -czf "$work_dir/sifap-payload.tar.gz" .
 }
 
-wait_for_ssh() {
-  local target="$1" attempt
-  for attempt in $(seq 1 60); do
-    if ssh "${SSH_OPTIONS[@]}" "$target" true 2>/dev/null; then
-      printf 'SSH ready after %s attempt(s)\n' "$attempt"
-      return 0
-    fi
-    sleep 10
-  done
-  fail "SSH did not become ready within 10 minutes: $target"
+run_vm_command() {
+  local script="$1"
+  az vm run-command invoke \
+    --resource-group "$(terraform -chdir="$SCRIPT_DIR" output -raw resource_group_name)" \
+    --name "$(terraform -chdir="$SCRIPT_DIR" output -raw vm_name)" \
+    --command-id RunShellScript \
+    --scripts "$script" \
+    --query 'value[0].message' \
+    --output tsv
 }
 
 upload_payload() {
   [ -f "$STATE_FILE" ] || fail "Terraform state is missing; run apply first."
-  local work_dir target archive
-  work_dir="$(mktemp -d)"
-  trap 'rm -rf "${work_dir:-}"' EXIT
-  build_payload "$work_dir"
-  archive="$work_dir/sifap-payload.tar.gz"
-  target="$(terraform -chdir="$SCRIPT_DIR" output -raw admin_username)@$(terraform -chdir="$SCRIPT_DIR" output -raw demo_fqdn)"
-
-  wait_for_ssh "$target"
-  ssh "${SSH_OPTIONS[@]}" "$target" 'sudo cloud-init status --wait >/dev/null'
-  scp "${SSH_OPTIONS[@]}" "$archive" "$target:/tmp/sifap-payload.tar.gz"
-  ssh "${SSH_OPTIONS[@]}" "$target" '
-    set -eu
-    sudo rm -rf /opt/sifap/payload
-    sudo mkdir -p /opt/sifap/payload
-    sudo tar -xzf /tmp/sifap-payload.tar.gz -C /opt/sifap/payload
-    sudo rm -f /tmp/sifap-payload.tar.gz
-    sudo /opt/sifap/fetch-payload.sh
-    sudo systemctl restart sifap-provisioning
-  '
-  rm -rf "$work_dir"
-  trap - EXIT
-  printf 'Payload installed and provisioning restarted on %s\n' "$target"
+  local commit raw_url archive_url
+  commit="${SIFAP_PAYLOAD_COMMIT:-$(git -C "$REPO_ROOT" rev-parse HEAD)}"
+  [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || fail "SIFAP_PAYLOAD_COMMIT must be a full commit SHA."
+  raw_url="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${commit}/infra/adabas-natural-lab/install-payload-from-github.sh"
+  archive_url="https://codeload.github.com/${GITHUB_REPOSITORY}/tar.gz/${commit}"
+  curl -fsSI --max-time 30 "$archive_url" >/dev/null \
+    || fail "Commit ${commit} is not publicly downloadable; commit and push it before upload."
+  run_vm_command "curl -fsSL --retry 5 --retry-delay 3 '$raw_url' | bash -s -- '$commit'"
+  printf 'Payload installed from %s@%s through Azure Run Command\n' "$GITHUB_REPOSITORY" "$commit"
 }
 
 package_payload() {
@@ -181,15 +175,13 @@ apply() {
 
 status() {
   [ -f "$STATE_FILE" ] || fail "Terraform state is missing."
-  local target
-  target="$(terraform -chdir="$SCRIPT_DIR" output -raw admin_username)@$(terraform -chdir="$SCRIPT_DIR" output -raw demo_fqdn)"
-  ssh "${SSH_OPTIONS[@]}" "$target" '
+  run_vm_command '
     printf "%s\n" "=== cloud-init ==="
-    sudo cloud-init status
+    cloud-init status || true
     printf "%s\n" "=== provisioning ==="
-    sudo systemctl status sifap-provisioning --no-pager || true
+    systemctl status sifap-provisioning --no-pager || true
     printf "%s\n" "=== markers ==="
-    sudo ls -l /opt/sifap/READY /opt/sifap/PAYLOAD-OK /opt/sifap/state/DDMS-READY /opt/sifap/PROVISIONED 2>/dev/null || true
+    ls -l /opt/sifap/READY /opt/sifap/PAYLOAD-OK /opt/sifap/state/DDMS-READY /opt/sifap/PROVISIONED 2>/dev/null || true
   '
 }
 
@@ -225,23 +217,22 @@ main() {
       ;;
     apply)
       require_command az
+      require_command curl
+      require_command git
       require_command python3
-      require_command scp
-      require_command ssh
-      require_command tar
       require_command terraform
       apply
       ;;
     upload)
+      require_command az
+      require_command curl
+      require_command git
       require_command python3
-      require_command scp
-      require_command ssh
-      require_command tar
       require_command terraform
       upload_payload
       ;;
     status)
-      require_command ssh
+      require_command az
       require_command terraform
       status
       ;;

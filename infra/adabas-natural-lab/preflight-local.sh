@@ -17,24 +17,35 @@ az_with_timeout() {
 import os
 import subprocess
 import sys
+import time
 
 timeout = int(os.environ.get("SIFAP_AZURE_COMMAND_TIMEOUT", "120"))
-try:
+retries = int(os.environ.get("SIFAP_AZURE_COMMAND_RETRIES", "3"))
+for attempt in range(1, retries + 1):
+  try:
     result = subprocess.run(
-        ["az", *sys.argv[1:]],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        timeout=timeout,
-        check=False,
+      ["az", *sys.argv[1:]],
+      text=True,
+      stdout=subprocess.PIPE,
+      stderr=subprocess.PIPE,
+      timeout=timeout,
+      check=False,
     )
-except subprocess.TimeoutExpired:
-    print(f"Azure CLI timed out after {timeout}s: az {' '.join(sys.argv[1:])}", file=sys.stderr)
-    raise SystemExit(124)
-if result.stderr:
-    print(result.stderr, end="", file=sys.stderr)
-print(result.stdout, end="")
-raise SystemExit(result.returncode)
+  except subprocess.TimeoutExpired:
+    result = None
+    message = f"Azure CLI timed out after {timeout}s"
+  else:
+    message = result.stderr.strip() or f"exit {result.returncode}"
+    if result.returncode == 0:
+      print(result.stdout, end="")
+      raise SystemExit(0)
+  if attempt < retries:
+    print(f"Azure CLI attempt {attempt}/{retries} failed ({message}); retrying", file=sys.stderr)
+    time.sleep(min(3 * attempt, 10))
+if result is not None and result.stderr:
+  print(result.stderr, end="", file=sys.stderr)
+print(f"Azure CLI failed after {retries} attempts: az {' '.join(sys.argv[1:])}", file=sys.stderr)
+raise SystemExit(result.returncode if result is not None else 124)
 PY
 }
 
@@ -63,7 +74,7 @@ check_provider_registrations() {
     Microsoft.Resources
   )
   for provider in "${providers[@]}"; do
-    registration_state="$(az provider show --namespace "$provider" --query registrationState -o tsv 2>/dev/null || true)"
+    registration_state="$(az_with_timeout provider show --namespace "$provider" --query registrationState -o tsv 2>/dev/null || true)"
     [ "$registration_state" = "Registered" ] || fail "Resource provider ${provider} is ${registration_state:-not registered}."
     printf '%s: %s\n' "$provider" "$registration_state"
   done
@@ -72,7 +83,7 @@ check_provider_registrations() {
 check_deployer_role() {
   local assignee roles_json
   assignee="${ARM_CLIENT_ID:-$(az account show --query user.name -o tsv)}"
-  roles_json="$(az role assignment list \
+  roles_json="$(az_with_timeout role assignment list \
     --assignee "$assignee" \
     --include-inherited \
     --scope "/subscriptions/${EXPECTED_SUBSCRIPTION_ID}" \
@@ -94,6 +105,31 @@ check_vm_capacity() {
   vm_size="$(variable_default vm_size)"
   [ -n "$vm_size" ] || fail "Could not derive vm_size from variables.tf."
   local vm_sizes=("$vm_size")
+
+  # Capacity and regional SKU restrictions are creation gates. Once both requested VMs are
+  # tracked in state and still exist in Azure, repeating the slow list-skus call only blocks
+  # unrelated incremental changes (for example adding Bastion) and can no longer prevent a
+  # partial VM deployment.
+  if terraform -chdir="$SCRIPT_DIR" state show azurerm_linux_virtual_machine.lab >/dev/null 2>&1; then
+    local resource_group linux_vm windows_vm
+    resource_group="$(terraform -chdir="$SCRIPT_DIR" output -raw resource_group_name 2>/dev/null || true)"
+    linux_vm="$(terraform -chdir="$SCRIPT_DIR" output -raw vm_name 2>/dev/null || true)"
+    if [ -n "$resource_group" ] && [ -n "$linux_vm" ] \
+      && az vm show --resource-group "$resource_group" --name "$linux_vm" --query id -o tsv >/dev/null 2>&1; then
+      if [ "$ENABLE_DDM_WORKSTATION" != "true" ]; then
+        printf 'VM capacity: existing Linux VM is tracked and present; creation check not required\n'
+        return 0
+      fi
+      if terraform -chdir="$SCRIPT_DIR" state show 'azurerm_windows_virtual_machine.workstation[0]' >/dev/null 2>&1; then
+        windows_vm="$(terraform -chdir="$SCRIPT_DIR" state show 'azurerm_windows_virtual_machine.workstation[0]' \
+          | awk '$1 == "name" && $2 == "=" { gsub(/"/, "", $3); print $3; exit }')"
+        if az vm show --resource-group "$resource_group" --name "$windows_vm" --query id -o tsv >/dev/null 2>&1; then
+          printf 'VM capacity: both requested VMs are tracked and present; creation check not required\n'
+          return 0
+        fi
+      fi
+    fi
+  fi
 
   if [ "$ENABLE_DDM_WORKSTATION" = "true" ]; then
     workstation_size="$(variable_default ddm_workstation_size)"

@@ -52,8 +52,8 @@ output "admin_console_direct_url" {
 }
 
 output "admin_console_tunnel_command" {
-  description = "Second fallback for the Adabas console: an SSH tunnel to 8190, bypassing the proxy entirely. Use it if the console's own assets turn out to need a root path and the /admin/ prefix renders it half-broken. Then open http://localhost:8190/."
-  value       = "ssh -L 8190:127.0.0.1:8190 ${var.admin_username}@${azurerm_public_ip.lab.fqdn}"
+  description = "Public SSH is removed by tenant policy, so the old local tunnel is unavailable."
+  value       = "unavailable in this tenant; use admin_console_url or the Linux VM through Bastion Developer"
 }
 
 # ---------------------------------------------------------------------------
@@ -74,8 +74,10 @@ output "demo_basic_auth_username" {
 output "demo_basic_auth_password_command" {
   description = "Reads the demo URL password through the Linux VM identity and private Key Vault endpoint."
   value = local.basic_auth_generate ? join("", [
-    "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} ",
-    "'sudo /opt/sifap/read-secret.sh demo-basic-auth-password'",
+    "az vm run-command invoke -g ${azurerm_resource_group.lab.name} ",
+    "-n ${azurerm_linux_virtual_machine.lab.name} --command-id RunShellScript ",
+    "--scripts '/opt/sifap/read-secret.sh demo-basic-auth-password' ",
+    "--query 'value[0].message' -o tsv",
     ]) : join("", [
     "not generated: you supplied demo_basic_auth_password_hash, so only the bcrypt hash ",
     "is stored. Use the password you hashed.",
@@ -100,8 +102,8 @@ output "health_check_command" {
 }
 
 output "trust_demo_ca_command" {
-  description = "Exports Caddy's internal root certificate so a browser or curl can trust the demo URL without -k. Not needed when enable_public_acme = true."
-  value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'sudo docker exec caddy cat /data/caddy/pki/authorities/local/root.crt' > sifap-lab-root.crt"
+  description = "Public SSH is removed by tenant policy. Open the Linux VM through Bastion Developer and export Caddy's root certificate there, or keep curl -k for this disposable lab."
+  value       = "Bastion command: sudo docker exec caddy cat /data/caddy/pki/authorities/local/root.crt"
 }
 
 # ---------------------------------------------------------------------------
@@ -114,8 +116,8 @@ output "public_ip" {
 }
 
 output "ssh_command" {
-  description = "SSH entry point."
-  value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn}"
+  description = "Portal connection to the Linux VM through Bastion Developer; tenant policy removes public SSH rules."
+  value       = "https://portal.azure.com/#@${data.azurerm_client_config.current.tenant_id}/resource${azurerm_linux_virtual_machine.lab.id}/connect"
 }
 
 output "natural_development_server" {
@@ -128,12 +130,12 @@ output "natural_development_server" {
 # That is also why no output here needs `sensitive = true`: none carries a secret value.
 output "adabas_admin_password_command" {
   description = "Reads the generated Adabas administration password through the Linux VM identity and private Key Vault endpoint."
-  value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'sudo /opt/sifap/read-secret.sh adabas-admin-password'"
+  value       = "az vm run-command invoke -g ${azurerm_resource_group.lab.name} -n ${azurerm_linux_virtual_machine.lab.name} --command-id RunShellScript --scripts '/opt/sifap/read-secret.sh adabas-admin-password' --query 'value[0].message' -o tsv"
 }
 
 output "bootstrap_log_command" {
-  description = "Follows the first-boot bootstrap, including the multi-GB image pull."
-  value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'sudo tail -f /var/log/sifap-bootstrap.log'"
+  description = "Reads the latest bootstrap log through Azure Run Command."
+  value       = "az vm run-command invoke -g ${azurerm_resource_group.lab.name} -n ${azurerm_linux_virtual_machine.lab.name} --command-id RunShellScript --scripts 'tail -200 /var/log/sifap-bootstrap.log' --query 'value[0].message' -o tsv"
 }
 
 # ---------------------------------------------------------------------------
@@ -145,17 +147,17 @@ output "bootstrap_log_command" {
 # happened without reading a log you have to know the path of.
 output "provisioning_status_command" {
   description = "Answers where the two-phase provisioning stands. A fresh lab can be active (exited) after base only; /opt/sifap/PROVISIONED means finalize completed."
-  value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'systemctl status sifap-provisioning --no-pager'"
+  value       = "az vm run-command invoke -g ${azurerm_resource_group.lab.name} -n ${azurerm_linux_virtual_machine.lab.name} --command-id RunShellScript --scripts 'systemctl status sifap-provisioning --no-pager || true' --query 'value[0].message' -o tsv"
 }
 
 output "provisioning_log_command" {
-  description = "Follows the Adabas load and the Natural compile. Expect several minutes: Adabas builds its demo database on first boot before any ADALOD can succeed."
-  value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'sudo tail -f /var/log/sifap-provisioning.log'"
+  description = "Reads the latest Adabas load and Natural compile log through Azure Run Command."
+  value       = "az vm run-command invoke -g ${azurerm_resource_group.lab.name} -n ${azurerm_linux_virtual_machine.lab.name} --command-id RunShellScript --scripts 'tail -200 /var/log/sifap-provisioning.log 2>/dev/null || true' --query 'value[0].message' -o tsv"
 }
 
 output "provisioning_rerun_command" {
   description = "Re-runs auto provisioning. Use it after fixing a failure, after an apply that changed the corpus, or after creating the DDMs in NaturalONE."
-  value       = "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} 'sudo systemctl restart sifap-provisioning'"
+  value       = "az vm run-command invoke -g ${azurerm_resource_group.lab.name} -n ${azurerm_linux_virtual_machine.lab.name} --command-id RunShellScript --scripts 'systemctl restart sifap-provisioning' --query 'value[0].message' -o tsv"
 }
 
 output "provisioning_status_query" {
@@ -224,11 +226,8 @@ output "estimated_cost_note" {
 # ---------------------------------------------------------------------------
 
 output "ddm_workstation_rdp_command" {
-  description = "Opens the NaturalONE workstation over RDP. macOS: install Windows App from the App Store, then use the address below. Only reachable from allowed_source_cidrs."
-  value = var.enable_ddm_workstation ? join("", [
-    "open rdp://full%20address=s:${azurerm_public_ip.workstation[0].ip_address}:3389",
-    "\\&username=s:${var.ddm_workstation_admin_username}",
-    ]) : join("", [
+  description = "Opens the NaturalONE workstation connection blade for browser RDP through Bastion Developer."
+  value = var.enable_ddm_workstation ? "https://portal.azure.com/#@${data.azurerm_client_config.current.tenant_id}/resource${azurerm_windows_virtual_machine.workstation[0].id}/connect" : join("", [
     "disabled (set enable_ddm_workstation = true to create the Windows VM that runs ",
     "NaturalONE, the only supported way to create the four SIFAP DDMs)",
   ])
@@ -237,8 +236,10 @@ output "ddm_workstation_rdp_command" {
 output "ddm_workstation_password_command" {
   description = "Reads the generated workstation password through the Linux VM identity and private Key Vault endpoint."
   value = var.enable_ddm_workstation ? join("", [
-    "ssh ${var.admin_username}@${azurerm_public_ip.lab.fqdn} ",
-    "'sudo /opt/sifap/read-secret.sh ddm-workstation-password'",
+    "az vm run-command invoke -g ${azurerm_resource_group.lab.name} ",
+    "-n ${azurerm_linux_virtual_machine.lab.name} --command-id RunShellScript ",
+    "--scripts '/opt/sifap/read-secret.sh ddm-workstation-password' ",
+    "--query 'value[0].message' -o tsv",
   ]) : "disabled (enable_ddm_workstation = false)"
 }
 

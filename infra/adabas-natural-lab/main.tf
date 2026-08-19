@@ -182,14 +182,14 @@ resource "azurerm_network_security_group" "lab" {
   tags                = local.tags
 
   security_rule {
-    name                       = "AllowSshFromWorkshop"
+    name                       = "AllowSshFromVirtualNetwork"
     priority                   = 100
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "22"
-    source_address_prefixes    = var.allowed_source_cidrs
+    source_address_prefix      = "VirtualNetwork"
     destination_address_prefix = "*"
   }
 
@@ -313,7 +313,10 @@ resource "azurerm_public_ip" "lab" {
   allocation_method   = "Static"
   sku                 = "Standard"
   domain_name_label   = local.dns_label
-  tags                = local.tags
+  ip_tags = {
+    FirstPartyUsage = "/Unprivileged"
+  }
+  tags = local.tags
 }
 
 resource "azurerm_network_interface" "lab" {
@@ -980,14 +983,14 @@ resource "azurerm_network_security_group" "workstation" {
   tags                = local.tags
 
   security_rule {
-    name                       = "AllowRdpFromWorkshop"
+    name                       = "AllowRdpFromVirtualNetwork"
     priority                   = 100
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "3389"
-    source_address_prefixes    = var.allowed_source_cidrs
+    source_address_prefix      = "VirtualNetwork"
     destination_address_prefix = "*"
   }
 
@@ -1011,16 +1014,17 @@ resource "azurerm_subnet_network_security_group_association" "workstation" {
   network_security_group_id = azurerm_network_security_group.workstation[0].id
 }
 
-# No DNS label: this is a machine one person RDPs into for an hour, not an endpoint anyone
-# needs a stable name for.
-resource "azurerm_public_ip" "workstation" {
+# Developer is the no-cost, shared-pool Bastion SKU for dev/test. It needs no public IP or
+# AzureBastionSubnet and reaches both target VMs over their private addresses, which complies
+# with the tenant policy that removes public SSH/RDP rules.
+resource "azurerm_bastion_host" "developer" {
   count = var.enable_ddm_workstation ? 1 : 0
 
-  name                = "${local.name_prefix}-pip-workstation"
+  name                = "${local.name_prefix}-bas-developer"
   location            = azurerm_resource_group.lab.location
   resource_group_name = azurerm_resource_group.lab.name
-  allocation_method   = "Static"
-  sku                 = "Standard"
+  sku                 = "Developer"
+  virtual_network_id  = azurerm_virtual_network.lab.id
   tags                = local.tags
 }
 
@@ -1036,7 +1040,6 @@ resource "azurerm_network_interface" "workstation" {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.workstation[0].id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.workstation[0].id
   }
 }
 
@@ -1065,13 +1068,14 @@ resource "random_password" "workstation_admin" {
 resource "azurerm_windows_virtual_machine" "workstation" {
   count = var.enable_ddm_workstation ? 1 : 0
 
-  name                = "${local.name_prefix}-vm-ddmws"
-  location            = azurerm_resource_group.lab.location
-  resource_group_name = azurerm_resource_group.lab.name
-  size                = var.ddm_workstation_size
-  admin_username      = var.ddm_workstation_admin_username
-  admin_password      = random_password.workstation_admin[0].result
-  tags                = local.tags
+  name                              = "${local.name_prefix}-vm-ddmws"
+  location                          = azurerm_resource_group.lab.location
+  resource_group_name               = azurerm_resource_group.lab.name
+  size                              = var.ddm_workstation_size
+  admin_username                    = var.ddm_workstation_admin_username
+  admin_password                    = random_password.workstation_admin[0].result
+  vm_agent_platform_updates_enabled = true
+  tags                              = local.tags
 
   # Windows caps the NetBIOS name at 15 characters and the resource name above is longer,
   # so it must be set explicitly or the apply fails on a name Azure derived for us.

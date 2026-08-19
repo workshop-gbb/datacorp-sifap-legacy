@@ -42,6 +42,22 @@ def main() -> int:
         print("Plan does not contain the Key Vault private endpoint.", file=sys.stderr)
         return 1
 
+    workstation = "azurerm_windows_virtual_machine.workstation[0]"
+    if workstation in by_address:
+        bastion = by_address.get("azurerm_bastion_host.developer[0]")
+        if not bastion:
+            print(
+                "Plan contains the DDM workstation without Bastion Developer.", file=sys.stderr)
+            return 1
+        if bastion.get("values", {}).get("sku") != "Developer":
+            print("Plan does not use the no-cost Bastion Developer SKU.",
+                  file=sys.stderr)
+            return 1
+        if "azurerm_public_ip.workstation[0]" in by_address:
+            print("Plan exposes the DDM workstation through a public IP.",
+                  file=sys.stderr)
+            return 1
+
     print("Plan policy audit: PASS")
     return 0
 

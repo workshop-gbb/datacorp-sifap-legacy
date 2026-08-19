@@ -79,3 +79,70 @@ def test_should_reject_plan_when_key_vault_private_endpoint_is_missing():
 
     assert result.returncode == 1
     assert "private endpoint" in result.stderr
+
+
+def test_should_require_bastion_when_ddm_workstation_is_present():
+    resources = private_plan()
+    resources.append(
+        {
+            "address": "azurerm_windows_virtual_machine.workstation[0]",
+            "type": "azurerm_windows_virtual_machine",
+            "values": {},
+        }
+    )
+
+    result = run_auditor(resources)
+
+    assert result.returncode == 1
+    assert "without Bastion Developer" in result.stderr
+
+
+def test_should_reject_public_ip_when_ddm_workstation_is_present():
+    resources = private_plan()
+    resources.extend(
+        [
+            {
+                "address": "azurerm_windows_virtual_machine.workstation[0]",
+                "type": "azurerm_windows_virtual_machine",
+                "values": {},
+            },
+            {
+                "address": "azurerm_bastion_host.developer[0]",
+                "type": "azurerm_bastion_host",
+                "values": {"sku": "Developer"},
+            },
+            {
+                "address": "azurerm_public_ip.workstation[0]",
+                "type": "azurerm_public_ip",
+                "values": {},
+            },
+        ]
+    )
+
+    result = run_auditor(resources)
+
+    assert result.returncode == 1
+    assert "public IP" in result.stderr
+
+
+def test_should_reject_paid_bastion_when_ddm_workstation_is_present():
+    resources = private_plan()
+    resources.extend(
+        [
+            {
+                "address": "azurerm_windows_virtual_machine.workstation[0]",
+                "type": "azurerm_windows_virtual_machine",
+                "values": {},
+            },
+            {
+                "address": "azurerm_bastion_host.developer[0]",
+                "type": "azurerm_bastion_host",
+                "values": {"sku": "Standard"},
+            },
+        ]
+    )
+
+    result = run_auditor(resources)
+
+    assert result.returncode == 1
+    assert "no-cost Bastion Developer" in result.stderr

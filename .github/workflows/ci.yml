@@ -223,6 +223,7 @@ jobs:
           shellcheck \
             infra/adabas-natural-lab/preflight-local.sh \
             infra/adabas-natural-lab/deploy-local.sh \
+            infra/adabas-natural-lab/install-payload-from-github.sh \
             infra/adabas-natural-lab/provisioning/*.sh
       - name: Build and verify the SSH payload archive
         run: |
