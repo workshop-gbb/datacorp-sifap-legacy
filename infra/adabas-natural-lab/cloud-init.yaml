@@ -879,19 +879,24 @@ write_files:
       echo "=== SIFAP lab bootstrap started at $(date -Is) ==="
 
       # --- data disk -------------------------------------------------------
-      # Azure exposes data disks under a stable by-path alias, which avoids the
-      # /dev/sdc guesswork that breaks whenever device ordering shifts.
+      # Azure exposes data disks under stable LUN aliases. New VM generations use
+      # data/by-lun (NVMe); older generations use scsi1/lun.
       # This whole block runs BEFORE Docker starts any container, so nothing can
       # write Adabas or Natural FUSER data to the OS disk and then have it
       # shadowed by the mount.
-      DISK=/dev/disk/azure/scsi1/lun0
+      DISK=""
       for _ in $(seq 1 60); do
-        [ -e "$DISK" ] && break
-        echo "waiting for data disk at $DISK ..."
+        for candidate in /dev/disk/azure/data/by-lun/0 /dev/disk/azure/scsi1/lun0; do
+          if [ -b "$candidate" ]; then
+            DISK="$candidate"
+            break 2
+          fi
+        done
+        echo "waiting for Azure data disk LUN 0 ..."
         sleep 5
       done
 
-      if [ -e "$DISK" ]; then
+      if [ -n "$DISK" ]; then
         if ! blkid "$DISK" >/dev/null 2>&1; then
           echo "formatting empty data disk"
           mkfs.ext4 -F -L sifapdata "$DISK"
@@ -1094,7 +1099,8 @@ write_files:
 
       if ! find /mnt/sifap-data/natural-fuser -mindepth 1 -print -quit | grep -q .; then
         echo "seeding persistent Natural FUSER from the image"
-        docker run --rm -v /mnt/sifap-data/natural-fuser:/target "${natural_image}" \
+        docker run --rm -e ACCEPT_EULA=Y \
+          -v /mnt/sifap-data/natural-fuser:/target "${natural_image}" \
           sh -lc 'cp -a /opt/softwareag/Natural/fuser/. /target/'
         chown -R 1724:1724 /mnt/sifap-data/natural-fuser
       fi
