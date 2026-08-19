@@ -1101,7 +1101,7 @@ write_files:
         echo "seeding persistent Natural FUSER from the image"
         docker run --rm -e ACCEPT_EULA=Y --entrypoint sh \
           -v /mnt/sifap-data/natural-fuser:/target "${natural_image}" \
-          sh -lc 'cp -a /opt/softwareag/Natural/fuser/. /target/'
+          -lc 'cp -a /opt/softwareag/Natural/fuser/. /target/'
         chown -R 1724:1724 /mnt/sifap-data/natural-fuser
       fi
 
