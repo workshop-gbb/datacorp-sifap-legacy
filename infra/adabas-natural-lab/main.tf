@@ -170,6 +170,12 @@ resource "azurerm_subnet" "lab" {
   virtual_network_name = azurerm_virtual_network.lab.name
   address_prefixes     = ["10.42.1.0/24"]
 
+  # Azure retired default outbound access for new deployments, so subnets are created with it
+  # off while the provider still defaults to true. Setting it explicitly keeps plans clean:
+  # letting it drift to true force-replaces the subnet and cascades into destroying both VMs.
+  # The lab VM keeps outbound through its own public IP, so nothing here depends on it.
+  default_outbound_access_enabled = false
+
   # The Key Vault endpoint lives in this subnet. Disable endpoint policies so the vault's
   # private NIC is governed by Private Link rather than the VM's deny-all NSG.
   private_endpoint_network_policies = "Disabled"
@@ -701,11 +707,15 @@ resource "random_password" "demo_basic_auth" {
 # Compute
 # ---------------------------------------------------------------------------
 
+# Standard_LRS, not Premium_LRS. This tenant rewrites the disk SKU at create time -- the same
+# class of platform mutation that adds ipTags to public IPs and strips public NSG rules.
+# Declaring Premium here does not produce a Premium disk; it only makes every later plan try to
+# force-replace the VMs that use these disks, which destroys the lab. Adopt what Azure applies.
 resource "azurerm_managed_disk" "adabas_data" {
   name                          = "${local.name_prefix}-disk-adabasdata"
   location                      = azurerm_resource_group.lab.location
   resource_group_name           = azurerm_resource_group.lab.name
-  storage_account_type          = "Premium_LRS"
+  storage_account_type          = "Standard_LRS"
   create_option                 = "Empty"
   disk_size_gb                  = var.data_disk_size_gb
   network_access_policy         = "DenyAll"
@@ -741,6 +751,13 @@ resource "azurerm_linux_virtual_machine" "lab" {
   # Password authentication stays off. SSH key only.
   disable_password_authentication = true
 
+  # The tenant enrolls VMs in Azure Update Manager, so these are the values Azure applies.
+  # Leaving them at the provider defaults makes every plan try to revert them, which both
+  # produces permanent drift and would switch automatic patching off. Adopt, do not fight.
+  patch_mode                                             = "AutomaticByPlatform"
+  patch_assessment_mode                                  = "AutomaticByPlatform"
+  bypass_platform_safety_checks_on_user_schedule_enabled = true
+
   admin_ssh_key {
     username   = var.admin_username
     public_key = file(pathexpand(var.ssh_public_key_path))
@@ -750,9 +767,10 @@ resource "azurerm_linux_virtual_machine" "lab" {
     type = "SystemAssigned"
   }
 
+  # See the note on azurerm_managed_disk.adabas_data: the platform applies Standard_LRS.
   os_disk {
     caching              = "ReadWrite"
-    storage_account_type = "Premium_LRS"
+    storage_account_type = "Standard_LRS"
     disk_size_gb         = 64
   }
 
@@ -969,6 +987,53 @@ resource "azurerm_subnet" "workstation" {
   resource_group_name  = azurerm_resource_group.lab.name
   virtual_network_name = azurerm_virtual_network.lab.name
   address_prefixes     = [local.workstation_subnet_cidr]
+
+  # Same reason as the runtime subnet. The workstation deliberately has no public IP, so the
+  # NAT gateway below is its only outbound path.
+  default_outbound_access_enabled = false
+}
+
+# Without this the workstation has no route to the internet at all: no public IP, and Azure no
+# longer grants default outbound access. Its one job is downloading the NaturalONE installer,
+# so that would make it useless. A NAT gateway is outbound-only and opens no inbound path,
+# which is why the plan auditor accepts this address but still rejects one on the workstation
+# NIC. It is billed per hour, so destroy the workstation once the DDMs exist.
+resource "azurerm_public_ip" "workstation_nat" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  name                = "${local.name_prefix}-pip-natgw"
+  location            = azurerm_resource_group.lab.location
+  resource_group_name = azurerm_resource_group.lab.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  ip_tags = {
+    FirstPartyUsage = "/Unprivileged"
+  }
+  tags = local.tags
+}
+
+resource "azurerm_nat_gateway" "workstation" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  name                = "${local.name_prefix}-natgw-workstation"
+  location            = azurerm_resource_group.lab.location
+  resource_group_name = azurerm_resource_group.lab.name
+  sku_name            = "Standard"
+  tags                = local.tags
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "workstation" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  nat_gateway_id       = azurerm_nat_gateway.workstation[0].id
+  public_ip_address_id = azurerm_public_ip.workstation_nat[0].id
+}
+
+resource "azurerm_subnet_nat_gateway_association" "workstation" {
+  count = var.enable_ddm_workstation ? 1 : 0
+
+  subnet_id      = azurerm_subnet.workstation[0].id
+  nat_gateway_id = azurerm_nat_gateway.workstation[0].id
 }
 
 # A separate NSG, not a rule bolted onto the lab's. The workstation exposes RDP and nothing
@@ -1075,7 +1140,12 @@ resource "azurerm_windows_virtual_machine" "workstation" {
   admin_username                    = var.ddm_workstation_admin_username
   admin_password                    = random_password.workstation_admin[0].result
   vm_agent_platform_updates_enabled = true
-  tags                              = local.tags
+
+  # See the note on the Linux VM: Azure Update Manager sets these, so the config adopts them.
+  patch_mode                                             = "AutomaticByPlatform"
+  patch_assessment_mode                                  = "AutomaticByPlatform"
+  bypass_platform_safety_checks_on_user_schedule_enabled = true
+  tags                                                   = local.tags
 
   # Windows caps the NetBIOS name at 15 characters and the resource name above is longer,
   # so it must be set explicitly or the apply fails on a name Azure derived for us.
@@ -1087,9 +1157,10 @@ resource "azurerm_windows_virtual_machine" "workstation" {
     type = "SystemAssigned"
   }
 
+  # See the note on azurerm_managed_disk.adabas_data: the platform applies Standard_LRS.
   os_disk {
     caching              = "ReadWrite"
-    storage_account_type = "Premium_LRS"
+    storage_account_type = "Standard_LRS"
     disk_size_gb         = 128
   }
 
