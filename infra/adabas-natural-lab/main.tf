@@ -46,8 +46,13 @@ locals {
   # certificate is only possible with 80/443 reachable from the internet. That is the whole
   # reason enable_public_acme exists as an explicit, default-off opt-in instead of being
   # silently baked in. See var.enable_public_acme and README.md -> "TLS on the demo URL".
-  caddy_global_options = var.enable_public_acme ? "email ${var.acme_contact_email}" : "# ACME disabled: certificates are signed by Caddy's local CA"
-  caddy_tls_directive  = var.enable_public_acme ? "# tls: automatic Let's Encrypt for ${local.demo_fqdn}" : "tls internal"
+  # A bare "email" with no address is a Caddy syntax error, and acme_contact_email defaults
+  # to empty, so the address is emitted only when there is one. Let's Encrypt registers
+  # without a contact; the only thing lost is the expiry reminder.
+  caddy_global_options = var.enable_public_acme ? (
+    var.acme_contact_email != "" ? "email ${var.acme_contact_email}" : "# ACME enabled with no contact address"
+  ) : "# ACME disabled: certificates are signed by Caddy's local CA"
+  caddy_tls_directive = var.enable_public_acme ? "# tls: automatic Let's Encrypt for ${local.demo_fqdn}" : "tls internal"
 
   # Docker publishes container ports by punching through the host firewall, so a plain
   # "8190:8190" listens on every interface no matter what ufw thinks. Binding to loopback
