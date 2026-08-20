@@ -237,7 +237,7 @@ Bootstrap writes a machine-readable verdict to syslog on the way out — `SIFAP-
 - [ ] **Prepare to protect local state.** This tenant forces Storage Account `publicNetworkAccess=Disabled` at management-group scope, so the Azure Blob backend is not reachable from laptops or GitHub-hosted runners. Local `terraform.tfstate` is the supported default; keep it on the facilitator workstation and back it up after every apply.
 - [ ] **Have an SSH key pair.** The module reads the public key specified by `ssh_public_key_path`, which defaults to `~/.ssh/id_rsa.pub`. If it does not exist, generate it with `ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa`.
 - [ ] **Confirm the regional vCPU quota.** This is not optional bookkeeping — a zero quota is what left the previous `brazilsouth` attempt half-applied.
-- [ ] **Accept the cost.** The VM, Premium SSD disks, and static public IP incur charges while they exist.
+- [ ] **Accept the cost.** The VM, its managed disks, and the static public IP incur charges while they exist.
 
 ### Quota preflight
 
@@ -612,21 +612,21 @@ Software AG's own answer is NaturalONE, the Eclipse IDE that attaches to the Nat
 
 Use this when you do not have a Windows machine, which includes every Apple Silicon Mac.
 
-- [ ] **Create it.** Roughly USD 0.19/hour including the Windows licence, and it shares the lab's auto-shutdown.
+- [ ] **Create it.** Roughly USD 0.19/hour including the Windows licence, plus the NAT gateway described below, and it shares the lab's auto-shutdown.
 
 ```bash
 SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh apply
 ```
 
-- [ ] **Connect over RDP.** On macOS, install **Windows App** from the App Store first. The username is in `ddm_workstation_admin_username`; the password never leaves Key Vault.
+- [ ] **Connect through Azure Bastion.** The workstation has no public IP, because this tenant deletes public RDP rules. The output opens the VM's **Connect** blade in the portal, where Bastion Developer runs the session in the browser — no RDP client, and nothing to install on macOS. The password never leaves Key Vault.
 
 ```bash
 terraform output -raw ddm_workstation_rdp_command
 eval "$(terraform output -raw ddm_workstation_password_command)"
 ```
 
-- [ ] **Install NaturalONE** on the workstation from the TECHcommunity download above.
-- [ ] **Register the development server** using the **private** endpoint. The public one is allow-listed to the workshop CIDRs, which do not include the workstation's own egress address.
+- [ ] **Install NaturalONE** on the workstation from the TECHcommunity download above. Its outbound path is a NAT gateway: without one it would have no internet at all, since Azure has retired default outbound access for subnets and this VM has no public IP of its own. The gateway is outbound-only, so RDP stays unreachable from the internet.
+- [ ] **Register the development server** using the **private** endpoint. The public one is allow-listed to the workshop CIDRs, which do not include the workstation's NAT egress address.
 
 ```bash
 terraform output -raw ddm_workstation_ndv_endpoint
@@ -737,7 +737,10 @@ Only two variables are required. The others have defaults defined in `variables.
 
 ## Cost and spending control
 
-The `estimated_cost_note` output carries the module's estimate for the Linux VM, Premium SSD disks, and a static IP in `eastus2`. The optional Windows workstation adds its VM and Windows licence while enabled. These are estimates only; confirm current retail prices and your own agreement before relying on them.
+The `estimated_cost_note` output carries the module's estimate for the Linux VM, its managed disks, and a static IP in `eastus2`. The optional Windows workstation adds its VM, its Windows licence and the NAT gateway that gives it outbound access, all only while enabled. These are estimates only; confirm current retail prices and your own agreement before relying on them.
+
+> [!NOTE]
+> This tenant rewrites disk SKUs to `Standard_LRS` at create time, so the module declares that value rather than the Premium tier it would otherwise prefer. Restoring `Premium_LRS` does not produce a Premium disk; it only makes the next plan force-replace both VMs. See [failure #9](../../docs/failures/README.md).
 
 Four mechanisms protect the budget, from weakest to strongest:
 
@@ -766,7 +769,7 @@ az vm start \
 ```
 
 > [!IMPORTANT]
-> `az vm deallocate` stops compute charges, but the managed disks (64 GB OS and 32 GB data, both Premium SSD) and the static public IP keep charging. To eliminate the cost, use `SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy`.
+> `az vm deallocate` stops compute charges, but the managed disks (64 GB OS and 32 GB data) and the static public IP keep charging. To eliminate the cost, use `SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy`.
 
 The public IP is static and keeps its DNS label, so the demo URL is the same after a stop and start.
 

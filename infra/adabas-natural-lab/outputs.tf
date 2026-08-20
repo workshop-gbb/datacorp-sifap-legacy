@@ -210,8 +210,8 @@ output "data_disk_snapshot_name" {
 output "estimated_cost_note" {
   description = "Cost reminder, including what keeps billing after the VM is stopped."
   value       = <<-EOT
-    Running:     ~USD 0.12/h  (${var.vm_size} + Premium SSD OS 64GB + data ${var.data_disk_size_gb}GB + static IP)
-    Deallocated: ~USD 0.03/h  (~USD 0.70/day) - Premium disks and the static IP bill even while
+    Running:     ~USD 0.12/h  (${var.vm_size} + OS disk 64GB + data ${var.data_disk_size_gb}GB + static IP)
+    Deallocated: ~USD 0.03/h  (~USD 0.70/day) - the disks and the static IP bill even while
                  the VM is stopped. 'az vm deallocate' stops ONLY the compute charge.
     Also billing: Log Analytics ingestion, capped at ${var.log_daily_quota_gb} GB/day.
     Auto-shutdown runs daily at ${var.auto_shutdown_time} (${var.auto_shutdown_timezone}); it stops

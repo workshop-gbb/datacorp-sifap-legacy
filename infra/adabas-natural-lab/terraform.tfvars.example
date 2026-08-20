@@ -157,7 +157,7 @@ allowed_source_cidrs = [
 # 2 vCPU / 8 GB is the practical floor for Adabas CE and Natural CE together.
 # vm_size = "Standard_D2s_v7"
 
-# Premium SSD holding the Adabas database containers, mounted at /mnt/adabas-data.
+# Managed disk holding the Adabas database containers, mounted at /mnt/adabas-data.
 # 32 GB fits the demo database with room to load the SIFAP corpus; raise it before a
 # large CATALL, because growing it later needs a VM restart.
 # data_disk_size_gb = 32
