@@ -139,7 +139,8 @@ def test_should_comment_out_the_tail_of_two_line_comments(natural_ce_source):
         for number, line in enumerate(source.splitlines(), start=1):
             if line.rstrip().endswith("*/") and "/*" not in line:
                 orphans.append((path.name, number))
-                assert normalized[number - 1].startswith("*")
+                assert f"*{line[1:]}" in normalized
+                assert line not in normalized
 
     assert orphans == [("CALCDSCT.NSP", 23)]
 
@@ -158,6 +159,55 @@ def test_should_not_comment_code_that_merely_ends_with_the_marker(
     natural_ce_source,
 ):
     source = "  1 #X (A3)  /* NOTE\n  MOVE 1 TO #X\n"
+
+    assert natural_ce_source.normalize(source) == source
+
+
+def test_should_declare_the_count_field_every_c_star_reference_needs(
+    natural_ce_source,
+):
+    """C* resolves only when the view declares the count field (NAT0047)."""
+    source_dir = ROOT / "01-archaeology/legacy-sifap/natural-programs"
+    counted = []
+
+    for path in sorted(source_dir.glob("*.NS[NPCAL]")):
+        source = path.read_text(encoding="utf-8", errors="replace")
+        groups = {m.group("group") for m in
+                  natural_ce_source.COUNT_REFERENCE.finditer(source)}
+        if not groups:
+            continue
+        counted.append((path.name, sorted(groups)))
+        normalized = natural_ce_source.normalize(source)
+        for group in groups:
+            assert f" C*{group}\n" in normalized
+
+    assert counted == [("CALCDSCT.NSP", ["GRP-DISC"])]
+
+
+def test_should_declare_the_count_field_beside_its_group(natural_ce_source):
+    source = (
+        "  1 P-V VIEW OF PAYMENT\n"
+        "    2 GRP-DISC            (1:8)\n"
+        "      3 AMT-DISC          (P7.2)\n"
+        "  FOR #I = 1 TO C*GRP-DISC\n"
+    )
+
+    assert natural_ce_source.normalize(source) == (
+        "  1 P-V VIEW OF PAYMENT\n"
+        "    2 C*GRP-DISC\n"
+        "    2 GRP-DISC            (1:8)\n"
+        "      3 AMT-DISC          (P7.2)\n"
+        "  FOR #I = 1 TO C*GRP-DISC\n"
+    )
+
+
+def test_should_not_declare_a_count_field_twice(natural_ce_source):
+    source = (
+        "  1 P-V VIEW OF PAYMENT\n"
+        "    2 C*GRP-DISC\n"
+        "    2 GRP-DISC            (1:8)\n"
+        "  FOR #I = 1 TO C*GRP-DISC\n"
+    )
 
     assert natural_ce_source.normalize(source) == source
 

@@ -25,6 +25,11 @@ Two constructs in the frozen SIFAP corpus predate Natural CE 9.3.3:
     DESCENDING SEQUENCE BY descriptor``. Trailing ``DESCENDING`` is read as a
     field name and fails with NAT0623.
 
+``C*<periodic group>``
+    The count field only exists if the view declares it. Natural CE resolves
+    ``C*GRP-DISC`` once ``2 C*GRP-DISC`` sits in the view and reports NAT0047 /
+    NAT0285 otherwise, so the declaration is added next to the group.
+
 ``/* ... \n ... */``
     ``/*`` comments out the rest of its own line only; it is not a block
     comment. The second line of the one two-line comment in the corpus is
@@ -59,6 +64,7 @@ READ_DESCENDING = re.compile(
     r"(?P<view>[A-Z][A-Z0-9-]*)\s+BY\s+(?P<key>[A-Z][A-Z0-9-]*)"
     r"\s+DESCENDING[ \t]*$"
 )
+COUNT_REFERENCE = re.compile(r"(?<![\w-])C\*(?P<group>[A-Z][A-Z0-9-]*)")
 
 
 def _rewrite_descending(match: re.Match[str]) -> str:
@@ -114,6 +120,26 @@ def _close_multiline_comments(source: str) -> str:
     return "\n".join(lines)
 
 
+def _declare_count_fields(source: str) -> str:
+    """Declare the C* count field of every periodic group the source counts."""
+    groups = {match.group("group") for match in COUNT_REFERENCE.finditer(source)}
+    lines = source.split("\n")
+
+    for group in sorted(groups):
+        name = re.escape(group)
+        if re.search(rf"(?m)^\s*[123]\s+C\*{name}\b", source):
+            continue
+        declaration = re.compile(rf"^(?P<indent>\s*)(?P<level>[123])\s+{name}\s*\(\d+:\d+\)\s*$")
+        for index, line in enumerate(lines):
+            match = declaration.match(line)
+            if match is None:
+                continue
+            lines.insert(index, f"{match['indent']}{match['level']} C*{group}")
+            break
+
+    return "\n".join(lines)
+
+
 def normalize(source: str) -> str:
     source = VIEW_DECLARATION.sub(
         rf"\g<prefix>{UF_CODE}\g<suffix>",
@@ -122,6 +148,7 @@ def normalize(source: str) -> str:
     source = QUALIFIED_REFERENCE.sub(f".{UF_CODE}", source)
     source = UPDATE_WITH_VIEW.sub(r"\g<indent>UPDATE", source)
     source = _close_multiline_comments(source)
+    source = _declare_count_fields(source)
     source = _label_number_references(source)
     return READ_DESCENDING.sub(_rewrite_descending, source)
 
