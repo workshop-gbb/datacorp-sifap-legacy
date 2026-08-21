@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/lib.sh"
 
 SEED_DIR="${SEED_DIR:-${PROVISIONING_DIR}/seed}"
+DDM_REPORT_DIR="${DDM_REPORT_DIR:-${CORPUS_DIR}/adabas-ddms}"
+ENCODER="${ENCODER:-${PROVISIONING_DIR}/adacmp_input.py}"
 SMOKE_WORK="${WORK_DIR}/smoke-test"
 SMOKE_PERIOD="${SIFAP_SMOKE_PERIOD:-202601}"
 SMOKE_CPF="${SIFAP_SMOKE_CPF:-}"
@@ -14,7 +16,15 @@ SMOKE_CPF="${SIFAP_SMOKE_CPF:-}"
 find_seed_cpf() {
   if [ -n "$SMOKE_CPF" ]; then printf '%s\n' "$SMOKE_CPF"; return 0; fi
   [ -r "$SEED_DIR/beneficiary.dat" ] || fatal "Cannot infer smoke CPF because seed file is missing: $SEED_DIR/beneficiary.dat"
-  grep -Eo '[0-9]{11}' "$SEED_DIR/beneficiary.dat" | head -1 || true
+  [ -r "$DDM_REPORT_DIR/BENEFIC.ddm" ] || fatal "Cannot infer smoke CPF because the DDM is missing: $DDM_REPORT_DIR/BENEFIC.ddm"
+  # The seed is fixed-width binary and NUM-REGISTRATION sits immediately before
+  # NUM-CPF, so the two run together as 22 digits and no pattern match can tell
+  # them apart. Read the CPF at the offset the DDM gives it instead, which is
+  # the same derivation that built the file.
+  python3 "$ENCODER" \
+    --ddm "$DDM_REPORT_DIR/BENEFIC.ddm" \
+    --seed "$SEED_DIR/beneficiary.dat" \
+    --print-field NUM-CPF
 }
 
 run_natural_program() {
@@ -37,6 +47,7 @@ assert_contains() {
 
 main() {
   require_command docker
+  require_command python3
   load_adabas_env
   wait_for_adabas_ready "${SIFAP_ADABAS_READY_TIMEOUT:-900}"
   wait_for_container "$NATURAL_CONTAINER" "${SIFAP_NATURAL_READY_TIMEOUT:-300}"

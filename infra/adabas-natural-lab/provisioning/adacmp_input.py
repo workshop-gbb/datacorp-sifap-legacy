@@ -97,16 +97,29 @@ def build_plan(fields):
             i += 1
             while i < len(fields) and fields[i]["level"] == 2:
                 m = fields[i]
-                members.append(dict(db=m["db"], width=m["width"], fmt=m["fmt"], offset=offset))
+                members.append(dict(db=m["db"], name=m["name"], width=m["width"],
+                                    fmt=m["fmt"], offset=offset))
                 offset += m["width"] * occurs
                 i += 1
             plan.append(dict(kind="PE", db=f["db"], occurs=occurs, members=members))
             continue
-        plan.append(dict(kind="MU" if f["kind"] == "M" else "F", db=f["db"], fmt=f["fmt"],
-                         width=f["width"], occurs=f["occurs"], offset=offset))
+        plan.append(dict(kind="MU" if f["kind"] == "M" else "F", db=f["db"], name=f["name"],
+                         fmt=f["fmt"], width=f["width"], occurs=f["occurs"], offset=offset))
         offset += f["width"] * f["occurs"]
         i += 1
     return plan, offset
+
+
+def locate(plan, name):
+    """Return the (offset, width) the named field occupies in a seed record."""
+    for e in plan:
+        if e["kind"] == "PE":
+            for m in e["members"]:
+                if m["name"] == name:
+                    return m["offset"], m["width"]
+        elif e["name"] == name:
+            return e["offset"], e["width"]
+    return None
 
 
 def pe_occurrences(record, plan):
@@ -144,15 +157,30 @@ def main():
     ap = argparse.ArgumentParser(description="Convert SIFAP seed data to ADACMP input")
     ap.add_argument("--ddm", required=True)
     ap.add_argument("--seed", required=True)
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--out")
+    ap.add_argument("--print-field", metavar="NAME",
+                    help="print this field of the first seed record instead of converting")
     ap.add_argument("--count-format", default="<B",
                     help="struct format for MU/PE occurrence counts (default 1-byte, as ADACMP expects)")
     args = ap.parse_args()
+    if bool(args.out) == bool(args.print_field):
+        ap.error("give either --out or --print-field")
 
     fields = parse_ddm(pathlib.Path(args.ddm).read_text(encoding="utf-8", errors="replace"))
     plan, width = build_plan(fields)
 
     data = pathlib.Path(args.seed).read_bytes()
+
+    if args.print_field:
+        located = locate(plan, args.print_field)
+        if located is None:
+            print("error: %s has no field %s" % (args.ddm, args.print_field), file=sys.stderr)
+            return 1
+        offset, field_width = located
+        value = data[offset:offset + field_width].decode("ascii", "replace")
+        print(value.strip())
+        return 0
+
     stride = width + 1 if data[width:width + 1] == b"\n" else width
     if len(data) % stride:
         print("error: %s is %d bytes, not a multiple of %d" % (args.seed, len(data), stride),

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import struct
 import subprocess
 
@@ -85,3 +86,50 @@ def test_should_keep_packed_width_arithmetic_and_numeric_fields_unpack_format(en
     assert encoder.width_of("P", "7.2") == 4
     assert encoder.width_of("P", "3,4") == 2
     assert encoder.width_of("N", "11") == 11
+
+
+def test_should_read_a_named_field_at_the_offset_the_ddm_gives_it(encoder):
+    """NUM-REGISTRATION runs into NUM-CPF, so only the offset separates them."""
+    fields = encoder.parse_ddm(
+        (DDM_DIR / "BENEFIC.ddm").read_text(encoding="utf-8", errors="replace")
+    )
+    plan, _ = encoder.build_plan(fields)
+
+    assert encoder.locate(plan, "NUM-REGISTRATION") == (0, 11)
+    assert encoder.locate(plan, "NUM-CPF") == (11, 11)
+    assert encoder.locate(plan, "NOT-A-FIELD") is None
+
+
+def test_should_print_the_requested_field_of_the_first_seed_record():
+    printed = subprocess.run(
+        [
+            "python3", str(ENCODER),
+            "--ddm", str(DDM_DIR / "BENEFIC.ddm"),
+            "--seed", str(SEED_DIR / "beneficiary.dat"),
+            "--print-field", "NUM-CPF",
+        ],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=True,
+    ).stdout.strip()
+
+    assert re.fullmatch(r"\d{11}", printed)
+    assert printed != "10000000000"
+
+
+def test_should_reject_a_field_the_ddm_does_not_define():
+    result = subprocess.run(
+        [
+            "python3", str(ENCODER),
+            "--ddm", str(DDM_DIR / "BENEFIC.ddm"),
+            "--seed", str(SEED_DIR / "beneficiary.dat"),
+            "--print-field", "NOT-A-FIELD",
+        ],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    assert result.returncode == 1
+    assert "NOT-A-FIELD" in result.stdout
