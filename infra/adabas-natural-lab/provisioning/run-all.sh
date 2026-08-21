@@ -21,7 +21,7 @@ run_base() {
   info "Starting SIFAP base phase"
   "$SCRIPT_DIR/01-load-adabas.sh" "$@"
   SIFAP_NATURAL_BUILD_PHASE=base "$SCRIPT_DIR/02-build-natural.sh"
-  info "SIFAP base phase completed; DDM-dependent objects are intentionally deferred"
+  info "SIFAP base phase completed with generated DDMs"
 }
 
 run_finalize() {
@@ -50,12 +50,8 @@ main() {
       ;;
     auto)
       run_base "$@"
-      if ddms_cataloged "$NATURAL_LIBRARY" "${DDMS[@]}"; then
-        info "Required DDMs are present; continuing to finalize phase"
-        run_finalize
-      else
-        info "Waiting for DDMs: create BENEFIC, SOCPROG, PAYMENT, and AUDIT in NaturalONE, then rerun with SIFAP_PHASE=finalize"
-      fi
+      info "Required DDMs are present; continuing to finalize phase"
+      run_finalize
       ;;
     *)
       fatal "Invalid SIFAP_PHASE=${PHASE}; expected auto, base, or finalize"

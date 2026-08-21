@@ -309,7 +309,7 @@ require_ddms_cataloged() {
   local library="$1"
   shift
   if ! ddms_cataloged "$library" "$@"; then
-    fatal "Required DDMs are missing from ${library}/GP. Create BENEFIC, SOCPROG, PAYMENT, and AUDIT once in NaturalONE via the Natural Development Server on port 2700, then rerun with SIFAP_PHASE=finalize."
+    fatal "Required generated DDMs are missing from ${library}/GP: $*"
   fi
 }
 

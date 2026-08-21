@@ -25,12 +25,15 @@ import re
 import sys
 from pathlib import Path
 
-# Column layout Natural accepts, verified by cataloging a probe DDM on
-# natural-ce 9.3.3: T(0) L(2) DB(4-5) NAME(7-38) F(40) LEN(41-45) S(48) D(50).
-FIELD_LINE = "{t:1} {lvl:1} {db:<2} {name:<32} {fmt:1}{length:>5}  {stor:1} {desc:1} {remark}"
+# Column layout Natural accepts, verified against the EMPLOYEE DDM shipped with
+# natural-ce 9.3.3: T(0) L(2) DB(4-5) NAME(7-38) F(41) LEN(42-46) S(49) D(51).
+FIELD_LINE = (
+    "{t:1} {lvl:1} {db:<2} {name:<32}  "
+    "{fmt:1}{length:>5}  {stor:1} {desc:1} {remark}"
+)
 
-HEADER_RULE = "- - -- -------------------------------- - ----  - - " + "-" * 25
-HEADER_COLS = "T L DB NAME                             F LENG  S D REMARK"
+HEADER_RULE = "- - -- --------------------------------  - ----  - - " + "-" * 24
+HEADER_COLS = "T L DB NAME                              F LENG  S D REMARK"
 
 SECTION_START = re.compile(
     r"--- (IDENTIFICATION|KEYS|EVENT IDENTIFICATION) ---")
@@ -38,6 +41,7 @@ SECTION_DERIVED = re.compile(r"--- DERIVED DESCRIPTORS ---")
 FIELD_ROW = re.compile(r"^\s*[GMP]?\s*[12]\s+[A-Z][A-Z]\s+")
 SUPER_ROW = re.compile(r"^\s*S\s+[A-Z0-9]{2}\s+")
 CONT_ROW = re.compile(r"^\s*/\*")
+SOURCE_COMPONENT = re.compile(r"[A-Z0-9]{2}(?:\(\d+(?:-\d+)?\))?")
 
 
 def parse_header(text: str) -> tuple[str, str, str]:
@@ -132,13 +136,17 @@ def convert(listing: str, dbid: str) -> str:
                 pending_hyper = True
                 continue
             pending_hyper = False
+            row["t"] = ""
+            row["lvl"] = "1"
             out.append(FIELD_LINE.format(**row).rstrip())
 
         elif section == 2 and CONT_ROW.match(line):
             if pending_hyper:
                 pending_hyper = False
                 continue
-            out.append("        " + line.strip())
+            components = SOURCE_COMPONENT.findall(line)
+            out.append("*      -------- SOURCE FIELD(S) -------")
+            out.extend(f"*      {component}" for component in components)
 
     return "\n".join(out) + "\n"
 

@@ -53,21 +53,44 @@ def test_should_emit_groups_periodic_groups_and_multivalue_fields(
     assert "(1:8)" not in payment
 
 
+def test_should_place_field_attributes_in_vendor_fixed_columns(ddm_source):
+    source = convert(ddm_source, "SOCPROG")
+    line = next(
+        candidate
+        for candidate in source.splitlines()
+        if candidate.startswith("M 1 EA")
+    )
+
+    assert line[0] == "M"
+    assert line[2] == "1"
+    assert line[4:6] == "EA"
+    assert line[7:39].rstrip() == "TYPE-DISC-APPLIC"
+    assert line[41] == "A"
+    assert line[42:47].strip() == "3"
+    assert line[49] == "N"
+    assert line[51] == " "
+
+
 def test_should_emit_supported_derived_descriptors_and_omit_hyperdescriptor(
     ddm_source,
 ):
     beneficiary = convert(ddm_source, "BENEFIC")
     payment = convert(ddm_source, "PAYMENT")
 
-    assert "S   PN PHON-NAME" in beneficiary
-    assert "        /* AC" in beneficiary
-    assert "S   S2 SUPER-UF-STAT" in beneficiary
-    assert "        /* BG(1-2), CE(1-1)" in beneficiary
-    assert "S   S2 SUPER-PROG-PERIOD-STAT" in payment
-    assert "        /* AD(1-4), AE(1-6), DA(1-1)" in payment
+    assert "  1 PN PHON-NAME" in beneficiary
+    assert "*      -------- SOURCE FIELD(S) -------" in beneficiary
+    assert "*      AC" in beneficiary
+    assert "  1 S2 SUPER-UF-STAT" in beneficiary
+    assert "*      BG(1-2)" in beneficiary
+    assert "*      CE(1-1)" in beneficiary
+    assert "  1 S2 SUPER-PROG-PERIOD-STAT" in payment
+    assert "*      AD(1-4)" in payment
+    assert "*      AE(1-6)" in payment
+    assert "*      DA(1-1)" in payment
     assert "H1" not in beneficiary
     assert "HYPER-BAND-ELIG" not in beneficiary
-    assert "/* AF, CJ" not in beneficiary
+    assert "\n*      AF\n" not in beneficiary
+    assert "\n*      CJ\n" not in beneficiary
 
 
 def test_should_reject_listing_without_required_identity(ddm_source):
