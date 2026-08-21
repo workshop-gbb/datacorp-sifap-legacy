@@ -13,6 +13,11 @@ Two constructs in the frozen SIFAP corpus predate Natural CE 9.3.3:
     the enclosing FIND or READ loop. With a name after it Natural CE parses
     the SQL form and fails with NAT0679.
 
+``*NUMBER(<view>)``
+    The system variable takes a statement reference, not a view name, so
+    Natural CE reports NAT0280. Bare ``*NUMBER`` refers to the preceding FIND,
+    which is what these call sites mean.
+
 ``READ ... BY <descriptor> DESCENDING``
     Natural expects the direction before the sequence: ``READ view IN
     DESCENDING SEQUENCE BY descriptor``. Trailing ``DESCENDING`` is read as a
@@ -36,6 +41,7 @@ QUALIFIED_REFERENCE = re.compile(r"\.UF(?=\s|/|$)")
 UPDATE_WITH_VIEW = re.compile(
     r"(?m)^(?P<indent>\s*)UPDATE\s+[A-Z][A-Z0-9]*-V[ \t]*$"
 )
+NUMBER_WITH_VIEW = re.compile(r"\*NUMBER\(\s*[A-Z][A-Z0-9-]*-V\s*\)")
 READ_DESCENDING = re.compile(
     r"(?m)^(?P<indent>\s*)READ\s+(?P<limit>\(\d+\)\s+)?"
     r"(?P<view>[A-Z][A-Z0-9-]*)\s+BY\s+(?P<key>[A-Z][A-Z0-9-]*)"
@@ -58,6 +64,7 @@ def normalize(source: str) -> str:
     )
     source = QUALIFIED_REFERENCE.sub(f".{UF_CODE}", source)
     source = UPDATE_WITH_VIEW.sub(r"\g<indent>UPDATE", source)
+    source = NUMBER_WITH_VIEW.sub("*NUMBER", source)
     return READ_DESCENDING.sub(_rewrite_descending, source)
 
 

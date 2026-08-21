@@ -81,5 +81,25 @@ def test_should_keep_limit_and_indentation_when_rewriting_descending(
     )
 
 
+def test_should_strip_view_argument_from_number_system_variable(
+    natural_ce_source,
+):
+    """*NUMBER takes a statement reference, not a view (NAT0280)."""
+    source_dir = ROOT / "01-archaeology/legacy-sifap/natural-programs"
+    number_count = 0
+
+    for path in sorted(source_dir.glob("*.NS[NPC]")):
+        source = path.read_text(encoding="utf-8", errors="replace")
+        number_count += len(natural_ce_source.NUMBER_WITH_VIEW.findall(source))
+        normalized = natural_ce_source.normalize(source)
+
+        assert not natural_ce_source.NUMBER_WITH_VIEW.search(normalized)
+
+    assert number_count == 2
+    assert natural_ce_source.normalize("IF *NUMBER(PROGRAM-V) = 0\n") == (
+        "IF *NUMBER = 0\n"
+    )
+
+
 def test_should_ship_compatibility_tool_with_provisioning():
     assert (PROVISIONING / "natural_ce_source.py").is_file()
