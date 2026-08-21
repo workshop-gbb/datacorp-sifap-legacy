@@ -17,6 +17,9 @@ SEED_DIR = PROVISIONING / "seed"
 WORK_DIR = LAB / "tests" / ".work"
 LOAD_SCRIPT = pathlib.Path(os.environ.get("SIFAP_LOAD_ADABAS_SH", PROVISIONING / "01-load-adabas.sh"))
 ENCODER = pathlib.Path(os.environ.get("SIFAP_ADACMP_INPUT_PY", PROVISIONING / "adacmp_input.py"))
+DDM_SOURCE = pathlib.Path(
+    os.environ.get("SIFAP_DDM_SOURCE_PY", PROVISIONING / "ddm_source.py")
+)
 
 FILES = {
     "beneficiary": (150, "BENEFIC.ddm", 500, 1739),
@@ -28,6 +31,14 @@ FILES = {
 
 def load_encoder():
     spec = importlib.util.spec_from_file_location("sifap_adacmp_input", ENCODER)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_ddm_source():
+    spec = importlib.util.spec_from_file_location("sifap_ddm_source", DDM_SOURCE)
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
@@ -54,6 +65,11 @@ def run_loader_function(function_name: str, *args: pathlib.Path | str) -> subpro
 @pytest.fixture(scope="session")
 def encoder():
     return load_encoder()
+
+
+@pytest.fixture(scope="session")
+def ddm_source():
+    return load_ddm_source()
 
 
 @pytest.fixture(scope="session")
