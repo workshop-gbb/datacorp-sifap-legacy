@@ -81,10 +81,10 @@ def test_should_keep_limit_and_indentation_when_rewriting_descending(
     )
 
 
-def test_should_strip_view_argument_from_number_system_variable(
+def test_should_point_number_references_at_a_labelled_find(
     natural_ce_source,
 ):
-    """*NUMBER takes a statement reference, not a view (NAT0280)."""
+    """After END-FIND, bare *NUMBER has no active statement (NAT0285)."""
     source_dir = ROOT / "01-archaeology/legacy-sifap/natural-programs"
     number_count = 0
 
@@ -96,9 +96,36 @@ def test_should_strip_view_argument_from_number_system_variable(
         assert not natural_ce_source.NUMBER_WITH_VIEW.search(normalized)
 
     assert number_count == 2
-    assert natural_ce_source.normalize("IF *NUMBER(PROGRAM-V) = 0\n") == (
-        "IF *NUMBER = 0\n"
+
+
+def test_should_label_the_find_that_originates_the_number_reference(
+    natural_ce_source,
+):
+    source = (
+        "  FIND PROGRAM-V WITH COD-PROGRAM = #COD\n"
+        "    IGNORE\n"
+        "  END-FIND\n"
+        "  IF *NUMBER(PROGRAM-V) = 0\n"
     )
+
+    assert natural_ce_source.normalize(source) == (
+        "  CENUM1. FIND PROGRAM-V WITH COD-PROGRAM = #COD\n"
+        "    IGNORE\n"
+        "  END-FIND\n"
+        "  IF *NUMBER(CENUM1.) = 0\n"
+    )
+
+
+def test_should_leave_bare_number_references_untouched(natural_ce_source):
+    """FIND NUMBER and HISTOGRAM loops already resolve bare *NUMBER."""
+    source = (
+        "  FIND NUMBER PAYMENT-V WITH SUPER-CPF-PERIOD = #KEY\n"
+        "  IF *NUMBER > 0\n"
+        "    ESCAPE TOP\n"
+        "  END-IF\n"
+    )
+
+    assert natural_ce_source.normalize(source) == source
 
 
 def test_should_ship_compatibility_tool_with_provisioning():
