@@ -57,9 +57,11 @@ prepare_sources() {
     finalize|auto|all)
       for member in "${SUBPROGRAMS[@]}"; do cp "$SOURCE_DIR/${member}.NSN" "$BUILD_WORK/sifap-src/"; done
       for member in "${PROGRAMS[@]}"; do [ -r "$SOURCE_DIR/${member}.NSP" ] && cp "$SOURCE_DIR/${member}.NSP" "$BUILD_WORK/sifap-src/"; done
-      python3 "$NATURAL_COMPAT" "$BUILD_WORK/sifap-src/"*.NS[NP]
       ;;
   esac
+  # Copycodes are expanded inline at catalog time, so they need the same
+  # Natural CE compatibility rewrite as the members that INCLUDE them.
+  python3 "$NATURAL_COMPAT" "$BUILD_WORK/sifap-src/"*.NS[NPC]
 }
 
 ensure_libraries() {

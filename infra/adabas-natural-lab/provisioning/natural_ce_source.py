@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
 """Apply runtime-only Natural CE source compatibility aliases.
 
-The frozen SIFAP corpus keeps the Natural 4.2 field name ``UF``. Natural CE
-9.3.3 requires DDM long names to contain at least three characters (NAT4219),
-so the generated BENEFIC DDM exposes the same physical field BG as
-``UF-CODE``. This script changes only staged runtime copies of view
-declarations and qualified references; local ``#UF`` variables stay intact.
+Two constructs in the frozen SIFAP corpus predate Natural CE 9.3.3:
+
+``UF``
+    A Natural 4.2 field name of two characters. Natural CE requires DDM long
+    names to hold at least three (NAT4219), so the generated BENEFIC DDM
+    exposes the same physical field BG as ``UF-CODE``.
+
+``UPDATE <view>``
+    The Adabas UPDATE statement takes no operand: it rewrites the record of
+    the enclosing FIND or READ loop. With a name after it Natural CE parses
+    the SQL form and fails with NAT0679.
+
+Only staged runtime copies change; the frozen corpus and local ``#UF``
+variables stay intact.
 """
 
 from __future__ import annotations
@@ -19,6 +28,9 @@ VIEW_DECLARATION = re.compile(
     r"(?m)^(?P<prefix>\s+[23]\s+)UF(?P<suffix>\s+\(A2\).*)$"
 )
 QUALIFIED_REFERENCE = re.compile(r"\.UF(?=\s|/|$)")
+UPDATE_WITH_VIEW = re.compile(
+    r"(?m)^(?P<indent>\s*)UPDATE\s+[A-Z][A-Z0-9]*-V\s*$"
+)
 
 
 def normalize(source: str) -> str:
@@ -26,7 +38,8 @@ def normalize(source: str) -> str:
         rf"\g<prefix>{UF_CODE}\g<suffix>",
         source,
     )
-    return QUALIFIED_REFERENCE.sub(f".{UF_CODE}", source)
+    source = QUALIFIED_REFERENCE.sub(f".{UF_CODE}", source)
+    return UPDATE_WITH_VIEW.sub(r"\g<indent>UPDATE", source)
 
 
 def main() -> int:
