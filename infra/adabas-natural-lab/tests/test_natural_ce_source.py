@@ -128,5 +128,39 @@ def test_should_leave_bare_number_references_untouched(natural_ce_source):
     assert natural_ce_source.normalize(source) == source
 
 
+def test_should_comment_out_the_tail_of_two_line_comments(natural_ce_source):
+    """`/*` only comments its own line, so the tail is parsed (NAT0243)."""
+    source_dir = ROOT / "01-archaeology/legacy-sifap/natural-programs"
+    orphans = []
+
+    for path in sorted(source_dir.glob("*.NS[NPCAL]")):
+        source = path.read_text(encoding="utf-8", errors="replace")
+        normalized = natural_ce_source.normalize(source).splitlines()
+        for number, line in enumerate(source.splitlines(), start=1):
+            if line.rstrip().endswith("*/") and "/*" not in line:
+                orphans.append((path.name, number))
+                assert normalized[number - 1].startswith("*")
+
+    assert orphans == [("CALCDSCT.NSP", 23)]
+
+
+def test_should_keep_column_alignment_when_commenting_the_tail(
+    natural_ce_source,
+):
+    source = "  1 #X (A3)  /* FIRST\n             SECOND */\n"
+
+    assert natural_ce_source.normalize(source) == (
+        "  1 #X (A3)  /* FIRST\n*            SECOND */\n"
+    )
+
+
+def test_should_not_comment_code_that_merely_ends_with_the_marker(
+    natural_ce_source,
+):
+    source = "  1 #X (A3)  /* NOTE\n  MOVE 1 TO #X\n"
+
+    assert natural_ce_source.normalize(source) == source
+
+
 def test_should_ship_compatibility_tool_with_provisioning():
     assert (PROVISIONING / "natural_ce_source.py").is_file()

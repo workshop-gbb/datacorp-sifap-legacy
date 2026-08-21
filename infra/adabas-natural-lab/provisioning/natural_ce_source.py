@@ -25,6 +25,12 @@ Two constructs in the frozen SIFAP corpus predate Natural CE 9.3.3:
     DESCENDING SEQUENCE BY descriptor``. Trailing ``DESCENDING`` is read as a
     field name and fails with NAT0623.
 
+``/* ... \n ... */``
+    ``/*`` comments out the rest of its own line only; it is not a block
+    comment. The second line of the one two-line comment in the corpus is
+    therefore parsed as source and fails with NAT0243, so it becomes a comment
+    line in its own right.
+
 Only staged runtime copies change; the frozen corpus and local ``#UF``
 variables stay intact.
 """
@@ -95,6 +101,19 @@ def _label_number_references(source: str) -> str:
     return source
 
 
+def _close_multiline_comments(source: str) -> str:
+    """Comment out the tail of a C-style comment that spans two lines."""
+    lines = source.split("\n")
+    for index in range(1, len(lines)):
+        line = lines[index]
+        if "/*" in line or not line.rstrip().endswith("*/"):
+            continue
+        if "/*" not in lines[index - 1] or not line.startswith((" ", "\t")):
+            continue
+        lines[index] = f"*{line[1:]}"
+    return "\n".join(lines)
+
+
 def normalize(source: str) -> str:
     source = VIEW_DECLARATION.sub(
         rf"\g<prefix>{UF_CODE}\g<suffix>",
@@ -102,6 +121,7 @@ def normalize(source: str) -> str:
     )
     source = QUALIFIED_REFERENCE.sub(f".{UF_CODE}", source)
     source = UPDATE_WITH_VIEW.sub(r"\g<indent>UPDATE", source)
+    source = _close_multiline_comments(source)
     source = _label_number_references(source)
     return READ_DESCENDING.sub(_rewrite_descending, source)
 
