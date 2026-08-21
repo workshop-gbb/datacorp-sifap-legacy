@@ -13,6 +13,11 @@ Two constructs in the frozen SIFAP corpus predate Natural CE 9.3.3:
     the enclosing FIND or READ loop. With a name after it Natural CE parses
     the SQL form and fails with NAT0679.
 
+``READ ... BY <descriptor> DESCENDING``
+    Natural expects the direction before the sequence: ``READ view IN
+    DESCENDING SEQUENCE BY descriptor``. Trailing ``DESCENDING`` is read as a
+    field name and fails with NAT0623.
+
 Only staged runtime copies change; the frozen corpus and local ``#UF``
 variables stay intact.
 """
@@ -29,8 +34,21 @@ VIEW_DECLARATION = re.compile(
 )
 QUALIFIED_REFERENCE = re.compile(r"\.UF(?=\s|/|$)")
 UPDATE_WITH_VIEW = re.compile(
-    r"(?m)^(?P<indent>\s*)UPDATE\s+[A-Z][A-Z0-9]*-V\s*$"
+    r"(?m)^(?P<indent>\s*)UPDATE\s+[A-Z][A-Z0-9]*-V[ \t]*$"
 )
+READ_DESCENDING = re.compile(
+    r"(?m)^(?P<indent>\s*)READ\s+(?P<limit>\(\d+\)\s+)?"
+    r"(?P<view>[A-Z][A-Z0-9-]*)\s+BY\s+(?P<key>[A-Z][A-Z0-9-]*)"
+    r"\s+DESCENDING[ \t]*$"
+)
+
+
+def _rewrite_descending(match: re.Match[str]) -> str:
+    limit = match.group("limit") or ""
+    return (
+        f"{match.group('indent')}READ {limit}{match.group('view')}"
+        f" IN DESCENDING SEQUENCE BY {match.group('key')}"
+    )
 
 
 def normalize(source: str) -> str:
@@ -39,7 +57,8 @@ def normalize(source: str) -> str:
         source,
     )
     source = QUALIFIED_REFERENCE.sub(f".{UF_CODE}", source)
-    return UPDATE_WITH_VIEW.sub(r"\g<indent>UPDATE", source)
+    source = UPDATE_WITH_VIEW.sub(r"\g<indent>UPDATE", source)
+    return READ_DESCENDING.sub(_rewrite_descending, source)
 
 
 def main() -> int:

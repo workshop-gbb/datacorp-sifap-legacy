@@ -54,5 +54,32 @@ def test_should_preserve_indentation_when_rewriting_update(natural_ce_source):
     )
 
 
+def test_should_rewrite_descending_reads_into_sequence_form(
+    natural_ce_source,
+):
+    """Trailing DESCENDING is parsed as a field name and fails NAT0623."""
+    source_dir = ROOT / "01-archaeology/legacy-sifap/natural-programs"
+    read_count = 0
+
+    for path in sorted(source_dir.glob("*.NS[NPC]")):
+        source = path.read_text(encoding="utf-8", errors="replace")
+        read_count += len(natural_ce_source.READ_DESCENDING.findall(source))
+        normalized = natural_ce_source.normalize(source)
+
+        assert not natural_ce_source.READ_DESCENDING.search(normalized)
+
+    assert read_count == 3
+
+
+def test_should_keep_limit_and_indentation_when_rewriting_descending(
+    natural_ce_source,
+):
+    source = "    READ (1) AUDIT-V BY NUM-AUDIT DESCENDING\n"
+
+    assert natural_ce_source.normalize(source) == (
+        "    READ (1) AUDIT-V IN DESCENDING SEQUENCE BY NUM-AUDIT\n"
+    )
+
+
 def test_should_ship_compatibility_tool_with_provisioning():
     assert (PROVISIONING / "natural_ce_source.py").is_file()

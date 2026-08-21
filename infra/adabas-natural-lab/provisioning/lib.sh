@@ -14,7 +14,7 @@ LOG_FILE="${SIFAP_PROVISIONING_LOG:-/var/log/sifap-provisioning.log}"
 ADABAS_WORK_DIR="${ADABAS_WORK_DIR:-/data/sifap-provisioning}"
 NATURAL_WORK_DIR="${NATURAL_WORK_DIR:-/opt/softwareag/Natural/sifap-provisioning}"
 FTOUCH_BIN="${FTOUCH_BIN:-/opt/softwareag/Natural/bin/ftouch}"
-NATURAL_STACK_TIMEOUT="${NATURAL_STACK_TIMEOUT:-600}"
+NATURAL_STACK_TIMEOUT="${NATURAL_STACK_TIMEOUT:-300}"
 SIFAP_STATE_DIR="${SIFAP_STATE_DIR:-/opt/sifap/state}"
 ADABAS_DBID="${ADABAS_DBID:-}"
 
@@ -189,7 +189,7 @@ spawn natural SM=ON "STACK=(${stack})"
 expect {
   -re "MORE|More" { send "\r"; exp_continue }
   eof { }
-  timeout { puts "SIFAP-TIMEOUT" }
+  timeout { send_log "SIFAP-TIMEOUT\n" }
 }
 EOF_EXP
 
@@ -231,7 +231,7 @@ if {[string length \$payload] > 0} { send -- \$payload }
 expect {
   -re "MORE|More" { send "\r"; exp_continue }
   eof { }
-  timeout { puts "SIFAP-TIMEOUT" }
+  timeout { send_log "SIFAP-TIMEOUT\n" }
 }
 EOF_EXP
 
