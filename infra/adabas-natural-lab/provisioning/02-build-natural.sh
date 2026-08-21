@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="${SOURCE_DIR:-${CORPUS_DIR}/natural-programs}"
 DDM_REPORT_DIR="${DDM_REPORT_DIR:-${CORPUS_DIR}/adabas-ddms}"
 DDM_GENERATOR="${DDM_GENERATOR:-${PROVISIONING_DIR}/ddm_source.py}"
+NATURAL_COMPAT="${NATURAL_COMPAT:-${PROVISIONING_DIR}/natural_ce_source.py}"
 BUILD_WORK="${WORK_DIR}/natural-build"
 BUILD_PHASE="${SIFAP_NATURAL_BUILD_PHASE:-${1:-auto}}"
 
@@ -23,6 +24,7 @@ require_inputs() {
   [ -d "$SOURCE_DIR" ] || fatal "Natural source directory missing: ${SOURCE_DIR}"
   [ -d "$DDM_REPORT_DIR" ] || fatal "DDM report directory missing: ${DDM_REPORT_DIR}"
   [ -r "$DDM_GENERATOR" ] || fatal "DDM source generator missing: ${DDM_GENERATOR}"
+  [ -r "$NATURAL_COMPAT" ] || fatal "Natural CE compatibility tool missing: ${NATURAL_COMPAT}"
   for member in "${DDMS[@]}"; do
     [ -r "$DDM_REPORT_DIR/${member}.ddm" ] \
       || fatal "Missing DDM LISTDDM report: $DDM_REPORT_DIR/${member}.ddm"
@@ -55,6 +57,7 @@ prepare_sources() {
     finalize|auto|all)
       for member in "${SUBPROGRAMS[@]}"; do cp "$SOURCE_DIR/${member}.NSN" "$BUILD_WORK/sifap-src/"; done
       for member in "${PROGRAMS[@]}"; do [ -r "$SOURCE_DIR/${member}.NSP" ] && cp "$SOURCE_DIR/${member}.NSP" "$BUILD_WORK/sifap-src/"; done
+      python3 "$NATURAL_COMPAT" "$BUILD_WORK/sifap-src/"*.NS[NP]
       ;;
   esac
 }

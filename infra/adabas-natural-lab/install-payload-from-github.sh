@@ -60,5 +60,5 @@ mv "${PAYLOAD_DIR}.new" "$PAYLOAD_DIR"
 printf '%s\n' "$COMMIT" > /opt/sifap/PAYLOAD-COMMIT
 
 /opt/sifap/fetch-payload.sh
-systemctl restart sifap-provisioning
+systemctl restart --no-block sifap-provisioning
 echo "Payload installed from ${REPOSITORY}@${COMMIT}"

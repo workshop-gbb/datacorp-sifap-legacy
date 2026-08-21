@@ -20,6 +20,12 @@ ENCODER = pathlib.Path(os.environ.get("SIFAP_ADACMP_INPUT_PY", PROVISIONING / "a
 DDM_SOURCE = pathlib.Path(
     os.environ.get("SIFAP_DDM_SOURCE_PY", PROVISIONING / "ddm_source.py")
 )
+NATURAL_CE_SOURCE = pathlib.Path(
+    os.environ.get(
+        "SIFAP_NATURAL_CE_SOURCE_PY",
+        PROVISIONING / "natural_ce_source.py",
+    )
+)
 
 FILES = {
     "beneficiary": (150, "BENEFIC.ddm", 500, 1739),
@@ -39,6 +45,17 @@ def load_encoder():
 
 def load_ddm_source():
     spec = importlib.util.spec_from_file_location("sifap_ddm_source", DDM_SOURCE)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_natural_ce_source():
+    spec = importlib.util.spec_from_file_location(
+        "sifap_natural_ce_source",
+        NATURAL_CE_SOURCE,
+    )
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
@@ -70,6 +87,11 @@ def encoder():
 @pytest.fixture(scope="session")
 def ddm_source():
     return load_ddm_source()
+
+
+@pytest.fixture(scope="session")
+def natural_ce_source():
+    return load_natural_ce_source()
 
 
 @pytest.fixture(scope="session")

@@ -41,7 +41,12 @@ SECTION_DERIVED = re.compile(r"--- DERIVED DESCRIPTORS ---")
 FIELD_ROW = re.compile(r"^\s*[GMP]?\s*[12]\s+[A-Z][A-Z]\s+")
 SUPER_ROW = re.compile(r"^\s*S\s+[A-Z0-9]{2}\s+")
 CONT_ROW = re.compile(r"^\s*/\*")
-SOURCE_COMPONENT = re.compile(r"[A-Z0-9]{2}(?:\(\d+(?:-\d+)?\))?")
+SOURCE_COMPONENT = re.compile(
+    r"(?P<db>[A-Z0-9]{2})(?P<slice>\(\d+(?:-\d+)?\))?"
+)
+LONG_NAME_ALIASES = {
+    ("BENEFIC", "BG"): "UF-CODE",
+}
 
 
 def parse_header(text: str) -> tuple[str, str, str]:
@@ -100,6 +105,14 @@ def split_row(line: str) -> dict[str, str]:
 
 def convert(listing: str, dbid: str) -> str:
     ddm_name, fnr, seq = parse_header(listing)
+    long_names = {}
+    for line in listing.splitlines():
+        if FIELD_ROW.match(line):
+            row = split_row(line)
+            long_names[row["db"]] = LONG_NAME_ALIASES.get(
+                (ddm_name, row["db"]),
+                row["name"],
+            )
 
     out = [
         f"DB: {dbid:<5} FILE: {fnr:<4} - {ddm_name:<30} DEFAULT SEQUENCE: {seq}",
@@ -122,6 +135,7 @@ def convert(listing: str, dbid: str) -> str:
 
         if section == 1 and FIELD_ROW.match(line):
             row = split_row(line)
+            row["name"] = long_names[row["db"]]
             # (1:10) and (1:5) are occurrence counts the FDT already carries as
             # PE/MU; in DDM source they belong to the remark, not the length.
             row["remark"] = re.sub(r"\(\d+:\d+\)\s*", "",
@@ -144,7 +158,16 @@ def convert(listing: str, dbid: str) -> str:
             if pending_hyper:
                 pending_hyper = False
                 continue
-            components = SOURCE_COMPONENT.findall(line)
+            components = []
+            for match in SOURCE_COMPONENT.finditer(line):
+                physical_name = match.group("db")
+                long_name = long_names.get(physical_name)
+                if not long_name:
+                    raise SystemExit(
+                        f"derived descriptor references unknown field "
+                        f"{physical_name}"
+                    )
+                components.append(long_name + (match.group("slice") or ""))
             out.append("*      -------- SOURCE FIELD(S) -------")
             out.extend(f"*      {component}" for component in components)
 

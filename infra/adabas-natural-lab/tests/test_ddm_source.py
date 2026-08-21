@@ -40,6 +40,7 @@ def test_should_emit_groups_periodic_groups_and_multivalue_fields(
     audit = convert(ddm_source, "AUDIT")
 
     assert "G 1 BA GRP-ADDRESS" in beneficiary
+    assert "  2 BG UF-CODE" in beneficiary
     assert "P 1 DA GRP-DEPEND" in beneficiary
     assert "M 1 ED NUM-PHONE" in beneficiary
     assert "P 1 DA GRP-CALC-BAND" in social_program
@@ -79,14 +80,14 @@ def test_should_emit_supported_derived_descriptors_and_omit_hyperdescriptor(
 
     assert "  1 PN PHON-NAME" in beneficiary
     assert "*      -------- SOURCE FIELD(S) -------" in beneficiary
-    assert "*      AC" in beneficiary
+    assert "*      FULL-NAME" in beneficiary
     assert "  1 S2 SUPER-UF-STAT" in beneficiary
-    assert "*      BG(1-2)" in beneficiary
-    assert "*      CE(1-1)" in beneficiary
+    assert "*      UF-CODE(1-2)" in beneficiary
+    assert "*      STAT-BENEFICIARY(1-1)" in beneficiary
     assert "  1 S2 SUPER-PROG-PERIOD-STAT" in payment
-    assert "*      AD(1-4)" in payment
-    assert "*      AE(1-6)" in payment
-    assert "*      DA(1-1)" in payment
+    assert "*      COD-PROGRAM(1-4)" in payment
+    assert "*      YEAR-MONTH-REF(1-6)" in payment
+    assert "*      STAT-PAYMENT(1-1)" in payment
     assert "H1" not in beneficiary
     assert "HYPER-BAND-ELIG" not in beneficiary
     assert "\n*      AF\n" not in beneficiary
@@ -99,3 +100,12 @@ def test_should_reject_listing_without_required_identity(ddm_source):
         match="listing has no 'DDM NAME:' / 'FNR:' header",
     ):
         ddm_source.convert("TYPE: ADABAS\n", "12")
+
+
+def test_should_keep_runtime_alias_consistent_with_natural_sources(
+    ddm_source,
+    natural_ce_source,
+):
+    assert ddm_source.LONG_NAME_ALIASES[("BENEFIC", "BG")] == (
+        natural_ce_source.UF_CODE
+    )
