@@ -48,6 +48,13 @@ LONG_NAME_ALIASES = {
     ("BENEFIC", "BG"): "UF-CODE",
 }
 
+# The LISTDDM report marks a unique descriptor "U", but DDM source has no such
+# code: uniqueness is an Adabas FDT property (DE,UQ), which ADAFDU already
+# carries. Natural CE reads an unknown code as the super/subdescriptor family
+# and then rejects every STORE against the view with NAT0633, so "U" has to be
+# emitted as the plain descriptor "D".
+DESCRIPTOR_CODES = {"U": "D"}
+
 
 def parse_header(text: str) -> tuple[str, str, str]:
     name = re.search(r"^DDM NAME:\s+(\S+)", text, re.M)
@@ -140,6 +147,7 @@ def convert(listing: str, dbid: str) -> str:
             # PE/MU; in DDM source they belong to the remark, not the length.
             row["remark"] = re.sub(r"\(\d+:\d+\)\s*", "",
                                    row["remark"]).strip()
+            row["desc"] = DESCRIPTOR_CODES.get(row["desc"], row["desc"])
             out.append(FIELD_LINE.format(**row).rstrip())
 
         elif section == 2 and SUPER_ROW.match(line):
@@ -152,6 +160,7 @@ def convert(listing: str, dbid: str) -> str:
             pending_hyper = False
             row["t"] = ""
             row["lvl"] = "1"
+            row["desc"] = DESCRIPTOR_CODES.get(row["desc"], row["desc"])
             out.append(FIELD_LINE.format(**row).rstrip())
 
         elif section == 2 and CONT_ROW.match(line):

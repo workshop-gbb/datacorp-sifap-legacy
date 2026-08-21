@@ -94,6 +94,24 @@ def test_should_emit_supported_derived_descriptors_and_omit_hyperdescriptor(
     assert "\n*      CJ\n" not in beneficiary
 
 
+def test_should_never_emit_unique_code_in_the_descriptor_column(ddm_source):
+    """A "U" makes Natural CE reject every STORE with NAT0633."""
+    for member in ("BENEFIC", "SOCPROG", "PAYMENT", "AUDIT"):
+        source = convert(ddm_source, member)
+        body = source.splitlines()[4:]
+        codes = {line[51] for line in body if len(line) > 51}
+
+        assert "U" not in codes
+        assert codes <= {" ", "D", "S", "P"}
+
+    payment = convert(ddm_source, "PAYMENT")
+    unique_key = next(
+        line for line in payment.splitlines() if "NUM-PAYMENT" in line
+    )
+
+    assert unique_key[51] == "D"
+
+
 def test_should_reject_listing_without_required_identity(ddm_source):
     with pytest.raises(
         SystemExit,
