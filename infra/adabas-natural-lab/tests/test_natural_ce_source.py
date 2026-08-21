@@ -212,5 +212,68 @@ def test_should_not_declare_a_count_field_twice(natural_ce_source):
     assert natural_ce_source.normalize(source) == source
 
 
+def test_should_give_every_histogram_a_one_field_view(natural_ce_source):
+    """HISTOGRAM reads the inverted list, so its view holds one field."""
+    source_dir = ROOT / "01-archaeology/legacy-sifap/natural-programs"
+    statements = []
+
+    for path in sorted(source_dir.glob("*.NS[NPCAL]")):
+        source = path.read_text(encoding="utf-8", errors="replace")
+        lines = natural_ce_source.normalize(source).split("\n")
+        for line in source.splitlines():
+            if natural_ce_source.HISTOGRAM_STATEMENT.match(line):
+                statements.append((path.name, line.strip()))
+        for index, line in enumerate(lines):
+            match = natural_ce_source.HISTOGRAM_STATEMENT.match(line)
+            if match is None:
+                continue
+            _, fields = natural_ce_source._view_block(lines, match["view"])
+            assert len(fields) == 1
+            assert natural_ce_source.VIEW_FIELD.match(
+                lines[fields[0]]
+            )["field"] == match["key"]
+
+    assert statements == [("RELAUDIT.NSP", "HISTOGRAM AUDIT-V FOR DT-EVENT")]
+
+
+def test_should_requalify_only_the_histogram_body(natural_ce_source):
+    source = (
+        "  1 AUDIT-V VIEW OF AUDIT\n"
+        "    2 NUM-AUDIT           (N15)\n"
+        "    2 DT-EVENT            (N8)\n"
+        "  WRITE AUDIT-V.NUM-AUDIT\n"
+        "  HISTOGRAM AUDIT-V FOR DT-EVENT\n"
+        "    WRITE AUDIT-V.DT-EVENT\n"
+        "  END-HISTOGRAM\n"
+        "  WRITE AUDIT-V.DT-EVENT\n"
+    )
+
+    assert natural_ce_source.normalize(source) == (
+        "  1 AUDIT-V VIEW OF AUDIT\n"
+        "    2 NUM-AUDIT           (N15)\n"
+        "    2 DT-EVENT            (N8)\n"
+        "  1 AUDIT-H VIEW OF AUDIT\n"
+        "    2 DT-EVENT            (N8)\n"
+        "  WRITE AUDIT-V.NUM-AUDIT\n"
+        "  HISTOGRAM AUDIT-H FOR DT-EVENT\n"
+        "    WRITE AUDIT-H.DT-EVENT\n"
+        "  END-HISTOGRAM\n"
+        "  WRITE AUDIT-V.DT-EVENT\n"
+    )
+
+
+def test_should_leave_a_histogram_that_already_reads_one_field(
+    natural_ce_source,
+):
+    source = (
+        "  1 AUDIT-H VIEW OF AUDIT\n"
+        "    2 DT-EVENT            (N8)\n"
+        "  HISTOGRAM AUDIT-H FOR DT-EVENT\n"
+        "  END-HISTOGRAM\n"
+    )
+
+    assert natural_ce_source.normalize(source) == source
+
+
 def test_should_ship_compatibility_tool_with_provisioning():
     assert (PROVISIONING / "natural_ce_source.py").is_file()

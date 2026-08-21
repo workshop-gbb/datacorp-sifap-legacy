@@ -30,6 +30,11 @@ Two constructs in the frozen SIFAP corpus predate Natural CE 9.3.3:
     ``C*GRP-DISC`` once ``2 C*GRP-DISC`` sits in the view and reports NAT0047 /
     NAT0285 otherwise, so the declaration is added next to the group.
 
+``HISTOGRAM <view> FOR <descriptor>``
+    HISTOGRAM reads the inverted list, so its view may hold only the
+    descriptor. Pointing it at a full view fails with NAT0632, so the
+    statement gets a one-field view of the same file.
+
 ``/* ... \n ... */``
     ``/*`` comments out the rest of its own line only; it is not a block
     comment. The second line of the one two-line comment in the corpus is
@@ -65,6 +70,15 @@ READ_DESCENDING = re.compile(
     r"\s+DESCENDING[ \t]*$"
 )
 COUNT_REFERENCE = re.compile(r"(?<![\w-])C\*(?P<group>[A-Z][A-Z0-9-]*)")
+HISTOGRAM_STATEMENT = re.compile(
+    r"^(?P<lead>\s*HISTOGRAM\s+(?:\(\d+\)\s+)?)(?P<view>[A-Z][A-Z0-9-]*)"
+    r"(?P<tail>\s+FOR\s+(?P<key>[A-Z][A-Z0-9-]*))"
+)
+VIEW_HEADER = re.compile(
+    r"^(?P<indent>\s*)1\s+(?P<name>[A-Z][A-Z0-9-]*)\s+VIEW\s+OF\s+"
+    r"(?P<file>[A-Z][A-Z0-9-]*)\s*$"
+)
+VIEW_FIELD = re.compile(r"^\s*[23]\s+(?:C\*)?(?P<field>[A-Z][A-Z0-9-]*)")
 
 
 def _rewrite_descending(match: re.Match[str]) -> str:
@@ -140,6 +154,78 @@ def _declare_count_fields(source: str) -> str:
     return "\n".join(lines)
 
 
+def _view_block(lines: list[str], name: str) -> tuple[re.Match[str], list[int]] | None:
+    """Return the header match and field line indices of view ``name``."""
+    for index, line in enumerate(lines):
+        header = VIEW_HEADER.match(line)
+        if header is None or header["name"] != name:
+            continue
+        fields = []
+        for offset in range(index + 1, len(lines)):
+            if VIEW_FIELD.match(lines[offset]) is None:
+                break
+            fields.append(offset)
+        return header, fields
+    return None
+
+
+def _unused_view_name(lines: list[str], view: str) -> str:
+    taken = {m["name"] for m in map(VIEW_HEADER.match, lines) if m}
+    base = view[:-2] if view.endswith("-V") else view
+    candidate = f"{base}-H"
+    suffix = 1
+    while candidate in taken:
+        suffix += 1
+        candidate = f"{base}-H{suffix}"
+    return candidate
+
+
+def _narrow_one_histogram_view(source: str) -> str | None:
+    lines = source.split("\n")
+
+    for index, line in enumerate(lines):
+        statement = HISTOGRAM_STATEMENT.match(line)
+        if statement is None:
+            continue
+        block = _view_block(lines, statement["view"])
+        if block is None:
+            continue
+        header, fields = block
+        if len(fields) <= 1:
+            continue
+        declaration = next(
+            (i for i in fields if VIEW_FIELD.match(lines[i])["field"] == statement["key"]),
+            None,
+        )
+        closing = next(
+            (i for i in range(index, len(lines)) if "END-HISTOGRAM" in lines[i]),
+            None,
+        )
+        if declaration is None or closing is None:
+            continue
+
+        narrow = _unused_view_name(lines, statement["view"])
+        qualifier = f"{statement['view']}."
+        lines[index] = (
+            f"{statement['lead']}{narrow}{statement['tail']}{line[statement.end():]}"
+        )
+        for offset in range(index, closing + 1):
+            lines[offset] = lines[offset].replace(qualifier, f"{narrow}.")
+        lines[fields[-1] + 1: fields[-1] + 1] = [
+            f"{header['indent']}1 {narrow} VIEW OF {header['file']}",
+            lines[declaration],
+        ]
+        return "\n".join(lines)
+
+    return None
+
+
+def _narrow_histogram_views(source: str) -> str:
+    while (narrowed := _narrow_one_histogram_view(source)) is not None:
+        source = narrowed
+    return source
+
+
 def normalize(source: str) -> str:
     source = VIEW_DECLARATION.sub(
         rf"\g<prefix>{UF_CODE}\g<suffix>",
@@ -149,6 +235,7 @@ def normalize(source: str) -> str:
     source = UPDATE_WITH_VIEW.sub(r"\g<indent>UPDATE", source)
     source = _close_multiline_comments(source)
     source = _declare_count_fields(source)
+    source = _narrow_histogram_views(source)
     source = _label_number_references(source)
     return READ_DESCENDING.sub(_rewrite_descending, source)
 
