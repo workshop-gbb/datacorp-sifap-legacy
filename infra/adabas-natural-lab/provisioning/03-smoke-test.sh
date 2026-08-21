@@ -61,10 +61,12 @@ main() {
   suffix="${cpf: -5}"
 
   info "Running CONSBENF smoke test for seeded CPF ending in ${suffix}"
+  # CONSBENF leaves its query loop with PF3, so it has no menu option to send.
+  # Any extra keystroke outlives the program and reaches the Natural command
+  # line, where it raises NAT0082 and strands the session on the library menu.
   run_natural_program consbenf CONSBENF \
 "C
-${cpf}
-0" \
+${cpf}" \
 "$SMOKE_WORK/consbenf.out" || failures=$((failures + 1))
   assert_contains "$SMOKE_WORK/consbenf.out" 'SIFAP - BENEFICIARY INFORMATION|BENEFICIARY QUERY' 'CONSBENF produced beneficiary screen/output' || failures=$((failures + 1))
   assert_contains "$SMOKE_WORK/consbenf.out" "${suffix}" 'CONSBENF output contains the expected seeded CPF suffix' || failures=$((failures + 1))
