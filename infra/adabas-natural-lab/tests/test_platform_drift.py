@@ -74,3 +74,22 @@ def test_should_keep_the_nat_address_off_the_nic() -> None:
     # audit-plan.py rejects.
     assert 'resource "azurerm_public_ip" "workstation"' not in MAIN_TF
     assert 'resource "azurerm_public_ip" "workstation_nat"' in MAIN_TF
+
+
+def test_should_let_both_shutdown_schedules_be_switched_off() -> None:
+    # A lab whose URL is handed out in advance has to stay reachable, and
+    # both VMs have to make that choice together: shutting only one down
+    # leaves the pair half-running, which reads as a broken lab rather
+    # than a paused one.
+    declared = re.findall(r"^\s*enabled\s*=\s*(.+)$", MAIN_TF, re.MULTILINE)
+    schedule_flags = [d for d in declared if "auto_shutdown_enabled" in d]
+
+    assert len(schedule_flags) == 4, (
+        "Both shutdown schedules must read var.auto_shutdown_enabled for "
+        "the schedule itself and for its notification, so the lab and the "
+        f"workstation can be kept up together. Got: {schedule_flags}"
+    )
+    assert "enabled               = true" not in MAIN_TF, (
+        "A hardcoded enabled = true pins the shutdown schedule on and "
+        "silently deallocates a lab that is meant to stay reachable."
+    )

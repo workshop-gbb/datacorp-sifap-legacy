@@ -190,6 +190,15 @@ allowed_source_cidrs = [
 # Cost control
 # ---------------------------------------------------------------------------
 
+# Whether the daily shutdown schedule actually stops the VMs. On by default: an idle lab VM
+# left running is the most common way a workshop bill escapes.
+#
+# Set false only for a shared lab whose URL is handed out in advance, where a participant
+# opening the link must not find a deallocated VM. The budget below then becomes the ONLY
+# automatic cost guard, and it alerts rather than stops - so set
+# auto_shutdown_notification_email too.
+# auto_shutdown_enabled  = false
+
 # auto_shutdown_time     = "2000"
 # auto_shutdown_timezone = "Eastern Standard Time"
 
@@ -217,5 +226,9 @@ allowed_source_cidrs = [
 # Set this to true to get a Windows VM inside the lab VNet for that one manual step, then set
 # it back to false once the DDMs are archived on the managed data disk.
 # See README.md -> "Creating the DDMs".
+#
+# WARNING: this variable defaults to false, so once the workstation exists you must keep the
+# line in your tfvars. Removing it does not leave the VM alone - the next apply reads the
+# default and DESTROYS it.
 #
 # enable_ddm_workstation = true

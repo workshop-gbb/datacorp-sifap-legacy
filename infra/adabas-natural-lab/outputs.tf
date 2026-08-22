@@ -214,8 +214,7 @@ output "estimated_cost_note" {
     Deallocated: ~USD 0.03/h  (~USD 0.70/day) - the disks and the static IP bill even while
                  the VM is stopped. 'az vm deallocate' stops ONLY the compute charge.
     Also billing: Log Analytics ingestion, capped at ${var.log_daily_quota_gb} GB/day.
-    Auto-shutdown runs daily at ${var.auto_shutdown_time} (${var.auto_shutdown_timezone}); it stops
-    compute, it does not delete storage.
+    ${local.shutdown_cost_note}
     A monthly budget of ${var.monthly_budget_amount} alerts at 50%, 80% and 100% (forecast).
     To stop ALL charges, destroy the lab: see README.md -> "Destroy the environment".
   EOT

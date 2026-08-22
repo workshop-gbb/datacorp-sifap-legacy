@@ -74,6 +74,17 @@ locals {
 
   alert_emails = var.auto_shutdown_notification_email != "" ? [var.auto_shutdown_notification_email] : []
 
+  # Read by estimated_cost_note. A lab with auto-shutdown off bills around the clock, and the
+  # cost output has to say so rather than quoting a shutdown time that never fires.
+  shutdown_cost_note = var.auto_shutdown_enabled ? join("\n    ", [
+    "Auto-shutdown runs daily at ${var.auto_shutdown_time} (${var.auto_shutdown_timezone}); it stops",
+    "compute, it does not delete storage.",
+    ]) : join("\n    ", [
+    "Auto-shutdown is DISABLED, so every enabled VM bills around the clock (~USD 3/day for the",
+    "lab VM alone, plus the Windows workstation and its licence when enabled). The monthly",
+    "budget below is the only automatic guard left.",
+  ])
+
   # The DDM workstation gets its own subnet rather than sharing the lab's, so the rule that
   # opens the Natural Development Server to it names a network instead of a host address
   # that does not exist until the VM does.
@@ -489,7 +500,7 @@ resource "azurerm_monitor_metric_alert" "vm_availability" {
   name                = "${local.name_prefix}-alert-vm-availability"
   resource_group_name = azurerm_resource_group.lab.name
   scopes              = [azurerm_linux_virtual_machine.lab.id]
-  description         = "Lab VM is not available. Expected daily between the auto-shutdown time and the next manual start."
+  description         = var.auto_shutdown_enabled ? "Lab VM is not available. Expected daily between the auto-shutdown time and the next manual start." : "Lab VM is not available. Auto-shutdown is disabled, so this VM is meant to be running at all times and any downtime is unexpected."
   severity            = 2
   frequency           = "PT5M"
   window_size         = "PT15M"
@@ -905,17 +916,19 @@ resource "azurerm_virtual_machine_data_disk_attachment" "adabas_data" {
 # Cost control
 # ---------------------------------------------------------------------------
 
-# Cost guard: an idle lab VM is the most common way a workshop bill escapes.
+# Cost guard: an idle lab VM is the most common way a workshop bill escapes. A shared lab
+# whose URL is handed out in advance has to stay reachable, so this can be switched off;
+# the budget then becomes the only automatic guard.
 resource "azurerm_dev_test_global_vm_shutdown_schedule" "lab" {
   virtual_machine_id    = azurerm_linux_virtual_machine.lab.id
   location              = azurerm_resource_group.lab.location
-  enabled               = true
+  enabled               = var.auto_shutdown_enabled
   daily_recurrence_time = var.auto_shutdown_time
   timezone              = var.auto_shutdown_timezone
   tags                  = local.tags
 
   notification_settings {
-    enabled         = var.auto_shutdown_notification_email != ""
+    enabled         = var.auto_shutdown_enabled && var.auto_shutdown_notification_email != ""
     email           = var.auto_shutdown_notification_email != "" ? var.auto_shutdown_notification_email : null
     time_in_minutes = 30
   }
@@ -1186,13 +1199,13 @@ resource "azurerm_dev_test_global_vm_shutdown_schedule" "workstation" {
 
   virtual_machine_id    = azurerm_windows_virtual_machine.workstation[0].id
   location              = azurerm_resource_group.lab.location
-  enabled               = true
+  enabled               = var.auto_shutdown_enabled
   daily_recurrence_time = var.auto_shutdown_time
   timezone              = var.auto_shutdown_timezone
   tags                  = local.tags
 
   notification_settings {
-    enabled         = var.auto_shutdown_notification_email != ""
+    enabled         = var.auto_shutdown_enabled && var.auto_shutdown_notification_email != ""
     email           = var.auto_shutdown_notification_email != "" ? var.auto_shutdown_notification_email : null
     time_in_minutes = 30
   }

@@ -472,8 +472,25 @@ variable "terminal_natural_command" {
 # Cost control
 # ---------------------------------------------------------------------------
 
+variable "auto_shutdown_enabled" {
+  description = <<-EOT
+    Whether the daily auto-shutdown schedule stops the VMs.
+
+    On by default, because an idle lab VM left running is the most common way a workshop
+    bill escapes. Turn it off only for an environment that has to stay reachable between
+    sessions - a shared lab whose URL is handed out in advance, for example. The schedule
+    resource still exists when disabled, so the shutdown time stays recorded and turning it
+    back on is a one-line change.
+
+    Disabling this does NOT disable the budget: monthly_budget_amount still enforces its
+    thresholds, and it becomes the only automatic cost guard left.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "auto_shutdown_time" {
-  description = "Daily auto-shutdown time in HHmm, in auto_shutdown_timezone. Guards against a VM left running after the workshop."
+  description = "Daily auto-shutdown time in HHmm, in auto_shutdown_timezone. Guards against a VM left running after the workshop. Ignored when auto_shutdown_enabled is false."
   type        = string
   default     = "2000"
 

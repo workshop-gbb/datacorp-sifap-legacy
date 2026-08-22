@@ -725,7 +725,8 @@ Only two variables are required. The others have defaults defined in `variables.
 | `ddm_workstation_admin_username` | No | `sifapadmin` | Local administrator on the workstation. Windows reserved names are rejected |
 | `ddm_workstation_image_version` | No | `20348.5499.260809` | Windows Server 2022 Gen2 image version, pinned |
 | `adabas_dbid` | No | `12` | Adabas DBID mapped by Natural |
-| `auto_shutdown_time` | No | `2000` | Daily shutdown time in HHmm format |
+| `auto_shutdown_enabled` | No | `true` | Whether the daily shutdown schedule stops the VMs. Set `false` for a shared lab whose URL is handed out in advance; the budget then becomes the only automatic cost guard |
+| `auto_shutdown_time` | No | `2000` | Daily shutdown time in HHmm format. Ignored when `auto_shutdown_enabled` is `false` |
 | `auto_shutdown_timezone` | No | `Eastern Standard Time` | Shutdown schedule time zone |
 | `auto_shutdown_notification_email` | No | `""` | **Strongly recommended.** Notified 30 minutes before shutdown, and the target for the availability and bootstrap alerts. Empty disables all three |
 | `monthly_budget_amount` | No | `100` | Budget in USD, with alerts at 50%, 80%, and 100% |
@@ -747,11 +748,14 @@ Four mechanisms protect the budget, from weakest to strongest:
 | Mechanism | What it does | When to use it |
 |---|---|---|
 | Budget alerts | E-mails at 50%, 80%, and 100% of `monthly_budget_amount` | Always on. Tells you, does not stop you |
-| Automatic shutdown | Shuts the VM down daily at 20:00 in `auto_shutdown_timezone` | Always on; a safety net, not an operating plan |
+| Automatic shutdown | Shuts the VMs down daily at 20:00 in `auto_shutdown_timezone` | On by default; a safety net, not an operating plan. Set `auto_shutdown_enabled = false` for a lab that must stay reachable between sessions |
 | `az vm deallocate` | Stops compute charges, preserves the environment | Pausing between sessions |
 | `SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy` | Removes everything | When you have finished with the lab |
 
 The budget is scoped to the resource group and is deliberately independent of the VM. That matters: in the `brazilsouth` failure the VM was never created, so a VM-scoped control would not have existed either. A resource-group budget starts working as soon as the group does.
+
+> [!WARNING]
+> With `auto_shutdown_enabled = false` the budget is the only automatic guard left, and it alerts rather than stops. A lab left running around the clock costs roughly USD 3/day for the Linux VM alone, plus the Windows workstation and its licence when `enable_ddm_workstation` is on. Set `auto_shutdown_notification_email` so somebody hears the alerts.
 
 > [!NOTE]
 > Budget notifications need `auto_shutdown_notification_email`. Left empty, the budget still exists and still enforces its thresholds in the portal, but nobody gets an e-mail. Set it.
