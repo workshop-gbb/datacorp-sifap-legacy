@@ -12,6 +12,10 @@ ENCODER="${ENCODER:-${PROVISIONING_DIR}/adacmp_input.py}"
 SMOKE_WORK="${WORK_DIR}/smoke-test"
 SMOKE_PERIOD="${SIFAP_SMOKE_PERIOD:-202601}"
 SMOKE_CPF="${SIFAP_SMOKE_CPF:-}"
+# Natural pauses with MORE whenever a page fills. Redirected input answers each
+# pause with a blank line, so the run needs more of them than the longest page
+# run it can produce; the payment history is capped at 12 rows.
+SMOKE_PAGE_KEYS="${SIFAP_SMOKE_PAGE_KEYS:-8}"
 
 find_seed_cpf() {
   if [ -n "$SMOKE_CPF" ]; then printf '%s\n' "$SMOKE_CPF"; return 0; fi
@@ -30,7 +34,9 @@ find_seed_cpf() {
 run_natural_program() {
   local label="$1" program="$2" input="$3" output="$4"
   local input_file="$SMOKE_WORK/${label}.input"
-  printf '%s\n' "$input" > "$input_file"
+  { printf '%s\n' "$input"
+    for _ in $(seq "$SMOKE_PAGE_KEYS"); do printf '\n'; done
+  } > "$input_file"
   natural_run "$label" "$NATURAL_LIBRARY" "$program" "$input_file" "$output"
 }
 
@@ -61,9 +67,10 @@ main() {
   suffix="${cpf: -5}"
 
   info "Running CONSBENF smoke test for seeded CPF ending in ${suffix}"
-  # CONSBENF leaves its query loop with PF3, so it has no menu option to send.
-  # Any extra keystroke outlives the program and reaches the Natural command
-  # line, where it raises NAT0082 and strands the session on the library menu.
+  # The first ENTER submits the screen with only the search type filled, which
+  # the program answers with CPF NOT PROVIDED and a REINPUT that marks the CPF
+  # field; the CPF then goes into that field. This is the corpus's own screen
+  # flow, not a workaround.
   run_natural_program consbenf CONSBENF \
 "C
 ${cpf}" \

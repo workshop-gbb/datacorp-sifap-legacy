@@ -213,41 +213,42 @@ EOF_EXP
 }
 
 natural_run() {
+  # Natural CE rejects BATCHMODE, but it accepts a STACK with stdin redirected
+  # from a file, and that is deterministic where a pty is not. Driving these
+  # programs through expect meant guessing how long to wait before typing, and
+  # reading the screen back was worse: Natural repaints split captions with
+  # cursor escapes, so "PAYMENT HISTORY" never matches as a whole. It also left
+  # no way out of an online program, whose loop only ends on PF3, a key no
+  # escape sequence delivered here. Redirected input has none of that. Natural
+  # ends the session once the input runs out, so even CONSBENF stops, and the
+  # assertions on the captured session decide whether the run did its job.
   local label="$1" library="$2" program="$3" input_file="$4" output_file="$5"
   local stack="LOGON ${library};${program};FIN"
-  local exp="${WORK_DIR}/${label}.exp"
+  local remote="${NATURAL_WORK_DIR}/${label}"
+  local rc=0
 
-  cat > "$exp" <<EOF_EXP
-set timeout ${NATURAL_STACK_TIMEOUT}
-log_file -a ${NATURAL_WORK_DIR}/${label}.log
-set input [open "${NATURAL_WORK_DIR}/${label}.input" r]
-set payload [read \$input]
-close \$input
-regsub -all "\n" \$payload "\r" payload
-if {[string length \$payload] > 0} { append payload "\r" }
-spawn natural SM=ON "STACK=(${stack})"
-after 1000
-if {[string length \$payload] > 0} { send -- \$payload }
-expect {
-  -re "MORE|More" { send "\r"; exp_continue }
-  eof { }
-  timeout { send_log "SIFAP-TIMEOUT\n" }
-}
-EOF_EXP
-
-  container_sh "$NATURAL_CONTAINER" "mkdir -p '$NATURAL_WORK_DIR' && rm -f '${NATURAL_WORK_DIR}/${label}.log'"
-  copy_into_container "$exp" "$NATURAL_CONTAINER" "${NATURAL_WORK_DIR}/${label}.exp"
-  copy_into_container "$input_file" "$NATURAL_CONTAINER" "${NATURAL_WORK_DIR}/${label}.input"
-  container_sh "$NATURAL_CONTAINER" "expect '${NATURAL_WORK_DIR}/${label}.exp' >/dev/null 2>&1 || true"
   container_sh "$NATURAL_CONTAINER" \
-    "sed -e 's/\x1b\[[0-9;?]*[a-zA-Z]//g' -e 's/\x1b[()][A-Z0-9]//g' '${NATURAL_WORK_DIR}/${label}.log' | tr -d '\r' > '${NATURAL_WORK_DIR}/${label}.out'"
-  docker cp "${NATURAL_CONTAINER}:${NATURAL_WORK_DIR}/${label}.out" "$output_file" \
+    "mkdir -p '$NATURAL_WORK_DIR' && rm -f '${remote}.raw' '${remote}.out'"
+  copy_into_container "$input_file" "$NATURAL_CONTAINER" "${remote}.input"
+  container_sh "$NATURAL_CONTAINER" \
+    "cd '$NATURAL_WORK_DIR' && timeout ${NATURAL_STACK_TIMEOUT} natural SM=ON \"STACK=(${stack})\" < '${remote}.input' > '${remote}.raw' 2>&1" \
+    || rc=$?
+  container_sh "$NATURAL_CONTAINER" \
+    "sed -e 's/\x1b\[[0-9;?]*[a-zA-Z]//g' -e 's/\x1b[()][A-Z0-9]//g' '${remote}.raw' | tr -d '\r' > '${remote}.out'"
+  docker cp "${NATURAL_CONTAINER}:${remote}.out" "$output_file" \
     || fatal "Natural ${label} produced no session output"
 
-  if grep -q 'SIFAP-TIMEOUT' "$output_file" 2>/dev/null; then
+  # GNU timeout reports 124 and nothing else does, so a run that never ended is
+  # never confused with a program that chose its own exit code.
+  if [ "$rc" -eq 124 ]; then
     fatal "Natural ${label} timed out after ${NATURAL_STACK_TIMEOUT}s; see ${output_file}"
   fi
   if grep -oE 'NAT[0-9]{4}' "$output_file" 2>/dev/null | grep -qvE 'NAT0084'; then
+    return 1
+  fi
+  # The corpus reports its own failures through ON ERROR, which never prints a
+  # NAT code, so a job can fail with a clean-looking session without this.
+  if grep -q 'NATURAL ERROR' "$output_file" 2>/dev/null; then
     return 1
   fi
 }
