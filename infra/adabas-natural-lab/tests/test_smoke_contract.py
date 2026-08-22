@@ -52,12 +52,20 @@ def test_should_answer_every_page_pause_the_session_can_produce():
     assert "SMOKE_PAGE_KEYS" in script
 
 
-def test_should_not_judge_a_batch_program_by_its_business_summary():
+def test_should_not_judge_a_batch_program_by_how_far_the_corpus_lets_it_run():
     """Work files need a DEFINE WORK FILE driver, which 04-batch-jobs.sh owns."""
     script = SMOKE_TEST.read_text(encoding="utf-8")
 
-    assert "'BATCHPGT reached the seeded beneficiary data'" in script
+    assert "'BATCHPGT banner is present'" in script
     assert "BATCHPGT produced a non-empty business summary" not in script
+    assert "BATCHPGT reached the seeded beneficiary data" not in script
+
+
+def test_should_prove_the_data_is_reachable_through_the_query():
+    """CONSBENF is what a runtime check can own end to end."""
+    script = SMOKE_TEST.read_text(encoding="utf-8")
+
+    assert "'CONSBENF output contains the expected seeded CPF suffix'" in script
 
 
 def test_should_read_the_smoke_cpf_through_the_ddm_derived_layout():
