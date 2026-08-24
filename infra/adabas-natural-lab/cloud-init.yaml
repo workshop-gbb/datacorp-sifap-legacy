@@ -102,6 +102,12 @@ write_files:
   # v2.10.2). With no algorithm argument it assumes bcrypt, and the second token in the block
   # is the bcrypt hash itself, not base64.
   #
+  # AUTHORISATION. With enable_viewer_account there is a second credential that is refused
+  # /admin and is sent to a Natural session pinned to one query program. Caddy exposes the
+  # authenticated name as {http.auth.user.id}, and basic_auth sorts ahead of handle in the
+  # directive order, so a handle block can match on who signed in. Both accounts share one
+  # origin: this separates roles, it does not isolate tenants.
+  #
   # Neither the username nor the hash is written here. Both arrive as environment variables
   # from /opt/sifap/caddy.env (mode 0600), which bootstrap.sh builds from Key Vault. {$VAR} is
   # Caddy's own environment placeholder, resolved when the Caddyfile is parsed.
@@ -144,8 +150,9 @@ write_files:
       	# adjacent to it.
       	@protected not path /healthz /healthz/*
       	basic_auth @protected {
-      		"{$SIFAP_BASIC_AUTH_USER}" "{$SIFAP_BASIC_AUTH_HASH}"
+      		"{$SIFAP_BASIC_AUTH_USER}" "{$SIFAP_BASIC_AUTH_HASH}"${caddy_viewer_credential}
       	}
+${caddy_viewer_routes}
 
       	# The green screen. ttyd is told its own base path (-b /terminal) so it
       	# emits correct asset and WebSocket URLs; nothing needs stripping here,
@@ -343,6 +350,7 @@ write_files:
           networks:
             - sifap-lab
 
+${compose_viewer_service}
         app-placeholder:
           image: ${caddy_image}
           container_name: app-placeholder
@@ -465,6 +473,56 @@ write_files:
       say ""
       exec docker exec -it "$CONTAINER" /bin/bash -l
 
+  # Runs INSIDE the ttyd-viewer container, once per browser connection. Deliberately NOT the
+  # script above: that one falls back to an interactive shell inside natural-ce when it cannot
+  # find the session driver, which is the right call for the operator and exactly the wrong one
+  # here. A viewer that lands in a shell has more access than the account it signed in with,
+  # so every branch of this script either opens the pinned session or stops.
+  - path: /opt/sifap/viewer-session.sh
+    owner: root:root
+    permissions: "0755"
+    content: |
+      #!/bin/sh
+      # Alpine container: /bin/sh is busybox ash, not bash. Keep this POSIX.
+      set -u
+
+      CONTAINER=natural-ce
+
+      # Quoted heredoc: the command arrives verbatim, so the quotes and parentheses
+      # a Natural STACK needs cannot break this script.
+      VIEWER_CMD=$(cat <<'SIFAP_VIEWER_COMMAND'
+      ${viewer_terminal_command}
+      SIFAP_VIEWER_COMMAND
+      )
+
+      say() { printf '%s\n' "$1"; }
+
+      stop() {
+        say ""
+        say "$1"
+        say "This window will close in 20 seconds."
+        sleep 20
+        exit 1
+      }
+
+      if ! docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null | grep -q true; then
+        stop "The Natural container ($CONTAINER) is not running."
+      fi
+
+      if [ -z "$VIEWER_CMD" ]; then
+        stop "No viewer session command is configured, so this window has nothing to open."
+      fi
+
+      say "SIFAP - read-only session"
+      say ""
+      say "This account opens the beneficiary query screen only. It cannot reach"
+      say "the Natural command line, so the registration and batch programs and"
+      say "the Adabas console are all out of reach. Leaving the screen with PF3"
+      say "ends the session."
+      say ""
+
+      exec docker exec -it "$CONTAINER" sh -lc "$VIEWER_CMD"
+
   # Installs the legacy corpus and provisioning scripts from the checksummed archive that
   # deploy-local.sh uploads over SSH. Idempotent - re-run it after any source change:
   #
@@ -567,7 +625,7 @@ write_files:
       set -euo pipefail
       [ "$EUID" -eq 0 ] || { echo "run with sudo" >&2; exit 1; }
       case "$${1:-}" in
-        adabas-admin-password|demo-basic-auth-password|ddm-workstation-password) name="$1" ;;
+        adabas-admin-password|demo-basic-auth-password|demo-viewer-password|ddm-workstation-password) name="$1" ;;
         *) echo "unsupported secret name" >&2; exit 2 ;;
       esac
       token=$(curl -s -H "Metadata:true" \
@@ -1207,6 +1265,32 @@ write_files:
       echo "basic auth configured for user '${basic_auth_username}' (hash not logged)"
 
       unset BASIC_AUTH_SECRET BASIC_AUTH_HASH BASIC_AUTH_KIND COMPOSE_BASIC_AUTH_HASH
+
+      # The non-administrative account, when Terraform rendered one. It fails closed the
+      # same way: an unreadable secret locks the viewer out rather than letting the
+      # Caddyfile fall back to an empty username, which Caddy would treat as a real
+      # account and which would then match nothing the routes above expect.
+      if [ -n "${viewer_username}" ]; then
+        VIEWER_SECRET=$(read_kv_secret "demo-viewer-password" 30 || true)
+        VIEWER_HASH=""
+        if [ -n "$VIEWER_SECRET" ]; then
+          VIEWER_HASH=$(printf '%s\n' "$VIEWER_SECRET" \
+            | docker run --rm -i "${caddy_image}" caddy hash-password 2>/dev/null | tr -d '\r\n')
+        fi
+        if [ -z "$VIEWER_HASH" ]; then
+          echo "WARNING: could not build the viewer hash; locking that account with an"
+          echo "WARNING: unknown password. The admin credential is unaffected."
+          VIEWER_HASH=$(head -c 32 /dev/urandom | base64 \
+            | docker run --rm -i "${caddy_image}" caddy hash-password 2>/dev/null | tr -d '\r\n')
+        fi
+        COMPOSE_VIEWER_HASH=$(printf '%s' "$VIEWER_HASH" | sed 's/\$/$$/g')
+        ( umask 077
+          printf 'SIFAP_VIEWER_USER=%s\n' '${viewer_username}' >> /opt/sifap/caddy.env
+          printf 'SIFAP_VIEWER_HASH=%s\n' "$COMPOSE_VIEWER_HASH" >> /opt/sifap/caddy.env )
+        chmod 0600 /opt/sifap/caddy.env
+        echo "viewer account configured for user '${viewer_username}' (hash not logged)"
+        unset VIEWER_SECRET VIEWER_HASH COMPOSE_VIEWER_HASH
+      fi
 
       # The data disk outlives the VM by design, so an abrupt VM replacement leaves the
       # nucleus concurrency lock behind naming a container host that no longer exists.

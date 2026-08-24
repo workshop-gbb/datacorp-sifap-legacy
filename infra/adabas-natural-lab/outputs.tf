@@ -84,6 +84,21 @@ output "demo_basic_auth_password_command" {
   ])
 }
 
+output "viewer_account" {
+  description = "What the non-administrative credential can and cannot do, and how to read its password."
+  value = var.enable_viewer_account ? join("", [
+    "username '${var.viewer_username}' on the same demo URL. Gets the landing page, /app/ ",
+    "and a green screen pinned to the query screen; /admin/ answers 403 and the Natural ",
+    "command line is unreachable, so the registration and batch programs cannot be started. ",
+    "It is NOT a read-only database account: the query program appends its own AUDIT record, ",
+    "which is the legacy behaviour the corpus exists to show. Password: ",
+    "az vm run-command invoke -g ${azurerm_resource_group.lab.name} ",
+    "-n ${azurerm_linux_virtual_machine.lab.name} --command-id RunShellScript ",
+    "--scripts '/opt/sifap/read-secret.sh demo-viewer-password' ",
+    "--query 'value[0].message' -o tsv",
+  ]) : "disabled (set enable_viewer_account = true)"
+}
+
 output "tls_mode" {
   description = "Which certificate authority signs the demo URL, and what that implies for a browser."
   value = var.enable_public_acme ? join("", [

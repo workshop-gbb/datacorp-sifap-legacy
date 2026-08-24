@@ -182,6 +182,26 @@ Terraform then stores only the hash, as `demo-basic-auth-hash`, and the plaintex
 
 **It fails closed.** If the VM cannot read the secret, `bootstrap.sh` locks the site with a hash of a random string nobody holds: the URL stays up, `/healthz` still answers, and every other route is simply unenterable until it is fixed. And if the env file were missing entirely, Caddy refuses to start rather than serving an open origin — verified locally against Caddy 2.10.2, which errors with `username and password cannot be empty or missing`.
 
+### The viewer account
+
+`enable_viewer_account = true` adds a second credential to the same URL for people who should be shown the legacy system without being able to change it. Caddy exposes the authenticated name as `{http.auth.user.id}` and `basic_auth` sorts ahead of `handle` in its directive order, so the routes can decide what to do per user.
+
+| Route | `sifap` | `viewer` |
+|---|---|---|
+| `/` and `/app/` | 200 | 200 |
+| `/terminal/` | full Natural session | session pinned to the query screen |
+| `/admin/` | 200 | **403** |
+| `/healthz` | open | open |
+
+The viewer's green screen is a **different upstream**, not a different path: ttyd cannot see who authenticated, so the only way to give one account a restricted session is to send it to a container started with one. `ttyd-viewer` runs `viewer_terminal_command`, whose default stacks `CONSBENF` behind a `FIN`. That trailing `FIN` is the whole mechanism — with it, anything typed after the program ends is discarded instead of being run as a Natural command. Verified on the lab: typing `CADBENEF` and `SCRATCH CONSBENF` into that session started neither and removed nothing.
+
+Its session script also has no shell fallback, unlike the operator's. Dropping a viewer at a prompt inside `natural-ce` would hand it more than the account it signed in with.
+
+> [!IMPORTANT]
+> **This is a role, not a database permission.** The viewer cannot administer the lab and cannot reach the programs that write, but it is not a read-only Adabas account: `CONSBENF` appends its own record to the AUDIT file on every query, which is the legacy behaviour the corpus exists to demonstrate. Both accounts also share one origin and one database — this separates roles, it does not isolate tenants.
+
+Read its password with `terraform output -raw viewer_account`, which prints the command along with the same caveat.
+
 ### Choosing a certificate mode
 
 There is a real tradeoff here, and the module makes you choose rather than deciding quietly for you.
@@ -466,6 +486,7 @@ The `apply` finishes while the VM is still running the bootstrap: installing Doc
 | Adabas console without the proxy | `admin_console_tunnel_command` | `ssh -L` tunnel, for when the `/admin/` prefix breaks the console's assets |
 | **Demo URL username** | `demo_basic_auth_username` | Required on every route except `/healthz` |
 | **Demo URL password** | `demo_basic_auth_password_command` | Prints an SSH command that reads the private vault through the VM identity |
+| Non-administrative login | `viewer_account` | What the viewer can reach, what it cannot, and how to read its password |
 | Readiness endpoint | `healthz_url` | Unauthenticated, for uptime probes |
 | Which certificate you will get | `tls_mode` | Tells you whether to expect a browser warning |
 | Trust the internal CA | `trust_demo_ca_command` | Removes the warning without widening the NSG |
@@ -719,6 +740,9 @@ Only two variables are required. The others have defaults defined in `variables.
 | `demo_basic_auth_password_hash` | No | `""` | Bring your own bcrypt hash. Empty makes Terraform generate a password into Key Vault. **Pass it via `TF_VAR_`, never in a file** |
 | `modern_app_upstream` | No | `sifap-app:8080` | What `/app/` proxies to. Returns 502 until Stage 3 answers there |
 | `terminal_natural_command` | No | `""` | Command the terminal runs to open a Natural session. Empty probes the known paths and falls back to a shell |
+| `enable_viewer_account` | No | `false` | `true` adds a second, non-administrative credential to the same URL. See [The viewer account](#the-viewer-account) |
+| `viewer_username` | No | `viewer` | Username for that credential. Not a secret; the password is |
+| `viewer_terminal_command` | No | `natural SM=ON 'STACK=(LOGON SIFAPPRD;CONSBENF;FIN)'` | Natural session the viewer's green screen runs. The trailing `FIN` is what keeps it off the Natural command line |
 | `legacy_corpus_path` | No | `../../01-archaeology/legacy-sifap` | Frozen legacy sources packaged for the VM |
 | `enable_ddm_workstation` | No | `false` | `true` creates a Windows VM in the lab VNet for running NaturalONE. Required only to create the DDMs, and only if you have no Windows machine. See [Creating the DDMs](#creating-the-ddms) |
 | `ddm_workstation_size` | No | `Standard_D2s_v7` | Size of the NaturalONE workstation |

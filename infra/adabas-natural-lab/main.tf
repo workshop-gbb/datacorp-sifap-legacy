@@ -148,6 +148,102 @@ locals {
   basic_auth_secret_name = local.basic_auth_generate ? "demo-basic-auth-password" : "demo-basic-auth-hash"
   basic_auth_secret_kind = local.basic_auth_generate ? "password" : "hash"
 
+  # The viewer's Caddy directives are rendered in or left out entirely, rather than emitted
+  # with an empty username. Caddy would accept "" as a real account name, so an unset
+  # environment placeholder would silently define a credential nobody chose.
+  # The six leading spaces are the YAML block scalar's indentation, not decoration: a line
+  # that starts with a tab is not valid YAML indentation and would fail the whole cloud-init
+  # document. Everything after those spaces is Caddyfile content, where indentation is free.
+  caddy_viewer_credential = var.enable_viewer_account ? "\n      \t\t\"{$SIFAP_VIEWER_USER}\" \"{$SIFAP_VIEWER_HASH}\"" : ""
+
+  # Ordering matters: `handle` blocks are mutually exclusive and fire in the order written,
+  # so these have to precede the /admin and /terminal handlers they override. basic_auth
+  # sorts ahead of handle in Caddy's directive order, so {http.auth.user.id} is already
+  # populated by the time these matchers run.
+  #
+  # Held in its own local because HCL cannot put a heredoc on either arm of a ternary.
+  caddy_viewer_routes_block = <<-CADDY
+
+    	# --- viewer role -------------------------------------------------------
+    	# A second credential that must not administer the lab. Everything here
+    	# keys off the authenticated username.
+    	@viewer_is_admin {
+    		path /admin /admin/*
+    		expression {http.auth.user.id} == "{$SIFAP_VIEWER_USER}"
+    	}
+    	handle @viewer_is_admin {
+    		respond "The viewer account cannot open the Adabas administration console." 403
+    	}
+
+    	# The viewer's green screen is a different upstream, not a different path:
+    	# ttyd cannot see who authenticated, so the only way to give this account a
+    	# restricted session is to send it to a container started with one.
+    	@viewer_is_terminal {
+    		path /terminal /terminal/*
+    		expression {http.auth.user.id} == "{$SIFAP_VIEWER_USER}"
+    	}
+    	handle @viewer_is_terminal {
+    		@viewer_bare path /terminal
+    		redir @viewer_bare /terminal/
+    		reverse_proxy ttyd-viewer:7681
+    	}
+  CADDY
+
+  # Rendered lines land inside a YAML block scalar, so each one has to carry that block's
+  # indentation. Without it the directives would sit at column 0, end the scalar early and
+  # take the rest of the file with them. Caddy itself ignores indentation; YAML does not.
+  caddy_viewer_routes = var.enable_viewer_account ? join("\n", [
+    for line in split("\n", local.caddy_viewer_routes_block) :
+    trimspace(line) == "" ? "" : "      ${line}"
+  ]) : ""
+
+  # Same reasoning as the Caddy block: rendered whole or not at all, so a disabled viewer
+  # leaves no half-configured container behind.
+  compose_viewer_service_block = <<-COMPOSE
+    # The viewer's green screen. Same image and the same Docker-socket
+    # trade-off as ttyd above, with the one difference that is the point:
+    # the command it runs is a Natural session pinned to a single query
+    # program, so this account never reaches the Natural command line and
+    # cannot start the programs that write.
+    ttyd-viewer:
+      image: ${var.ttyd_image}
+      container_name: ttyd-viewer
+      restart: unless-stopped
+      command:
+        - ttyd
+        - --port=7681
+        - --base-path=/terminal
+        - --writable
+        - --check-origin
+        - --max-clients=10
+        - --ping-interval=20
+        - --terminal-type=xterm-256color
+        - /usr/local/bin/sifap-viewer-session
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - /opt/sifap/bin/docker:/usr/local/bin/docker:ro
+        - /opt/sifap/viewer-session.sh:/usr/local/bin/sifap-viewer-session:ro
+      security_opt:
+        - no-new-privileges:true
+      depends_on:
+        - natural-ce
+      healthcheck:
+        test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:7681/terminal/ || exit 1"]
+        interval: 15s
+        timeout: 10s
+        retries: 5
+        start_period: 30s
+      networks:
+        - sifap-lab
+  COMPOSE
+
+  # Eight spaces: six for the YAML block scalar that carries docker-compose.yml, two more to
+  # sit under `services:`. Compose indentation is structural, so this is not cosmetic.
+  compose_viewer_service = var.enable_viewer_account ? join("\n", [
+    for line in split("\n", local.compose_viewer_service_block) :
+    trimspace(line) == "" ? "" : "        ${line}"
+  ]) : ""
+
   tags = {
     project     = var.project
     environment = var.environment
@@ -719,6 +815,16 @@ resource "random_password" "demo_basic_auth" {
   special = false
 }
 
+# The viewer credential is generated the same way and stored beside the admin one, so both
+# are read back through the identical read-secret.sh path and neither is ever rendered into
+# cloud-init.
+resource "random_password" "viewer" {
+  count = var.enable_viewer_account ? 1 : 0
+
+  length  = 24
+  special = false
+}
+
 # ---------------------------------------------------------------------------
 # Compute
 # ---------------------------------------------------------------------------
@@ -820,6 +926,16 @@ resource "azurerm_linux_virtual_machine" "lab" {
 
     modern_app_upstream      = var.modern_app_upstream
     terminal_natural_command = var.terminal_natural_command
+
+    viewer_enabled = var.enable_viewer_account
+    # Empty when the account is off, because bootstrap.sh keys the whole viewer branch off
+    # this being set. var.viewer_username keeps its default either way, so passing it
+    # unconditionally would configure a credential for an account nobody asked for.
+    viewer_username         = var.enable_viewer_account ? var.viewer_username : ""
+    viewer_terminal_command = var.viewer_terminal_command
+    caddy_viewer_credential = local.caddy_viewer_credential
+    caddy_viewer_routes     = local.caddy_viewer_routes
+    compose_viewer_service  = local.compose_viewer_service
   }))
 
   lifecycle {
@@ -887,6 +1003,9 @@ resource "azurerm_virtual_machine_extension" "seed_key_vault" {
 
         write_secret "adabas-admin-password" "${base64encode(random_password.adabas_admin.result)}"
         write_secret "${local.basic_auth_secret_name}" "${base64encode(local.basic_auth_generate ? random_password.demo_basic_auth[0].result : var.demo_basic_auth_password_hash)}"
+        if [ -n "${var.enable_viewer_account ? base64encode(random_password.viewer[0].result) : ""}" ]; then
+          write_secret "demo-viewer-password" "${var.enable_viewer_account ? base64encode(random_password.viewer[0].result) : ""}"
+        fi
         if [ -n "${var.enable_ddm_workstation ? base64encode(random_password.workstation_admin[0].result) : ""}" ]; then
           write_secret "ddm-workstation-password" "${var.enable_ddm_workstation ? base64encode(random_password.workstation_admin[0].result) : ""}"
         fi

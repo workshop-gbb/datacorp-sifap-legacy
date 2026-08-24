@@ -383,6 +383,56 @@ variable "legacy_corpus_path" {
 # The public demo: routes and authentication
 # ---------------------------------------------------------------------------
 
+variable "enable_viewer_account" {
+  description = <<-EOT
+    Create a second, non-administrative credential for the demo origin.
+
+    The viewer signs in to the same URL and gets the landing page, the modern app, and a
+    green screen pinned to viewer_terminal_command - by default the CONSBENF query screen.
+    It is refused the Adabas administration console with 403.
+
+    WHAT THIS IS NOT. The viewer cannot reach the Natural command line, so it cannot start
+    the registration or batch programs and cannot SCRATCH a catalogued object. That is a
+    containment, not a database permission: Natural is not a sandbox, and CONSBENF itself
+    appends an access record to the AUDIT file, which is the legacy behaviour the corpus was
+    built to show. Treat "viewer" as "cannot administer and cannot change beneficiary data
+    through the screens", not as a read-only database account.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "viewer_username" {
+  description = "Username for the non-administrative credential. Not a secret; the password is."
+  type        = string
+  default     = "viewer"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9._-]{2,32}$", var.viewer_username))
+    error_message = "viewer_username must be 2-32 characters of letters, digits, dot, underscore or hyphen."
+  }
+}
+
+variable "viewer_terminal_command" {
+  description = <<-EOT
+    Natural session the viewer's green screen runs. The default pins the session to the
+    CONSBENF query screen and ends it with FIN, which is what keeps the viewer off the
+    Natural command line: with FIN stacked behind the program, anything typed after the
+    program ends is discarded rather than executed as a command.
+
+    Change the program if you want the viewer to see a different screen, but keep the
+    trailing FIN - without it the session falls through to the NEXT prompt and the viewer
+    can run any catalogued object, including the ones that write.
+  EOT
+  type        = string
+  default     = "natural SM=ON 'STACK=(LOGON SIFAPPRD;CONSBENF;FIN)'"
+
+  validation {
+    condition     = can(regex(";FIN\\)", var.viewer_terminal_command))
+    error_message = "viewer_terminal_command must end its STACK with ;FIN) so the session cannot fall through to the Natural command line."
+  }
+}
+
 variable "demo_basic_auth_username" {
   description = <<-EOT
     Username for the HTTP basic authentication that guards the demo origin. Not a secret -
