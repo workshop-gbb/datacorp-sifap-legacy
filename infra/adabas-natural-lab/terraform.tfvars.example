@@ -202,6 +202,13 @@ allowed_source_cidrs = [
 # auto_shutdown_time     = "2000"
 # auto_shutdown_timezone = "Eastern Standard Time"
 
+# Some subscriptions have tenant-level automation that deallocates VMs even when the shutdown
+# schedule above is disabled. This creates an Azure Automation runbook with four hourly
+# schedules offset by 15 minutes. After the first apply, run the commands printed by
+# `terraform output -raw vm_start_watchdog_role_commands` once; they grant its managed identity
+# start access on only the VMs it watches.
+# enable_vm_start_watchdog = true
+
 # First day of the month the budget starts tracking. Empty derives the current month.
 # budget_start_date = "2026-09-01T00:00:00Z"
 
@@ -229,7 +236,7 @@ allowed_source_cidrs = [
 
 # The trailing FIN is the mechanism, not decoration: it ends the session when the program
 # does, so anything typed afterwards is discarded instead of run as a Natural command.
-# viewer_terminal_command = "natural SM=ON 'STACK=(LOGON SIFAPPRD;CONSBENF;FIN)'"
+# viewer_terminal_command = "natural SM=ON 'STACK=(LOGON SIFAPPRD;VIEWBENF;FIN)'"
 
 # --- DDM workstation ---------------------------------------------------------
 # Natural CE cannot create DDMs, and NaturalONE - the tool that can - ships only for Windows.

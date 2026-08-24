@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from conftest import PROVISIONING, ROOT
 
 
@@ -273,6 +275,67 @@ def test_should_leave_a_histogram_that_already_reads_one_field(
     )
 
     assert natural_ce_source.normalize(source) == source
+
+
+def test_should_derive_a_viewer_object_with_no_adabas_write_path(
+    natural_ce_source,
+):
+    source_path = (
+        ROOT
+        / "01-archaeology/legacy-sifap/natural-programs/CONSBENF.NSP"
+    )
+    source = source_path.read_text(encoding="utf-8", errors="replace")
+
+    viewer = natural_ce_source.readonly_viewer(source)
+
+    assert "* PROGRAM:  VIEWBENF" in viewer
+    assert "FIND BENEFICIARY-V" in viewer
+    assert "READ PAYMENT-V" in viewer
+    assert "PERFORM SHOW-BENEFICIARY" in viewer
+    assert not natural_ce_source.VIEWER_WRITE_STATEMENT.search(viewer)
+    assert {
+        match.group("program")
+        for match in natural_ce_source.CALLNAT_STATEMENT.finditer(viewer)
+    } == {"SUBVALCP"}
+    for removed in (
+        "AUDIT-V",
+        "#AUD-",
+        "WRITE-AUDIT",
+        "END TRANSACTION",
+        "INCLUDE CCAUDIT",
+    ):
+        assert removed not in viewer
+
+    # Runtime derivation must never "fix" the workshop evidence.
+    assert "PERFORM WRITE-AUDIT" in source
+    assert "INCLUDE CCAUDIT" in source
+
+
+def test_should_fail_closed_if_the_viewer_copy_can_still_write(
+    natural_ce_source,
+):
+    source_path = (
+        ROOT
+        / "01-archaeology/legacy-sifap/natural-programs/CONSBENF.NSP"
+    )
+    source = source_path.read_text(encoding="utf-8", errors="replace")
+    source = source.replace(
+        "END\n",
+        "STORE BENEFICIARY-V\nEND\n",
+    )
+
+    with pytest.raises(ValueError, match="write-capable statement"):
+        natural_ce_source.readonly_viewer(source)
+
+
+def test_should_catalog_the_generated_viewer_with_the_legacy_programs():
+    build = (PROVISIONING / "02-build-natural.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "VIEWER_PROGRAMS=(VIEWBENF)" in build
+    assert "--readonly-viewer-output" in build
+    assert '"${PROGRAMS[@]}" "${VIEWER_PROGRAMS[@]}"' in build
 
 
 def test_should_ship_compatibility_tool_with_provisioning():

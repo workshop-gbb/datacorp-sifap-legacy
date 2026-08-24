@@ -388,15 +388,17 @@ variable "enable_viewer_account" {
     Create a second, non-administrative credential for the demo origin.
 
     The viewer signs in to the same URL and gets the landing page, the modern app, and a
-    green screen pinned to viewer_terminal_command - by default the CONSBENF query screen.
-    It is refused the Adabas administration console with 403.
+    green screen pinned to viewer_terminal_command - by default the generated VIEWBENF
+    query screen. It is refused the Adabas administration console with 403.
 
-    WHAT THIS IS NOT. The viewer cannot reach the Natural command line, so it cannot start
-    the registration or batch programs and cannot SCRATCH a catalogued object. That is a
-    containment, not a database permission: Natural is not a sandbox, and CONSBENF itself
-    appends an access record to the AUDIT file, which is the legacy behaviour the corpus was
-    built to show. Treat "viewer" as "cannot administer and cannot change beneficiary data
-    through the screens", not as a read-only database account.
+    VIEWBENF is derived at build time from frozen CONSBENF with its AUDIT view, fields,
+    action block and copycode removed, and the generator rejects any remaining STORE,
+    UPDATE, DELETE, transaction, work-file or audit statement. The viewer cannot reach the
+    Natural command line, so it cannot start the registration or batch programs and cannot
+    SCRATCH a catalogued object.
+
+    This is application-level read-only containment, not a separate Adabas principal or
+    tenant: both accounts still share the same Natural runtime and database.
   EOT
   type        = bool
   default     = false
@@ -416,7 +418,7 @@ variable "viewer_username" {
 variable "viewer_terminal_command" {
   description = <<-EOT
     Natural session the viewer's green screen runs. The default pins the session to the
-    CONSBENF query screen and ends it with FIN, which is what keeps the viewer off the
+    generated VIEWBENF query screen and ends it with FIN, which is what keeps the viewer off the
     Natural command line: with FIN stacked behind the program, anything typed after the
     program ends is discarded rather than executed as a command.
 
@@ -425,7 +427,7 @@ variable "viewer_terminal_command" {
     can run any catalogued object, including the ones that write.
   EOT
   type        = string
-  default     = "natural SM=ON 'STACK=(LOGON SIFAPPRD;CONSBENF;FIN)'"
+  default     = "natural SM=ON 'STACK=(LOGON SIFAPPRD;VIEWBENF;FIN)'"
 
   validation {
     condition     = can(regex(";FIN\\)", var.viewer_terminal_command))
@@ -537,6 +539,26 @@ variable "auto_shutdown_enabled" {
   EOT
   type        = bool
   default     = true
+}
+
+variable "enable_vm_start_watchdog" {
+  description = <<-EOT
+    Create an Azure Automation runbook that checks the lab VMs every 15 minutes and starts
+    any VM an external governance process deallocated.
+
+    This is for subscriptions where a tenant-level automation (for example
+    MCAPSGov-AutomationApp) overrides the disabled DevTestLab shutdown schedules. Four
+    hourly Automation schedules, offset by 15 minutes, bound normal remediation time to
+    roughly 15 minutes. It is not high availability: the governance stop still creates a
+    short outage, and Azure Automation itself is a control-plane dependency.
+
+    Terraform creates the Automation account, system-assigned identity, runbook and
+    schedules. This tenant rejects azurerm_role_assignment in the plan, so after the first
+    apply run the vm_start_watchdog_role_commands output once to give that identity Virtual
+    Machine Contributor on only the VMs it watches.
+  EOT
+  type        = bool
+  default     = false
 }
 
 variable "auto_shutdown_time" {

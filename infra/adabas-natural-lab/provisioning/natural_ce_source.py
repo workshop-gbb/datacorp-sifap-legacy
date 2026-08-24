@@ -79,6 +79,37 @@ VIEW_HEADER = re.compile(
     r"(?P<file>[A-Z][A-Z0-9-]*)\s*$"
 )
 VIEW_FIELD = re.compile(r"^\s*[23]\s+(?:C\*)?(?P<field>[A-Z][A-Z0-9-]*)")
+AUDIT_VIEW_BLOCK = re.compile(
+    r"(?ms)^\* AUDIT TRAIL - FILE 153 - SEE COPYCODE CCAUDIT\n"
+    r"\s+1 AUDIT-V VIEW OF AUDIT\n"
+    r"(?:\s+[23]\s+[^\n]*\n)+"
+    r"\*\n"
+)
+AUDIT_FIELDS_BLOCK = re.compile(
+    r"(?ms)^\* AUDIT TRAIL FIELDS - REQUIRED BY CCAUDIT\n"
+    r"(?:\s+1 #AUD-[^\n]*\n)+"
+    r"\*\n"
+)
+AUDIT_ACTION_BLOCK = re.compile(
+    r"(?ms)^\* =+\n"
+    r"\* PERSONAL DATA ACCESS TRAIL\n"
+    r".*?"
+    r"^\s*END TRANSACTION\n"
+    r"^\*\n"
+)
+AUDIT_INCLUDE_BLOCK = re.compile(
+    r"(?ms)^\* AUDIT TRAIL - FILE 153\n"
+    r"INCLUDE CCAUDIT\n"
+    r"\*\n"
+)
+VIEWER_WRITE_STATEMENT = re.compile(
+    r"(?m)^\s*(?:STORE|UPDATE|DELETE|END TRANSACTION|BACKOUT TRANSACTION|"
+    r"WRITE WORK FILE|DEFINE WORK FILE|PERFORM WRITE-AUDIT)\b"
+    r"|^\s*INCLUDE\s+CCAUDIT\b"
+)
+CALLNAT_STATEMENT = re.compile(
+    r"(?m)^\s*CALLNAT\s+'(?P<program>[A-Z][A-Z0-9]*)'(?=\s|$)"
+)
 
 
 def _rewrite_descending(match: re.Match[str]) -> str:
@@ -240,10 +271,78 @@ def normalize(source: str) -> str:
     return READ_DESCENDING.sub(_rewrite_descending, source)
 
 
+def readonly_viewer(source: str) -> str:
+    """Derive the query-only VIEWBENF runtime object from frozen CONSBENF.
+
+    CONSBENF is a query screen, but it appends an access record to AUDIT after
+    every lookup. That is correct legacy behavior for the operator account and
+    must remain in the corpus. The viewer credential has a stricter contract:
+    it may inspect beneficiary data but must not write any Adabas file.
+
+    Generate a second staged object rather than changing the legacy member. Its
+    Natural session is pinned behind FIN by viewer_terminal_command, so this
+    object and only this object is reachable through that credential.
+    """
+    source = normalize(source)
+    removals = (
+        ("audit view", AUDIT_VIEW_BLOCK),
+        ("audit fields", AUDIT_FIELDS_BLOCK),
+        ("audit action", AUDIT_ACTION_BLOCK),
+        ("audit include", AUDIT_INCLUDE_BLOCK),
+    )
+    for label, pattern in removals:
+        source, count = pattern.subn("", source)
+        if count != 1:
+            raise ValueError(
+                f"CONSBENF viewer generation expected one {label} block, "
+                f"removed {count}"
+            )
+
+    source = source.replace(
+        "* PROGRAM:  CONSBENF\n",
+        "* PROGRAM:  VIEWBENF\n"
+        "* RUNTIME VIEWER COPY - READ ONLY; GENERATED FROM CONSBENF\n"
+        "* THE FROZEN LEGACY MEMBER REMAINS UNCHANGED\n",
+        1,
+    )
+    forbidden = VIEWER_WRITE_STATEMENT.search(source)
+    if forbidden is not None:
+        statement = forbidden.group(0).strip()
+        raise ValueError(
+            f"generated VIEWBENF still contains a write-capable statement: "
+            f"{statement}"
+        )
+    calls = {match.group("program") for match in CALLNAT_STATEMENT.finditer(source)}
+    if calls != {"SUBVALCP"}:
+        raise ValueError(
+            "generated VIEWBENF may call only the read-only CPF validator "
+            f"SUBVALCP, found: {sorted(calls)}"
+        )
+    return source
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("sources", nargs="+", type=Path)
+    parser.add_argument(
+        "--readonly-viewer-output",
+        type=Path,
+        help=(
+            "derive one query-only VIEWBENF source from a single CONSBENF "
+            "source without modifying the input"
+        ),
+    )
     args = parser.parse_args()
+
+    if args.readonly_viewer_output is not None:
+        if len(args.sources) != 1:
+            parser.error("--readonly-viewer-output requires exactly one source")
+        text = args.sources[0].read_text(encoding="utf-8", errors="replace")
+        args.readonly_viewer_output.write_text(
+            readonly_viewer(text),
+            encoding="utf-8",
+        )
+        return 0
 
     for path in args.sources:
         text = path.read_text(encoding="utf-8", errors="replace")

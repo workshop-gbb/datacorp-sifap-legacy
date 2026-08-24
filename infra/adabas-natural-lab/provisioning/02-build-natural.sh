@@ -18,6 +18,7 @@ DATA_AREAS=(PDAVALID PDACALC LDASIFAP)
 COPYCODES=(CCVALCPF CCAUDIT)
 SUBPROGRAMS=(SUBVALCP SUBVALNI VALBENEF VALELEG CALCBENF)
 PROGRAMS=(CADBENEF CONSBENF BATCHPGT BATCHREL RELPGT CADPROG CADDEPEN VALDOCS CALCCORR CALCDSCT RELAUDIT BATCHCON)
+VIEWER_PROGRAMS=(VIEWBENF)
 
 require_inputs() {
   local member ext
@@ -62,6 +63,17 @@ prepare_sources() {
   # Copycodes are expanded inline at catalog time, so they need the same
   # Natural CE compatibility rewrite as the members that INCLUDE them.
   python3 "$NATURAL_COMPAT" "$BUILD_WORK/sifap-src/"*.NS[NPC]
+  case "$BUILD_PHASE" in
+    finalize|auto|all)
+      # CONSBENF is a query screen, but the frozen legacy member writes an
+      # access record to AUDIT after each lookup. The viewer account promises
+      # no Adabas writes, so derive a second staged object with that path
+      # removed. The corpus and the operator's CONSBENF remain unchanged.
+      python3 "$NATURAL_COMPAT" \
+        --readonly-viewer-output "$BUILD_WORK/sifap-src/VIEWBENF.NSP" \
+        "$BUILD_WORK/sifap-src/CONSBENF.NSP"
+      ;;
+  esac
 }
 
 ensure_libraries() {
@@ -142,16 +154,16 @@ main() {
       ;;
     finalize)
       run_missing_compile_group "$NATURAL_LIBRARY" subprograms "${SUBPROGRAMS[@]}"
-      run_missing_compile_group "$NATURAL_LIBRARY" programs "${PROGRAMS[@]}"
-      assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}" "${SUBPROGRAMS[@]}" "${PROGRAMS[@]}"
+      run_missing_compile_group "$NATURAL_LIBRARY" programs "${PROGRAMS[@]}" "${VIEWER_PROGRAMS[@]}"
+      assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}" "${SUBPROGRAMS[@]}" "${PROGRAMS[@]}" "${VIEWER_PROGRAMS[@]}"
       ;;
     auto|all)
       run_missing_compile_group "$NATURAL_LIBRARY" data-areas "${DATA_AREAS[@]}"
       assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}"
       info "Copycodes installed as source only: ${COPYCODES[*]}"
       run_missing_compile_group "$NATURAL_LIBRARY" subprograms "${SUBPROGRAMS[@]}"
-      run_missing_compile_group "$NATURAL_LIBRARY" programs "${PROGRAMS[@]}"
-      assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}" "${SUBPROGRAMS[@]}" "${PROGRAMS[@]}"
+      run_missing_compile_group "$NATURAL_LIBRARY" programs "${PROGRAMS[@]}" "${VIEWER_PROGRAMS[@]}"
+      assert_cataloged "$NATURAL_LIBRARY" "${DATA_AREAS[@]}" "${SUBPROGRAMS[@]}" "${PROGRAMS[@]}" "${VIEWER_PROGRAMS[@]}"
       ;;
     *)
       fatal "Invalid SIFAP_NATURAL_BUILD_PHASE=${BUILD_PHASE}; expected base, finalize, or auto"

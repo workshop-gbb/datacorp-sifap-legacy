@@ -88,10 +88,11 @@ output "viewer_account" {
   description = "What the non-administrative credential can and cannot do, and how to read its password."
   value = var.enable_viewer_account ? join("", [
     "username '${var.viewer_username}' on the same demo URL. Gets the landing page, /app/ ",
-    "and a green screen pinned to the query screen; /admin/ answers 403 and the Natural ",
+    "and a green screen pinned to the generated read-only VIEWBENF query; /admin/ answers ",
+    "403 and the Natural ",
     "command line is unreachable, so the registration and batch programs cannot be started. ",
-    "It is NOT a read-only database account: the query program appends its own AUDIT record, ",
-    "which is the legacy behaviour the corpus exists to show. Password: ",
+    "VIEWBENF contains no Adabas write path; this is application-level containment rather ",
+    "than a separate Adabas principal or tenant. Password: ",
     "az vm run-command invoke -g ${azurerm_resource_group.lab.name} ",
     "-n ${azurerm_linux_virtual_machine.lab.name} --command-id RunShellScript ",
     "--scripts '/opt/sifap/read-secret.sh demo-viewer-password' ",
@@ -233,6 +234,24 @@ output "estimated_cost_note" {
     A monthly budget of ${var.monthly_budget_amount} alerts at 50%, 80% and 100% (forecast).
     To stop ALL charges, destroy the lab: see README.md -> "Destroy the environment".
   EOT
+}
+
+output "vm_start_watchdog_role_commands" {
+  description = "One-time least-privilege RBAC commands for the Azure Automation VM start watchdog."
+  value = var.enable_vm_start_watchdog ? join("\n", concat(
+    [
+      "# Run these once after the first apply. This tenant rejects role assignments in Terraform.",
+      "# The identity gets Virtual Machine Contributor on the individual VMs, not the resource group.",
+      "WATCHDOG_PRINCIPAL='${azurerm_automation_account.vm_watchdog[0].identity[0].principal_id}'",
+      "az role assignment create --assignee-object-id \"$WATCHDOG_PRINCIPAL\" --assignee-principal-type ServicePrincipal --role 'Virtual Machine Contributor' --scope '${azurerm_linux_virtual_machine.lab.id}'",
+    ],
+    var.enable_ddm_workstation ? [
+      "az role assignment create --assignee-object-id \"$WATCHDOG_PRINCIPAL\" --assignee-principal-type ServicePrincipal --role 'Virtual Machine Contributor' --scope '${azurerm_windows_virtual_machine.workstation[0].id}'",
+    ] : [],
+    [
+      "# Four hourly schedules are offset by 15 minutes, so a governance deallocation is normally remediated within about 15 minutes.",
+    ],
+  )) : "disabled (set enable_vm_start_watchdog = true)"
 }
 
 # ---------------------------------------------------------------------------

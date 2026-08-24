@@ -189,16 +189,18 @@ Terraform then stores only the hash, as `demo-basic-auth-hash`, and the plaintex
 | Route | `sifap` | `viewer` |
 |---|---|---|
 | `/` and `/app/` | 200 | 200 |
-| `/terminal/` | full Natural session | session pinned to the query screen |
+| `/terminal/` | full Natural session | session pinned to generated read-only `VIEWBENF` |
 | `/admin/` | 200 | **403** |
 | `/healthz` | open | open |
 
-The viewer's green screen is a **different upstream**, not a different path: ttyd cannot see who authenticated, so the only way to give one account a restricted session is to send it to a container started with one. `ttyd-viewer` runs `viewer_terminal_command`, whose default stacks `CONSBENF` behind a `FIN`. That trailing `FIN` is the whole mechanism — with it, anything typed after the program ends is discarded instead of being run as a Natural command. Verified on the lab: typing `CADBENEF` and `SCRATCH CONSBENF` into that session started neither and removed nothing.
+The viewer's green screen is a **different upstream**, not a different path: ttyd cannot see who authenticated, so the only way to give one account a restricted session is to send it to a container started with one. `ttyd-viewer` runs `viewer_terminal_command`, whose default stacks `VIEWBENF` behind a `FIN`. That trailing `FIN` is one half of the mechanism — with it, anything typed after the program ends is discarded instead of being run as a Natural command. Verified on the lab: typing `CADBENEF` and `SCRATCH CONSBENF` into that session started neither and removed nothing.
 
 Its session script also has no shell fallback, unlike the operator's. Dropping a viewer at a prompt inside `natural-ce` would hand it more than the account it signed in with.
 
 > [!IMPORTANT]
-> **This is a role, not a database permission.** The viewer cannot administer the lab and cannot reach the programs that write, but it is not a read-only Adabas account: `CONSBENF` appends its own record to the AUDIT file on every query, which is the legacy behaviour the corpus exists to demonstrate. Both accounts also share one origin and one database — this separates roles, it does not isolate tenants.
+> **The other half is the program itself.** Frozen `CONSBENF` appends an AUDIT record after every query, so the build derives `VIEWBENF` as a staged runtime object with the AUDIT view, fields, action block and copycode removed. The generator fails if any `STORE`, `UPDATE`, `DELETE`, transaction, work-file or audit statement remains, and allows only the read-only `SUBVALCP` validator call. The frozen workshop evidence stays unchanged.
+>
+> This makes the viewer application-level read-only, not a separate Adabas principal or tenant. Both accounts still share one Natural runtime and one database.
 
 Read its password with `terraform output -raw viewer_account`, which prints the command along with the same caveat.
 
@@ -742,7 +744,7 @@ Only two variables are required. The others have defaults defined in `variables.
 | `terminal_natural_command` | No | `""` | Command the terminal runs to open a Natural session. Empty probes the known paths and falls back to a shell |
 | `enable_viewer_account` | No | `false` | `true` adds a second, non-administrative credential to the same URL. See [The viewer account](#the-viewer-account) |
 | `viewer_username` | No | `viewer` | Username for that credential. Not a secret; the password is |
-| `viewer_terminal_command` | No | `natural SM=ON 'STACK=(LOGON SIFAPPRD;CONSBENF;FIN)'` | Natural session the viewer's green screen runs. The trailing `FIN` is what keeps it off the Natural command line |
+| `viewer_terminal_command` | No | `natural SM=ON 'STACK=(LOGON SIFAPPRD;VIEWBENF;FIN)'` | Natural session the viewer's green screen runs. The trailing `FIN` is what keeps it off the Natural command line |
 | `legacy_corpus_path` | No | `../../01-archaeology/legacy-sifap` | Frozen legacy sources packaged for the VM |
 | `enable_ddm_workstation` | No | `false` | `true` creates a Windows VM in the lab VNet for running NaturalONE. Required only to create the DDMs, and only if you have no Windows machine. See [Creating the DDMs](#creating-the-ddms) |
 | `ddm_workstation_size` | No | `Standard_D2s_v7` | Size of the NaturalONE workstation |
@@ -750,6 +752,7 @@ Only two variables are required. The others have defaults defined in `variables.
 | `ddm_workstation_image_version` | No | `20348.5499.260809` | Windows Server 2022 Gen2 image version, pinned |
 | `adabas_dbid` | No | `12` | Adabas DBID mapped by Natural |
 | `auto_shutdown_enabled` | No | `true` | Whether the daily shutdown schedule stops the VMs. Set `false` for a shared lab whose URL is handed out in advance; the budget then becomes the only automatic cost guard |
+| `enable_vm_start_watchdog` | No | `false` | Azure Automation checks the VMs every 15 minutes and starts either one that external governance deallocated. Use only when tenant automation overrides the disabled shutdown schedules |
 | `auto_shutdown_time` | No | `2000` | Daily shutdown time in HHmm format. Ignored when `auto_shutdown_enabled` is `false` |
 | `auto_shutdown_timezone` | No | `Eastern Standard Time` | Shutdown schedule time zone |
 | `auto_shutdown_notification_email` | No | `""` | **Strongly recommended.** Notified 30 minutes before shutdown, and the target for the availability and bootstrap alerts. Empty disables all three |
@@ -780,6 +783,33 @@ The budget is scoped to the resource group and is deliberately independent of th
 
 > [!WARNING]
 > With `auto_shutdown_enabled = false` the budget is the only automatic guard left, and it alerts rather than stops. A lab left running around the clock costs roughly USD 3/day for the Linux VM alone, plus the Windows workstation and its licence when `enable_ddm_workstation` is on. Set `auto_shutdown_notification_email` so somebody hears the alerts.
+
+### Tenant governance can still stop the VMs
+
+Disabling the two DevTestLab schedules controls only resources in this module. A subscription may have a tenant-level automation with permission above the resource group. In the workshop subscription, `MCAPSGov-AutomationApp` deallocated both VMs even while both schedules reported `Disabled`.
+
+`enable_vm_start_watchdog = true` is the compensating control. Terraform creates:
+
+- one Azure Automation account with a system-assigned identity;
+- one PowerShell runbook that calls the Azure Resource Manager API directly, using that identity rather than a password or an Az module;
+- four hourly schedules, offset by 15 minutes, so the runbook executes every 15 minutes.
+
+A GitHub Actions schedule is deliberately not the control here. Scheduled workflows are
+best-effort, run only from the repository's default branch, and can be disabled by an
+unrelated account-level billing lock. That exact failure was reproduced while building this
+watchdog: the OIDC workflow was accepted by GitHub but the job never started because Actions
+was locked. Azure Automation keeps the remediation in the same control plane as the VMs.
+
+After the first apply, run the commands Terraform prints:
+
+```bash
+terraform output -raw vm_start_watchdog_role_commands
+```
+
+They grant `Virtual Machine Contributor` to the Automation identity on the **two individual VM resource IDs**, not on the resource group. Role assignments are intentionally not in this plan: this lab's policy auditor rejects `azurerm_role_assignment`, and the signed-in operator needs sufficient Azure RBAC rights to make the one-time assignments.
+
+> [!IMPORTANT]
+> This is remediation, not high availability. The governance stop still creates an outage, normally bounded to about 15 minutes plus VM boot time. A governance exemption or a subscription without the external stop is the only way to make "always running" literal.
 
 > [!NOTE]
 > Budget notifications need `auto_shutdown_notification_email`. Left empty, the budget still exists and still enforces its thresholds in the portal, but nobody gets an e-mail. Set it.

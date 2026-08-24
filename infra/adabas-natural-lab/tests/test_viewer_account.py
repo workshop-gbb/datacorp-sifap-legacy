@@ -77,7 +77,7 @@ def test_should_never_drop_the_viewer_into_a_shell() -> None:
 def test_should_require_the_stack_to_end_the_session() -> None:
     # Without a trailing FIN the session falls through to the Natural command
     # line once the program ends, and the viewer can run anything catalogued.
-    assert 'STACK=(LOGON SIFAPPRD;CONSBENF;FIN)' in VARIABLES_TF
+    assert 'STACK=(LOGON SIFAPPRD;VIEWBENF;FIN)' in VARIABLES_TF
     assert 'can(regex(";FIN\\\\)", var.viewer_terminal_command))' in VARIABLES_TF
 
 
