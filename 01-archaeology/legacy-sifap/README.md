@@ -9,7 +9,7 @@
 | **Audience** | All pairs during Stage 1 |
 | **Prerequisites** | None—the entry point to the legacy system |
 | **Stage** | Stage 1—Archaeology |
-| **Expected outcome** | Understand the system context before opening the `.NSN` files |
+| **Expected outcome** | Understand the system context before opening the assigned `.NSP` and `.NSN` members |
 
 ![Legacy](https://img.shields.io/badge/Legacy-SIFAP%201.0-171717?style=flat-square) ![Years in operation](https://img.shields.io/badge/Operation-29%20years-404040?style=flat-square) ![Language](https://img.shields.io/badge/Language-Natural%2BAdabas-737373?style=flat-square)
 
@@ -336,7 +336,7 @@ Field names are limited to **20 characters** and use standardized abbreviations:
 ```
 02-cenario-sifap-legado/
 ├── README.md ← this document
-├── natural-programs/ ← Natural programs (.NSN) - source code
+├── natural-programs/ ← 24 Natural members - source code and batch support
 ├── adabas-ddms/ ← DDMs (Data Definition Modules) - data definitions
 ├── legacy-docs/ ← Original partial documentation (2008/2012)
 └── demo/ ← Interactive terminal demo (Stage 1)

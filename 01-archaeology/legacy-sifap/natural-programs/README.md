@@ -2,14 +2,14 @@
 
 > **Path:** [Team Kit](../../../README.md) › [Stage 1](../../README.md) › [SIFAP Legacy](../README.md) › **Natural Programs**
 
-**The 15 assigned Natural members for SIFAP, the Payment Inspection and Administration System, plus the nine supporting library members.** The programs implement the legacy system's business logic. Each pair reads three programs during Stage 1.
+**The 15 assigned Natural members for SIFAP, the Payment Inspection and Administration System, plus the nine supporting library members.** The members implement the legacy system's business logic. Each pair reads three assigned members during Stage 1.
 
 | Field | Value |
 |---|---|
 | **Audience** | All pairs—each pair reads its three assigned programs |
 | **Prerequisites** | Read [`HOW-TO-READ-NATURAL.md`](../HOW-TO-READ-NATURAL.md) |
 | **Stage** | Stage 1 — Archaeology |
-| **Expected outcome** | Rules cataloged with `file.NSN#L<start>-L<end>` evidence and a dependency map started |
+| **Expected outcome** | Rules cataloged with `.NSP` or `.NSN` line evidence and a dependency map started |
 
 > [!NOTE]
 > These files are read-only reference material. During Stage 1, pairs analyze the programs to extract business rules and map them to the modern system (Java 21 + Spring Boot).
@@ -31,7 +31,7 @@ Everything is kept in one directory because a Natural library is **flat**: `CALL
 
 ---
 
-## 1. The 15 assigned programs—distribution by pair
+## 1. The 15 assigned members—distribution by pair
 
 | Pair | Program | Author | Year | Description |
 |---|---|---|---|---|
@@ -111,7 +111,7 @@ In VS Code, the equivalent is Ctrl+Shift+F with the regular expression `CALLNAT|
 | Source | `BATCHPGT` |
 | Type | `CALLNAT` · `INCLUDE` · `USING` · `JCL runs` |
 | Target | called member name |
-| Evidence | `file.NSN#L<line>` |
+| Evidence | `file.NSP#L<line>` or `file.NSN#L<line>` |
 
 > [!TIP]
 > Three time-saving guidelines:

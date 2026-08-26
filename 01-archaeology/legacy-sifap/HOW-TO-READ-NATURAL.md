@@ -2,15 +2,15 @@
 
 > **Path:** [Team Kit](../../README.md) › [Stage 1](../README.md) › [SIFAP Legacy](README.md) › **How to read Natural**
 
-**A business-rule-oriented reading tutorial.** Learn to extract relevant behavior from a `.NSN` file in 45 minutes, even if you do not know the Natural language.
+**A business-rule-oriented reading tutorial.** Learn to extract relevant behavior from an assigned `.NSP` or `.NSN` member in 45 minutes, even if you do not know the Natural language.
 
 | Field | Value |
 |---|---|
-| **Audience** | PO, Tech Writer, business analyst, junior developer—anyone opening a `.NSN` during Stage 1 |
+| **Audience** | PO, Tech Writer, business analyst, junior developer—anyone opening an assigned `.NSP` or `.NSN` member during Stage 1 |
 | **Prerequisites** | VS Code installed; access to the `legacy-sifap/natural-programs/` folder |
 | **Estimated time** | 10 min for this guide + 45 min per program |
 | **Stage** | Stage 1 — Archaeology |
-| **Expected outcome** | At least one rule cataloged with `file.NSN#L<start>-L<end>` evidence |
+| **Expected outcome** | At least one rule cataloged with `file.NSP#L<start>-L<end>` or `file.NSN#L<start>-L<end>` evidence |
 
 > [!TIP]
 > You only need to read five constructs: comments with `*` at the start of the line, `IF/END-IF`, `MOVE`, `COMPUTE`, and the `FIND`/`END-FIND` block. The rest of the syntax is technical structure that can be ignored when reading rules.
@@ -58,7 +58,7 @@ END
 3. **Body** (after `END-DEFINE`): **this is where the business logic lives**. This is what you want to extract.
 
 > [!NOTE]
-> In the source files (`.NSP`, `.NSN`, `.NSA`, `.NSL`, `.NSC`, `.NSD`), comments are in Portuguese **uppercase without accents**. This is intentional: the mainframe's 3270 terminal uses EBCDIC and does not represent accented characters reliably. This English Markdown documentation uses normal punctuation and capitalization.
+> In the Natural source members (`.NSP`, `.NSN`, `.NSA`, `.NSL`, `.NSC`), comments are in Portuguese **uppercase without accents**. This is intentional: the mainframe's 3270 terminal uses EBCDIC and does not represent accented characters reliably. This English Markdown documentation uses normal punctuation and capitalization. The repository's DDM artifacts use the `.ddm` extension and contain listings rather than source.
 
 ---
 
@@ -259,21 +259,21 @@ Use Ctrl+F in VS Code and enter `IF`. Each `IF` is a candidate rule.
 
 Use Ctrl+F with `0.` to locate `0.30`, `0.075`, and similar values. Each unexplained constant is probably a rule rate or percentage. Also search for `INIT <`: parameter tables load entire ranges and factors at once.
 
-### Step 5—Confirm with Copilot Chat (2 min)
+### Step 5—Confirm with Copilot Ask (2 min)
 
-Select a code block in VS Code, open Copilot Chat (Ask mode), and send:
+Select a code block in VS Code, open Copilot Ask, and send:
 
 > "Explain this Natural code in English. Focus on the business rule. Ignore input and output."
 
 Compare Copilot's explanation with your interpretation. If they match, record it in the catalog.
 
-### From `.NSN` to a catalog entry
+### From a Natural member to a catalog entry
 
 For each conditional, describe only the behavior confirmed by the team. Record the evidence without inventing intent that is not explicit in the code:
 
 | ID | Rule | Source Program | Risk |
 |---|---|---|---|
-| BR-XXX | Confirmed behavior | `file.NSN#L<start>-L<end>` | Assess |
+| BR-XXX | Confirmed behavior | `file.NSP#L<start>-L<end>` or `file.NSN#L<start>-L<end>` | Assess |
 
 An ambiguous condition should be recorded as an open question in [`mysteries-found.md`](../mysteries-found.md), not converted into a rule.
 
@@ -389,23 +389,23 @@ The complete column legend is in the footer of each `.ddm` and in the [DDM READM
 ## 8. Time-saving VS Code shortcuts
 
 <details>
-<summary><strong>Shortcut table and Copilot Chat usage tips</strong></summary>
+<summary><strong>Shortcut table and Copilot Ask usage tips</strong></summary>
 
 | Shortcut | What it does |
 |---|---|
 | Ctrl+F | Search within the file |
 | Ctrl+Shift+F | Search across all files |
 | Ctrl+G + number | Go to line N |
-| Select + Copilot Chat | Send a snippet directly for analysis |
+| Select + Copilot Ask | Send a snippet directly for analysis |
 
 > [!TIP]
-> Select the entire Natural program, open Copilot Chat, and send: "List all business rules in this Natural program. For each one, provide the line range, the condition in English, and the risk level (CRITICAL/HIGH/MEDIUM/LOW)." In 30 seconds, 80% of the work is done. Always confirm by inspecting the original `IF`.
+> Select the entire Natural member, open Copilot Ask, and send: "List all business rules in this Natural member. For each one, provide the line range, the condition in English, and the risk level (CRITICAL/HIGH/MEDIUM/LOW)." Always confirm the response by inspecting the original `IF`.
 
 </details>
 
 ---
 
-## 9. Map of the 15 programs—reading guide
+## 9. Map of the 15 assigned members—reading guide
 
 | Category | Programs | What to expect |
 |---|---|---|
@@ -431,7 +431,7 @@ The complete column legend is in the footer of each `.ddm` and in the [DDM READM
 | Copying a DDM-listing comma form (`P 9,2`) into Natural source documentation | Source declarations use a period in this lab: `(N9.2)`, `(P13.2)`. |
 | Treating `(P9.2)` as something other than money | `P` is *packed decimal*: the mainframe monetary format. |
 | Recording a view field read outside the `FIND` block | Check whether the value was copied to a `#variable` before `END-FIND`. |
-| Recording a rule without a line citation | Always record `file.NSN#L<start>-L<end>`. CI rejects entries without it. |
+| Recording a rule without a line citation | Always record `file.NSP#L<start>-L<end>` or `file.NSN#L<start>-L<end>`. CI rejects entries without it. |
 
 ---
 
@@ -451,4 +451,4 @@ If you cannot extract at least one rule from a program within 45 minutes:
 |---|---|
 | [SIFAP Legacy—overview](README.md)<br/><sub>System context and complete inventory.</sub> | [Stage 1 GUIDE](../GUIDE.md)<br/><sub>Timed 90-minute walkthrough.</sub> |
 
-<sub>[Back to the kit index](../README.md)</sub>
+<sub>[Back to the kit index](../../README.md)</sub>
