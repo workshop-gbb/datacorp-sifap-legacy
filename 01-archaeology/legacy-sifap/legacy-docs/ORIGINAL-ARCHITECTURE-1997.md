@@ -1,17 +1,17 @@
 ---
 
-title: "Project SIFAP - Technical Architecture Document"
-author: "Roberto Carlos Ferreira - Senior Systems Analyst"
+title: "Projeto SIFAP - Documento de Arquitetura Técnica"
+author: "Roberto Carlos Ferreira - Analista de Sistemas Sênior"
 date: "1997-05-20"
 version: "1.0.0"
-classification: "CONFIDENTIAL"
-project: "SIFAP - Payment Inspection and Administration System"
+classification: "CONFIDENCIAL"
+project: "SIFAP - Sistema de Fiscalização e Administração de Pagamentos"
 sponsor: "SUPDE/DESIF - the organization"
-client: "SAS/MPAS - Social Assistance Secretariat"
+client: "SAS/MPAS - Secretaria de Assistência Social"
 ---
 
 > [!NOTE]
-> This is a historical document reconstituted for the purposes of the archaeology exercise of the SIFAP 2.0 immersion. The document simulates the original technical documentation from 1997 as it would have been produced by the SUPDE/DESIF team. The period language, the names of people and organizational units were intentionally preserved. **This document should not be used as a current system specification.** The gaps and inconsistencies noted in the comments are part of the exercise — they represent the real archaeology challenges that the team must investigate.
+> Este é um documento histórico reconstituído para o exercício de arqueologia da imersão SIFAP 2.0. O documento simula a documentação técnica original de 1997, como teria sido produzida pela equipe SUPDE/DESIF. A linguagem da época e os nomes de pessoas e unidades organizacionais foram preservados intencionalmente. **Este documento não deve ser usado como especificação atual do sistema.** As lacunas e inconsistências registradas nos comentários fazem parte do exercício: representam os desafios reais de arqueologia que a equipe deve investigar.
 
 <!-- ====================================================================== -->
 <!-- PROJECT SIFAP - TECHNICAL ARCHITECTURE DOCUMENT -->
@@ -21,80 +21,80 @@ client: "SAS/MPAS - Social Assistance Secretariat"
 <!-- Fiscal Systems Development Division - DESIF -->
 <!-- ====================================================================== -->
 
-# PROJECT SIFAP - TECHNICAL ARCHITECTURE DOCUMENT
+# PROJETO SIFAP - DOCUMENTO DE ARQUITETURA TÉCNICA
 
-**PAYMENT INSPECTION AND ADMINISTRATION SYSTEM**
+**SISTEMA DE FISCALIZAÇÃO E ADMINISTRAÇÃO DE PAGAMENTOS**
 
 ---
 
 |                      |                                       |
 | -------------------- | ------------------------------------- |
-| **Document:** | ARQ-SIFAP-1997-v1.0 |
-| **Classification:** | CONFIDENTIAL |
-| **Issue date:** | 20/05/1997 |
-| **Project:** | SIFAP - Initial Development |
-| **Expected deadline:** | 14 months (Jun/1997 - Jul/1998) |
-| **Team:** | 8 analysts/programmers SUPDE/DESIF |
-| **Coordinator:** | Roberto Carlos Ferreira |
-| **Management:** | Antônio Marcos Silva - SUPDE Manager |
+| **Documento:** | ARQ-SIFAP-1997-v1.0 |
+| **Classificação:** | CONFIDENCIAL |
+| **Data de emissão:** | 20/05/1997 |
+| **Projeto:** | SIFAP - Desenvolvimento inicial |
+| **Prazo previsto:** | 14 meses (jun/1997 - jul/1998) |
+| **Equipe:** | 8 analistas/programadores SUPDE/DESIF |
+| **Coordenador:** | Roberto Carlos Ferreira |
+| **Gerência:** | Antônio Marcos Silva - Gerente SUPDE |
 
 ---
 
-> **Presentation**
+> **Apresentação**
 >
-> This document describes the technical architecture proposed for the SIFAP - Payment Inspection and Administration System, to be developed by the organization's SUPDE/DESIF team, in response to the demand of the Social Assistance Secretariat of the Ministry of Social Security and Assistance (SAS/MPAS).
+> Este documento descreve a arquitetura técnica proposta para o SIFAP, Sistema de Fiscalização e Administração de Pagamentos, a ser desenvolvido pela equipe SUPDE/DESIF da organização em resposta à demanda da Secretaria de Assistência Social do Ministério da Previdência e Assistência Social (SAS/MPAS).
 >
-> The SIFAP will replace the current SIPAG/DOS system, developed in Clipper and operated on microcomputers in the regional offices. The migration to a mainframe platform aims to ensure data centralization, information integrity and adequate processing capacity for the expected growth of federal social programs.
+> O SIFAP substituirá o atual sistema SIPAG/DOS, desenvolvido em Clipper e operado em microcomputadores nas regionais. A migração para uma plataforma mainframe busca garantir a centralização dos dados, a integridade das informações e a capacidade adequada de processamento para o crescimento previsto dos programas sociais federais.
 >
-> This document was prepared during the design phase, before coding began, and represents the **planned architectural vision** for the system.
+> Este documento foi elaborado durante a fase de projeto, antes do início da codificação, e representa a **visão arquitetural planejada** para o sistema.
 
 ---
 
-## 1. Introduction
+## 1. Introdução
 
-### 1.1. Context
+### 1.1. Contexto
 
-The Federal Government, through the Ministry of Social Security and Assistance, administers several income transfer programs for families in situations of social vulnerability. Currently, control of these payments is carried out by the SIPAG/DOS system, an application developed in Clipper 5.2 that operates in a decentralized manner in the organization's regions.
+O Governo Federal, por meio do Ministério da Previdência e Assistência Social, administra diversos programas de transferência de renda para famílias em situação de vulnerabilidade social. Atualmente, o controle desses pagamentos é realizado pelo sistema SIPAG/DOS, uma aplicação desenvolvida em Clipper 5.2 que opera de forma descentralizada nas regionais da organização.
 
-The decentralization of the SIPAG/DOS causes the following problems:
+A descentralização do SIPAG/DOS causa os seguintes problemas:
 
-- Impossibility of national consolidation in a timely manner;
-- Risk of duplication of registrations between regions;
-- Difficulty in auditing and monitoring;
-- Limitation of processing volume (maximum of 200,000 records per region);
-- Lack of integration with federal financial systems (SIAFI).
+- Impossibilidade de consolidação nacional em tempo hábil;
+- Risco de duplicidade de cadastros entre regionais;
+- Dificuldade de auditoria e acompanhamento;
+- Limitação do volume de processamento (máximo de 200.000 registros por regional);
+- Ausência de integração com sistemas financeiros federais (SIAFI).
 
-### 1.2. Purpose of the SIFAP
+### 1.2. Finalidade do SIFAP
 
-Develop a centralized system, on a mainframe platform, capable of:
+Desenvolver um sistema centralizado, em plataforma mainframe, capaz de:
 
-- Manage unified national register of beneficiaries;
-- Process monthly payroll with a projected volume of up to 5 million beneficiaries;
-- Integrate with SIAFI for automated financial reconciliation;
-- Provide audit and inspection mechanisms;
-- Ensure availability and security compatible with the criticality of the operation.
+- Gerenciar um cadastro nacional unificado de beneficiários;
+- Processar a folha mensal com volume projetado de até 5 milhões de beneficiários;
+- Integrar-se ao SIAFI para conciliação financeira automatizada;
+- Fornecer mecanismos de auditoria e fiscalização;
+- Garantir disponibilidade e segurança compatíveis com a criticidade da operação.
 
-### 1.3. Chosen Technological Platform
+### 1.3. Plataforma tecnológica escolhida
 
-After evaluating the alternatives available in the organization's infrastructure, the following platform was chosen:
+Após avaliar as alternativas disponíveis na infraestrutura da organização, foi escolhida a seguinte plataforma:
 
-| Component | Product | Version | Justification |
+| Componente | Produto | Versão | Justificativa |
 | ---------- | ---------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Language | Natural | 4.2.6 | Standard the organization for mainframe development. Higher productivity than COBOL for registration/query applications. |
-| DBMS | Adabas | 6.1.4 | Inverted DBMS, high performance for multiple descriptor queries. Standard the organization.                            |
-| TP Monitor | Com\*plete | 6.1.2 | Teleprocessing monitor for 3270 screens. Integrated with Natural.                                                           |
-| Scheduler | JES2 | MVS/ESA | Standard subsystem for batch processing.                                                                                   |
-| S.O. | MVS/ESA | 5.2.2 | Mainframe operating system for the organization - Brasília Regional.                                                        |
+| Linguagem | Natural | 4.2.6 | Padrão da organização para desenvolvimento mainframe. Maior produtividade que COBOL em aplicações de cadastro/consulta. |
+| SGBD | Adabas | 6.1.4 | SGBD invertido, alto desempenho em consultas por múltiplos descritores. Padrão da organização. |
+| Monitor TP | Com\*plete | 6.1.2 | Monitor de teleprocessamento para telas 3270. Integrado ao Natural. |
+| Agendador | JES2 | MVS/ESA | Subsistema padrão para processamento batch. |
+| S.O. | MVS/ESA | 5.2.2 | Sistema operacional do mainframe da organização, Regional Brasília. |
 
-> **Note:** The choice of Natural/Adabas follows the SUPDE technical guideline (NT-SUPDE-003/1996), which establishes this platform as the standard for new medium/large registration and processing systems.
+> **Observação:** a escolha de Natural/Adabas segue a norma técnica da SUPDE (NT-SUPDE-003/1996), que estabelece essa plataforma como padrão para novos sistemas de cadastro e processamento de médio/grande porte.
 
 ---
 
-## 2. Modular Architecture
+## 2. Arquitetura modular
 
-### 2.1. Expected Modules
+### 2.1. Módulos previstos
 
-The SIFAP will be organized into **4 functional modules**:
+O SIFAP será organizado em **4 módulos funcionais**:
 
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
@@ -102,61 +102,61 @@ flowchart LR
     classDef step fill:#F5F5F5,stroke:#171717,color:#171717
     classDef muted fill:#FAFAFA,stroke:#A3A3A3,color:#404040
 
-    subgraph SIFAP["SIFAP — Payment Inspection and Administration System"]
-        M1["Module 1<br/>Registration<br/>CADBENEF / CADPROG / CADDEPEN"]:::step
-        M2["Module 2<br/>Processing<br/>BATCHPGT / BATCHREL / BATCHCON"]:::step
-        M3["Module 3<br/>Query<br/>CONSBENF / CONSPGT"]:::step
-        M4["Module 4<br/>Audit<br/>AUDCONSUL / AUDRELAT"]:::step
+    subgraph SIFAP["SIFAP — Sistema de Fiscalização e Administração de Pagamentos"]
+        M1["Módulo 1<br/>Cadastro<br/>CADBENEF / CADPROG / CADDEPEN"]:::step
+        M2["Módulo 2<br/>Processamento<br/>BATCHPGT / BATCHREL / BATCHCON"]:::step
+        M3["Módulo 3<br/>Consulta<br/>CONSBENF / CONSPGT"]:::step
+        M4["Módulo 4<br/>Auditoria<br/>AUDCONSUL / AUDRELAT"]:::step
     end
 ```
 
-#### Module 1 - REGISTRATION
+#### Módulo 1 - CADASTRO
 
-Responsible for maintaining registration data on beneficiaries, dependents and social programs.
+Responsável pela manutenção dos dados cadastrais de beneficiários, dependentes e programas sociais.
 
-| Planned Program | Description | Priority |
+| Programa previsto | Descrição | Prioridade |
 | ----------------- | --------------------------------------------------------- | ---------- |
-| CADBENEF | Beneficiary registration - inclusion, alteration, exclusion | Phase 1 |
-| CADPROG | Registration of social programs and parameterization | Phase 1 |
-| CADDEPEN | Registration of dependents of the beneficiary | Phase 1 |
+| CADBENEF | Cadastro de beneficiário, inclusão, alteração e exclusão | Fase 1 |
+| CADPROG | Cadastro e parametrização de programas sociais | Fase 1 |
+| CADDEPEN | Cadastro de dependentes do beneficiário | Fase 1 |
 
-#### Module 2 - PROCESSING
+#### Módulo 2 - PROCESSAMENTO
 
-Responsible for batch processing of payroll and generation of files for integration.
+Responsável pelo processamento batch da folha e pela geração de arquivos para integração.
 
-| Planned Program | Description | Priority |
+| Programa previsto | Descrição | Prioridade |
 | ----------------- | ------------------------------------------- | ---------- |
-| BATCHPGT | Monthly Payroll Processing | Phase 2 |
-| BATCHREL | Generation of batch reports (totalizers) | Phase 2 |
-| BATCHCON | Financial reconciliation with SIAFI | Phase 3 |
+| BATCHPGT | Processamento mensal da folha | Fase 2 |
+| BATCHREL | Geração de relatórios batch (totalizadores) | Fase 2 |
+| BATCHCON | Conciliação financeira com o SIAFI | Fase 3 |
 
-#### Module 3 - CONSULTATION
+#### Módulo 3 - CONSULTA
 
-Responsible for online consultations regarding registration and payments.
+Responsável pelas consultas online de cadastro e pagamentos.
 
-| Planned Program | Description | Priority |
+| Programa previsto | Descrição | Prioridade |
 | ----------------- | ------------------------------------------------- | ---------- |
-| CONSBENF | Querying beneficiaries using multiple criteria | Phase 1 |
-| CONSPGT | Consultation of payments by beneficiary/period | Phase 2 |
+| CONSBENF | Consulta de beneficiários por múltiplos critérios | Fase 1 |
+| CONSPGT | Consulta de pagamentos por beneficiário/período | Fase 2 |
 
-#### Module 4 - AUDIT
+#### Módulo 4 - AUDITORIA
 
-Responsible for recording and consulting audit trails and inspection incidents.
+Responsável pelo registro e pela consulta de trilhas de auditoria e ocorrências de fiscalização.
 
-| Planned Program | Description | Priority |
+| Programa previsto | Descrição | Prioridade |
 | ----------------- | --------------------------------------------------- | ---------- |
-| AUDCONSUL | Audit trail query by period/user | Phase 3 |
-| AUDRELAT | Audit Occurrence Report | Phase 3 |
+| AUDCONSUL | Consulta da trilha de auditoria por período/usuário | Fase 3 |
+| AUDRELAT | Relatório de ocorrências de auditoria | Fase 3 |
 
-> **Total expected:** 11 programs, distributed across 3 development phases.
+> **Total previsto:** 11 programas, distribuídos em 3 fases de desenvolvimento.
 
 ---
 
-## 3. Data Model
+## 3. Modelo de dados
 
-### 3.1. Planned DDMs
+### 3.1. DDMs previstos
 
-The SIFAP will use **3 DDMs** (Data Definition Modules) in the Adabas:
+O SIFAP usará **3 DDMs** (Data Definition Modules) no Adabas:
 
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
@@ -200,11 +200,11 @@ erDiagram
         string PG-CD-BANCO
     }
 
-    BENEFICIARY ||--o{ PAYMENT : "generates"
-    BENEFICIARY }o--|| SOCIAL-PROGRAM : "linked to"
+    BENEFICIARY ||--o{ PAYMENT : "gera"
+    BENEFICIARY }o--|| SOCIAL-PROGRAM : "vincula-se a"
 ```
 
-Caption: PK = primary key (super descriptor) · DE = descriptor (index Adabas) · PE = periodic group · MU = multivalued field
+Legenda: PK = chave primária (superdescritor) · DE = descritor (índice Adabas) · PE = grupo periódico · MU = campo multivalorado
 
 <!-- The DDM AUDIT (FNR 153) was not included in the original project.
  It was added in 2005, during the migration to Natural 6.3/Adabas 7.4,
@@ -212,46 +212,46 @@ Caption: PK = primary key (super descriptor) · DE = descriptor (index Adabas) �
  The audit programs (AUDCONSUL, AUDRELAT) provided for in this
  document were replaced by the program RELAUDIT in 2005. -->
 
-### 3.2. Field Naming Convention
+### 3.2. Convenção de nomes de campos
 
-We will adopt the following convention for Adabas field names, in accordance with the SUPDE naming standard (NT-SUPDE-007/1995):
+Adotaremos a seguinte convenção para nomes de campos Adabas, conforme o padrão de nomenclatura da SUPDE (NT-SUPDE-007/1995):
 
-| Prefix | Entity |
+| Prefixo | Entidade |
 | ------- | --------------- |
-| `BN-` | Beneficiary |
-| `PS-` | Social Program |
-| `PG-` | Payment |
+| `BN-` | Beneficiário |
+| `PS-` | Programa social |
+| `PG-` | Pagamento |
 
-Suffixes indicate the data type:
+Os sufixos indicam o tipo de dado:
 
-| Suffix | Meaning | Example |
+| Sufixo | Significado | Exemplo |
 | ------ | ---------------------- | -------------- |
-| `NM-` | Name/description | `BN-NM-BENEF` |
-| `NR-` | Number/numeric code | `BN-NR-CPF` |
-| `CD-` | Code/classification | `BN-CD-SIT` |
-| `DT-` | Date | `PG-DT-CRED` |
-| `VL-` | Monetary value | `PG-VL-BRUTO` |
-| `QT-` | Quantity | `BN-QT-DEPEND` |
-| `IN-` | Indicator (Y/N) | `PS-IN-ATIVO` |
-| `SG-` | Acronym | (reserved) |
+| `NM-` | Nome/descrição | `BN-NM-BENEF` |
+| `NR-` | Número/código numérico | `BN-NR-CPF` |
+| `CD-` | Código/classificação | `BN-CD-SIT` |
+| `DT-` | Data | `PG-DT-CRED` |
+| `VL-` | Valor monetário | `PG-VL-BRUTO` |
+| `QT-` | Quantidade | `BN-QT-DEPEND` |
+| `IN-` | Indicador (S/N) | `PS-IN-ATIVO` |
+| `SG-` | Sigla | (reservado) |
 
-> **Restriction:** Field names limited to 20 characters, as per Natural 4.2 limitation.
+> **Restrição:** nomes de campos limitados a 20 caracteres, conforme limitação do Natural 4.2.
 
-### 3.3. Initial Volume Estimation
+### 3.3. Estimativa inicial de volume
 
-| DDM | Initial volume | Estimated growth/year | 5 year projection |
+| DDM | Volume inicial | Crescimento estimado/ano | Projeção para 5 anos |
 | --------------- | -------------------------- | ------------------------ | --------------- |
 | BENEFICIARY | 1,200,000 (SIPAG migration) | 300,000 | 2,700,000 |
 | SOCIAL-PROGRAM | 15 | 5 | 40 |
 | PAYMENT | 0 (new) | 14,400,000 (1.2M x 12) | 72,000,000 |
 
-> **Note on the projection:** We consider linear growth of 25% per year in the registration of beneficiaries, compatible with the expected expansion of the Federal Government's social programs. The projection may vary depending on new public policies.
+> **Observação sobre a projeção:** consideramos crescimento linear de 25% ao ano no cadastro de beneficiários, compatível com a expansão prevista dos programas sociais do Governo Federal. A projeção pode variar conforme novas políticas públicas.
 
 ---
 
-## 4. Batch Processing Flow
+## 4. Fluxo de processamento batch
 
-### 4.1. Planned Flow Diagram
+### 4.1. Diagrama do fluxo planejado
 
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
@@ -260,12 +260,12 @@ TB flowchart
     classDef artifact fill:#FAFAFA,stroke:#A3A3A3,color:#404040
     classDef result fill:#FFFFFF,stroke:#171717,color:#171717,stroke-width:2px
 
-    START["Start of cycle<br/>(1st working day)"]:::step
-    PGT["BATCHPGT<br/>1. Read BENEFICIARY<br/>2. Calculate value<br/>3. Write PAYMENT<br/>4. Generate CNAB"]:::step
-    CNAB["File CNAB<br/>(shipment BB)<br/>Shipping D+1"]:::artifact
-    REL["BATCHREL<br/>Reports<br/>totalizers"]:::step
-    RET["Return BB<br/>(D+3)"]:::artifact
-    CON["BATCHCON<br/>Conciliation<br/>CNAB x SIAFI"]:::result
+    START["Início do ciclo<br/>(1º dia útil)"]:::step
+    PGT["BATCHPGT<br/>1. Ler BENEFICIARY<br/>2. Calcular valor<br/>3. Gravar PAYMENT<br/>4. Gerar CNAB"]:::step
+    CNAB["Arquivo CNAB<br/>(remessa BB)<br/>Envio D+1"]:::artifact
+    REL["BATCHREL<br/>Relatórios<br/>totalizadores"]:::step
+    RET["Retorno BB<br/>(D+3)"]:::artifact
+    CON["BATCHCON<br/>Conciliação<br/>CNAB x SIAFI"]:::result
 
     START --> PGT
     PGT --> CNAB
@@ -274,9 +274,9 @@ TB flowchart
     RET --> CON
 ```
 
-### 4.2. Expected Batch Scheduling
+### 4.2. Agendamento batch previsto
 
-| Job | Frequency | Opening hours | Window | Dependency |
+| Job | Frequência | Horário | Janela | Dependência |
 | --------- | -------------- | ------- | ------ | ---------------------- |
 | SIFAP-PGT | Monthly (1st DU) | 22:00 | 4h | None |
 | SIFAP-REL | Monthly (2nd DU) | 06:00 | 1h | SIFAP-PGT (RC=0) |
@@ -288,17 +288,17 @@ TB flowchart
  VALELEG started to be executed in batch mode (D-2), which was not
  foreseen in this original project. -->
 
-### 4.3. Processing Time Estimation
+### 4.3. Estimativa de tempo de processamento
 
-Based on benchmarks carried out in the organization's approval environment (IBM 9672-R36 mainframe, 256 MB RAM):
+Com base em benchmarks realizados no ambiente de homologação da organização (mainframe IBM 9672-R36, 256 MB de RAM):
 
-| Job | Base volume | Estimated time | Note |
+| Job | Volume-base | Tempo estimado | Observação |
 | --------- | -------------------- | -------------- | --------------------------------------- |
 | SIFAP-PGT | 1,200,000 records | 1h30min | Sequential processing with I/O Adabas |
 | SIFAP-REL | N/A | 20min | Totalizer reading |
 | SIFAP-CON | ~1,200,000 records | 45min | Match between CNAB and PAYMENT |
 
-> **Assumption:** These times are estimates based on initial volume. The growth of the beneficiary base will imply a proportional increase in processing time. It is recommended to review the sizing when the volume reaches 2,500,000 records.
+> **Premissa:** estes tempos são estimativas baseadas no volume inicial. O crescimento da base de beneficiários implicará aumento proporcional do tempo de processamento. Recomenda-se revisar o dimensionamento quando o volume atingir 2.500.000 registros.
 
 <!-- Volume reached 4,200,000 in 2018. BATCHPGT processing time
  reached 3h20min (reference Feb/2018), with a timeout incident in
@@ -307,11 +307,11 @@ Based on benchmarks carried out in the organization's approval environment (IBM 
 
 ---
 
-## 5. Integration with SIAFI
+## 5. Integração com o SIAFI
 
-### 5.1. Expected Integration Model
+### 5.1. Modelo de integração previsto
 
-Integration with SIAFI - Federal Government Integrated Financial Administration System will be carried out according to the following model:
+A integração com o SIAFI, Sistema Integrado de Administração Financeira do Governo Federal, será realizada conforme o seguinte modelo:
 
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
@@ -319,19 +319,19 @@ sequenceDiagram
     participant SIFAP
     participant SIAFI
 
-    SIFAP->>SIAFI: TXT File — Bank Orders (BATCHPGT, D+1)
-    SIAFI-->>SIFAP: TXT File — Confirmation/Return (BATCHCON)
+    SIFAP->>SIAFI: Arquivo TXT — Ordens bancárias (BATCHPGT, D+1)
+    SIAFI-->>SIFAP: Arquivo TXT — Confirmação/retorno (BATCHCON)
 ```
 
-**Expected format:** Positional text file, layout defined by STN (National Treasury Secretariat), according to Normative Instruction STN no. 04/1996.
+**Formato previsto:** arquivo texto posicional, leiaute definido pela STN (Secretaria do Tesouro Nacional), conforme Instrução Normativa STN nº 04/1996.
 
-**Medium of transmission:** Transfer via VTAM/SNA between the organization's mainframes and STN.
+**Meio de transmissão:** transferência via VTAM/SNA entre os mainframes da organização e da STN.
 
-**Frequency:** Monthly, D+2 after sheet processing.
+**Frequência:** mensal, D+2 após o processamento da folha.
 
-### 5.2. Integration File Fields SIAFI
+### 5.2. Campos do arquivo de integração SIAFI
 
-| Position | Size | Field | Format |
+| Posição | Tamanho | Campo | Formato |
 | ------- | ------- | ---------------------------------------------------- | ------- |
 | 001-002 | 02 | Record Type (01=Header, 02=Detail, 99=Trailer) | N |
 | 003-016 | 14 | Beneficiary's CPF | N |
@@ -354,32 +354,32 @@ sequenceDiagram
 
 ---
 
-## 6. Security and Access Control
+## 6. Segurança e controle de acesso
 
-### 6.1. Access Model
+### 6.1. Modelo de acesso
 
-Access control to the SIFAP will be implemented at two levels:
+O controle de acesso ao SIFAP será implementado em dois níveis:
 
-1. **Natural Security Level:** Access control to the SIFAP library and its objects, managed by Natural Security (NATSEC). Defined profiles:
+1. **Nível Natural Security:** controle de acesso à biblioteca SIFAP e seus objetos, gerenciado pelo Natural Security (NATSEC). Perfis definidos:
 
-- OPERATOR: access to registration and consultation programs;
-- SUPERVISOR: full access, including exclusion and parameterization;
-- AUDITOR: read-only access to all modules + audit reports.
+- OPERATOR: acesso aos programas de cadastro e consulta;
+- SUPERVISOR: acesso completo, incluindo exclusão e parametrização;
+- AUDITOR: acesso somente leitura a todos os módulos + relatórios de auditoria.
 
-1. **Application Level:** Additional verification via session GDA (Global Data Area), containing user code, profile and region of origin.
+1. **Nível da aplicação:** verificação adicional pela GDA de sessão (Global Data Area), contendo código do usuário, perfil e regional de origem.
 
-### 6.2. Audit Trail
+### 6.2. Trilha de auditoria
 
-Every operation that changes data in the system (inclusion, change, deletion) will generate an audit record containing:
+Toda operação que alterar dados no sistema (inclusão, alteração, exclusão) gerará um registro de auditoria contendo:
 
-- User code;
-- Date and time of the operation;
-- Program that originated the operation;
-- Type of operation (I=Inclusion, A=Change, E=Exclusion);
-- Identification of the affected record;
-- Previous and subsequent values ​​(for changes).
+- Código do usuário;
+- Data e hora da operação;
+- Programa que originou a operação;
+- Tipo de operação (I=Inclusão, A=Alteração, E=Exclusão);
+- Identificação do registro afetado;
+- Valores anterior e posterior (para alterações).
 
-> **Design note:** In the initial phase, audit records will be written in fields of type MU (multiple value) in DDM BENEFIC, the Beneficiary file, using a periodic group (PE) for history. This approach simplifies implementation and avoids creating an additional DDM.
+> **Nota de projeto:** na fase inicial, os registros de auditoria serão gravados em campos do tipo MU (multiple value) no DDM BENEFIC, o arquivo de Beneficiários, usando um grupo periódico (PE) para o histórico. Essa abordagem simplifica a implementação e evita a criação de um DDM adicional.
 
 <!-- This decision was reversed in 2005, when the volume of
  audit on PE of DDM BENEFIC caused severe degradation of
@@ -390,21 +390,21 @@ Every operation that changes data in the system (inclusion, change, deletion) wi
 
 ---
 
-## 7. Expected Evolution
+## 7. Evolução prevista
 
-### 7.1. Feature Roadmap
+### 7.1. Roteiro de funcionalidades
 
-The evolution of the SIFAP is planned in the following phases, subject to approval and prioritization by the project management committee:
+A evolução do SIFAP está planejada nas seguintes fases, sujeitas à aprovação e priorização pelo comitê gestor do projeto:
 
-| Phase | Expected Deadline | Functionality | Priority |
+| Fase | Prazo previsto | Funcionalidade | Prioridade |
 | ---------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| **Phase 1** | Jun-Dec/1997 | Registration and Query Modules (CADBENEF, CADDEPEN, CADPROG, CONSBENF) | Mandatory |
-| **Phase 2** | Jan-Jul/1998 | Batch Processing Module (BATCHPGT, BATCHREL) | Mandatory |
-| **Phase 3** | Aug-Dec/1998 | Audit Module (AUDCONSUL, AUDRELAT) + Conciliation SIAFI (BATCHCON) | Desirable |
-| **Phase 4** | 1st half/1999 | Validation Module (VALBENEF, VALDOCS) - automated registration validation | Desirable |
-| **Phase 5** | 2nd semester/1999 | Generation of advanced management reports - graphs and consolidations | Optional |
-| **Phase 6** | 1st half/2000 | **Web Module** - consultation interface via Intranet for management bodies (SENARC, SAS). Expected technology: Natural Web Interface + HTTP server the organization. | Optional |
-| **Phase 7** | 2nd semester/2000 | Online integration with Federal Revenue to validate CPF in real time | Optional |
+| **Fase 1** | Jun-dez/1997 | Módulos de cadastro e consulta (CADBENEF, CADDEPEN, CADPROG, CONSBENF) | Obrigatória |
+| **Fase 2** | Jan-jul/1998 | Módulo de processamento batch (BATCHPGT, BATCHREL) | Obrigatória |
+| **Fase 3** | Ago-dez/1998 | Módulo de auditoria (AUDCONSUL, AUDRELAT) + conciliação SIAFI (BATCHCON) | Desejável |
+| **Fase 4** | 1º semestre/1999 | Módulo de validação (VALBENEF, VALDOCS), validação cadastral automatizada | Desejável |
+| **Fase 5** | 2º semestre/1999 | Geração de relatórios gerenciais avançados, gráficos e consolidações | Opcional |
+| **Fase 6** | 1º semestre/2000 | **Módulo web**, interface de consulta via intranet para órgãos gestores (SENARC, SAS). Tecnologia prevista: Natural Web Interface + servidor HTTP da organização. | Opcional |
+| **Fase 7** | 2º semestre/2000 | Integração online com a Receita Federal para validar CPF em tempo real | Opcional |
 
 <!-- Balance of real evolution (retrospective annotation):
 
@@ -449,61 +449,61 @@ The evolution of the SIFAP is planned in the following phases, subject to approv
  - CadÚnico Integration - implemented as an emergency in 2006, without
  program cataloged in the official inventory. -->
 
-### 7.2. Premises for Evolution
+### 7.2. Premissas para evolução
 
-- Maintenance of a team of at least 4 Natural analysts/programmers dedicated to the SIFAP;
-- Availability of an approval environment on the organization's mainframe;
-- Support from the SAS/MPAS management committee to define requirements;
-- Stability of the Natural/Adabas platform in the organization (no discontinuation expected);
-- Budget for acquiring Natural Web Interface licenses (Phase 6).
+- Manutenção de uma equipe de pelo menos 4 analistas/programadores Natural dedicados ao SIFAP;
+- Disponibilidade de ambiente de homologação no mainframe da organização;
+- Apoio do comitê gestor da SAS/MPAS para definir requisitos;
+- Estabilidade da plataforma Natural/Adabas na organização (sem descontinuação prevista);
+- Orçamento para adquirir licenças do Natural Web Interface (Fase 6).
 
-### 7.3. Web Module Considerations (Phase 6)
+### 7.3. Considerações sobre o módulo web (Fase 6)
 
-The web module scheduled for the 1st half of 2000 will use the **Natural Web Interface** (NWI) technology, which allows the display of Natural screens as HTML pages accessible via a web browser. This technology is being evaluated by the organization and should be approved by the end of 1998.
+O módulo web previsto para o 1º semestre de 2000 usará a tecnologia **Natural Web Interface** (NWI), que permite exibir telas Natural como páginas HTML acessíveis por navegador. Essa tecnologia está em avaliação pela organização e deverá ser homologada até o fim de 1998.
 
-The SIFAP web interface will allow you to:
+A interface web do SIFAP permitirá:
 
-- Consultation of beneficiaries by CPF, NIS or name (equivalent to CONSBENF);
-- Consultation of payments by period;
-- Issuance of statements to management bodies;
-- Access via Intranet to the organization (INFOVIA network of the Federal Government).
+- Consulta de beneficiários por CPF, NIS ou nome (equivalente ao CONSBENF);
+- Consulta de pagamentos por período;
+- Emissão de extratos para órgãos gestores;
+- Acesso pela intranet da organização (rede INFOVIA do Governo Federal).
 
-> **Note:** The technical feasibility of the NWI depends on approval by the organization's Architecture Committee. If NWI is not approved, evaluate an alternative with **Entire X** (Natural-HTTP middleware) or separate front-end development in Java/Servlet with access to Adabas via JDBC.
+> **Observação:** a viabilidade técnica do NWI depende da aprovação pelo Comitê de Arquitetura da organização. Se o NWI não for aprovado, avaliar alternativa com **Entire X** (middleware Natural-HTTP) ou desenvolvimento separado de front-end em Java/Servlet com acesso ao Adabas via JDBC.
 
 ---
 
-## 8. Development Schedule
+## 8. Cronograma de desenvolvimento
 
-### 8.1. Phase 1 - Registration and Consultation
+### 8.1. Fase 1 - Cadastro e consulta
 
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
 gantt
-    title Phase 1 — Registration and Consultation (Jun/1997 – Dec/1997)
+    title Fase 1 — Cadastro e consulta (jun/1997 – dez/1997)
     dateFormat YYYY-MM
     axisFormat %b/%y
 
-    section Analysis
-    Detailed specification :a1, 1997-06, 1M
+    section Análise
+    Especificação detalhada :a1, 1997-06, 1M
 
-    section Modeling
-    Modeling Adabas and DDMs :a2, 1997-07, 2M
+    section Modelagem
+    Modelagem Adabas e DDMs :a2, 1997-07, 2M
 
-    section Coding
-    Coding CADBENEF and CADPROG :a3, 1997-08, 2M
-    Coding CONSBENF and CADDEPEN :a4, 1997-09, 1M
+    section Codificação
+    Codificação CADBENEF e CADPROG :a3, 1997-08, 2M
+    Codificação CONSBENF e CADDEPEN :a4, 1997-09, 1M
 
-    section Quality
-    Integrated Tests :a5, 1997-10, 1M
-    Homologation and Implementation:a6, 1997-11, 1M
+    section Qualidade
+    Testes integrados :a5, 1997-10, 1M
+    Homologação e implantação:a6, 1997-11, 1M
 ```
 
-### 8.2. Phase 2 - Batch Processing
+### 8.2. Fase 2 - Processamento batch
 
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
 gantt
-    title Phase 2 — Batch Processing (Jan/1998 – Jul/1998)
+    title Fase 2 — Processamento batch (jan/1998 – jul/1998)
     dateFormat YYYY-MM
     axisFormat %b/%y
 
@@ -521,41 +521,41 @@ gantt
 
 ---
 
-## 9. Project Team
+## 9. Equipe do projeto
 
-| Name | Role in the Project | Capacity |
+| Nome | Papel no projeto | Lotação |
 | ----------------------------- | -------------------------------------- | ----------- |
-| Roberto Carlos Ferreira | Technical Coordinator / Architect | SUPDE/DESIF |
-| Maria Helena Costa | DESIF Coordinator / Technical Sponsor | SUPDE/DESIF |
-| José Aparecido Lima | Natural Programmer - Batch Module | SUPDE/DESIF |
-| Fernanda Cristina de Oliveira | Business Analyst / Specification | SUPDE/DESIF |
-| Cláudia Regina dos Santos | DBA Adabas - Data modeling | SUPDE/DESIF |
-| Antônio Carlos Ribeiro | Support Analyst - Infrastructure | SUPDE/DESIF |
-| Mário Sérgio Andrade | Natural Programmer - Registration Module | SUPDE/DESIF |
-| Sandra Lúcia Pereira | Natural Programmer - Consultation Module | SUPDE/DESIF |
+| Roberto Carlos Ferreira | Coordenador técnico / Arquiteto | SUPDE/DESIF |
+| Maria Helena Costa | Coordenadora da DESIF / Patrocinadora técnica | SUPDE/DESIF |
+| José Aparecido Lima | Programador Natural, módulo batch | SUPDE/DESIF |
+| Fernanda Cristina de Oliveira | Analista de Negócio / Especificação | SUPDE/DESIF |
+| Cláudia Regina dos Santos | DBA Adabas, modelagem de dados | SUPDE/DESIF |
+| Antônio Carlos Ribeiro | Analista de Suporte, infraestrutura | SUPDE/DESIF |
+| Mário Sérgio Andrade | Programador Natural, módulo de cadastro | SUPDE/DESIF |
+| Sandra Lúcia Pereira | Programadora Natural, módulo de consulta | SUPDE/DESIF |
 
-> **Note:** Mário Sérgio Andrade and Sandra Lúcia Pereira were dismissed from the project in December 1997 due to internal reassignment. Their activities were absorbed by the other team members, contributing to the 4-month delay in the project's original deadline (14 months planned → 18 months completed).
+> **Observação:** Mário Sérgio Andrade e Sandra Lúcia Pereira deixaram o projeto em dezembro de 1997 devido a remanejamento interno. Suas atividades foram absorvidas pelas demais pessoas da equipe, contribuindo para o atraso de 4 meses no prazo original do projeto (14 meses planejados → 18 meses realizados).
 
 ---
 
-## 10. Identified Risks
+## 10. Riscos identificados
 
-| # | Risk | Probability | Impact | Mitigation |
+| # | Risco | Probabilidade | Impacto | Mitigação |
 | --- | ---------------------------------------------------------------- | ------------- | ------- | ------------------------------------------------ |
-| R1 | Delay in migrating data from SIPAG/DOS | High | High | Start data mapping in parallel to Phase 1 |
-| R2 | Unavailability of the approval environment | Average | High | Request an environment dedicated to SUPDE |
-| R3 | Changing requirements by SAS/MPAS during development | High | Medium | Freeze requirements by phase |
-| R4 | Team members leaving due to relocation | Average | High | Document and share knowledge |
-| R5 | Adabas performance limitation with volumes above 2M records | Low | High | Monitor and optimize descriptors |
-| R6 | Discontinuation of Natural/Adabas by the organization | Low | Critical | Follow SUPDE technical guidelines |
+| R1 | Atraso na migração de dados do SIPAG/DOS | Alta | Alto | Iniciar o mapeamento de dados em paralelo à Fase 1 |
+| R2 | Indisponibilidade do ambiente de homologação | Média | Alto | Solicitar ambiente dedicado à SUPDE |
+| R3 | Alteração de requisitos pela SAS/MPAS durante o desenvolvimento | Alta | Médio | Congelar requisitos por fase |
+| R4 | Saída de integrantes da equipe por remanejamento | Média | Alto | Documentar e compartilhar conhecimento |
+| R5 | Limitação de desempenho do Adabas com volumes acima de 2 milhões de registros | Baixa | Alto | Monitorar e otimizar descritores |
+| R6 | Descontinuação de Natural/Adabas pela organização | Baixa | Crítico | Seguir as diretrizes técnicas da SUPDE |
 
 > **Note on R4:** This risk partially materialized with the departure of Mário Sérgio and Sandra Lúcia in December/1997. Mitigation through documentation and knowledge sharing was partially implemented, but the practice was not maintained throughout the life of the system.
 
 ---
 
-## 11. Approvals
+## 11. Aprovações
 
-This document was reviewed and approved to begin development according to the signatures below:
+Este documento foi revisado e aprovado para o início do desenvolvimento conforme as assinaturas abaixo:
 
 ---
 
@@ -579,9 +579,9 @@ Brasília, May 26, 1997
 
 ---
 
-## Appendix A - Project Glossary
+## Apêndice A - Glossário do projeto
 
-| Term | Definition |
+| Termo | Definição |
 | ---------- | --------------------------------------------------------------------------------------- |
 | Adabas | Adaptable Database System - Software AG's DBMS used on the organization's mainframe |
 | CNAB | National Center for Banking Automation - file standard for banking transactions |
@@ -607,9 +607,9 @@ Brasília, May 26, 1997
 ---
 
 **the organization - the federal data processing organization**
-**Confidential Document**
-**Reproduction and distribution restricted to the scope of the SIFAP project**
+**Documento confidencial**
+**Reprodução e distribuição restritas ao âmbito do projeto SIFAP**
 
 ---
 
-[Back to legacy scenario](../README.md)
+[Voltar ao cenário legado](../README.md)

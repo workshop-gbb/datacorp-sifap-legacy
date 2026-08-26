@@ -1,39 +1,39 @@
-# SIFAP Legacy Lab Synthetic Seed Data
+# Dados sintéticos de seed do lab legado SIFAP
 
-This directory contains deterministic fixed-width seed files for the Adabas/Natural SIFAP lab.
+Este diretório contém arquivos de seed determinísticos e de largura fixa para o lab Adabas/Natural do SIFAP.
 
-**Synthetic data statement:** this is 100% synthetic Brazilian test data. It contains no real personal data, no real CPF/NIS assignments, and no production records.
+**Declaração sobre dados sintéticos:** estes são dados brasileiros de teste 100% sintéticos. Eles não contêm dados pessoais reais, atribuições reais de CPF/NIS nem registros de produção.
 
-## Files and volumes
+## Arquivos e volumes
 
-| File | Records | Bytes/record (without newline) | Source layout |
+| Arquivo | Registros | Bytes/registro (sem quebra de linha) | Layout de origem |
 |---|---:|---:|---|
 | `beneficiary.dat` | 500 | 1739 | `layout-beneficiary.txt`, file 150 BENEFICIARY |
 | `payment.dat` | 2000 | 855 | `layout-payment.txt`, file 152 PAYMENT |
 | `social-program.dat` | 6 | 361 | `layout-social-program.txt`, file 151 SOCIAL-PROGRAM |
 | `audit.dat` | 200 | 4995 | `layout-audit.txt`, file 153 AUDIT |
 
-## Regeneration
+## Regeneração
 
-Run from this directory or from the repository root:
+Execute neste diretório ou na raiz do repositório:
 
 ```bash
 python3 infra/adabas-natural-lab/provisioning/seed/generate_seed.py
 ```
 
-The generator uses only the Python 3 standard library and a fixed RNG seed, so outputs are reproducible.
+O gerador usa somente a biblioteca padrão do Python 3 e uma seed fixa do gerador de números aleatórios, portanto as saídas são reproduzíveis.
 
-## Layout notes
+## Observações sobre o layout
 
-Records are one physical record per line. Alphanumeric fields are ASCII, trailing-space padded. Numeric unpacked fields are zero-left-padded digits. Packed decimal fields are binary packed BCD with an implied decimal scale as declared in the DDM/FDT; the newline is not part of the record width.
+Cada linha contém um registro físico. Os campos alfanuméricos usam ASCII e recebem espaços à direita. Os campos numéricos não compactados recebem zeros à esquerda. Os campos decimais compactados usam BCD binário compactado, com a escala decimal implícita declarada no DDM/FDT; a quebra de linha não faz parte da largura do registro.
 
-Periodic groups and MU fields are emitted at their maximum occurrence counts so sibling ADACMP/ADALOD scripts can load deterministic full-width records.
+Os grupos periódicos e campos MU são emitidos com suas contagens máximas de ocorrências para que os scripts ADACMP/ADALOD relacionados carreguem registros determinísticos com largura total.
 
-## Teaching fixtures
+## Fixtures didáticas
 
-- Valid CPF and NIS check digits are generated with the mod-11 algorithms used by `SUBVALCP.NSN` and `SUBVALNI.NSN`.
-- Several beneficiaries have valid CPF values starting with `000` for the government-test exception path.
-- Family incomes cross the 300/600/1000/1500 calculation bands.
-- Region `99` beneficiaries exercise the international/diplomatic eligibility bypass.
-- Dependents include zero, several, inactive/disconnected statuses, and one 10-occurrence maximum record.
-- Payments include reversals, divergent reconciliation, bank returns, and intentionally imbalanced gross/discount/net rows for report labs.
+- Os dígitos verificadores válidos de CPF e NIS são gerados com os algoritmos de módulo 11 usados por `SUBVALCP.NSN` e `SUBVALNI.NSN`.
+- Vários beneficiários têm valores de CPF válidos iniciados por `000` para o caminho de exceção de teste governamental.
+- As rendas familiares atravessam as faixas de cálculo 300/600/1000/1500.
+- Os beneficiários da região `99` exercitam a exceção de elegibilidade internacional/diplomática.
+- Os dependentes incluem nenhuma e várias ocorrências, status inativos/desvinculados e um registro com o máximo de 10 ocorrências.
+- Os pagamentos incluem estornos, conciliação divergente, devoluções bancárias e linhas de bruto/desconto/líquido intencionalmente desequilibradas para os labs de relatórios.

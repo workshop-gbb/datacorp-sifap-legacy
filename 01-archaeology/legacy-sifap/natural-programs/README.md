@@ -1,131 +1,131 @@
-# Natural Programs
+# Programas Natural
 
-> **Path:** [Team Kit](../../../README.md) › [Stage 1](../../README.md) › [SIFAP Legacy](../README.md) › **Natural Programs**
+> **Trilha:** [Kit do Time](../../../README.md) › [Estágio 1](../../README.md) › [Legado SIFAP](../README.md) › **Programas Natural**
 
-**The 15 assigned Natural members for SIFAP, the Payment Inspection and Administration System, plus the nine supporting library members.** The programs implement the legacy system's business logic. Each pair reads three programs during Stage 1.
+**Os 15 membros Natural atribuídos do SIFAP, Sistema de Fiscalização e Administração de Pagamentos, mais os nove membros de apoio da biblioteca.** Os programas implementam a lógica de negócio do sistema legado. Cada dupla lê três programas durante o Estágio 1.
 
-| Field | Value |
+| Campo | Valor |
 |---|---|
-| **Audience** | All pairs—each pair reads its three assigned programs |
-| **Prerequisites** | Read [`HOW-TO-READ-NATURAL.md`](../HOW-TO-READ-NATURAL.md) |
-| **Stage** | Stage 1 — Archaeology |
-| **Expected outcome** | Rules cataloged with `file.NSN#L<start>-L<end>` evidence and a dependency map started |
+| **Público-alvo** | Todas as duplas, cada uma lê os três programas que recebeu |
+| **Pré-requisitos** | Ler [`HOW-TO-READ-NATURAL.md`](../HOW-TO-READ-NATURAL.md) |
+| **Estágio** | Estágio 1 — Arqueologia |
+| **Resultado esperado** | Regras catalogadas com evidência `file.NSN#L<start>-L<end>` e mapa de dependências iniciado |
 
 > [!NOTE]
-> These files are read-only reference material. During Stage 1, pairs analyze the programs to extract business rules and map them to the modern system (Java 21 + Spring Boot).
+> Estes arquivos são material de referência somente leitura. Durante o Estágio 1, as duplas analisam os programas para extrair regras de negócio e mapeá-las para o sistema moderno (Java 21 + Spring Boot).
 
 ---
 
-## What is in this folder
+## O que há nesta pasta
 
-| Group | Count | Extensions | What to do with them |
+| Grupo | Quantidade | Extensões | O que fazer com eles |
 |---|---|---|---|
-| **Assigned members** | 15 | `.NSP` (12 programs), `.NSN` (3 subprograms) | **Assigned reading.** Three per pair |
-| **Supporting members** | 9 | `.NSA`, `.NSL`, `.NSC`, `.NSN`, `.jcl` | **Consult as needed.** Shared infrastructure |
+| **Membros atribuídos** | 15 | `.NSP` (12 programas), `.NSN` (3 subprogramas) | **Leitura atribuída.** Três por dupla |
+| **Membros de apoio** | 9 | `.NSA`, `.NSL`, `.NSC`, `.NSN`, `.jcl` | **Consulte quando necessário.** Infraestrutura compartilhada |
 
 > [!IMPORTANT]
-> **Your reading workload has not changed: it remains three programs per pair.**
-> The nine supporting members are library infrastructure—data areas, copycodes, two validation subprograms, and two JCLs. Open one when one of *your* programs uses `USING`, `INCLUDE`, or `CALLNAT` and you need to understand what that name means. They are **not** extra programs, **do not** belong to any pair, and **do not** count toward the three assigned readings.
+> **Sua carga de leitura não mudou: continuam sendo três programas por dupla.**
+> Os nove membros de apoio são a infraestrutura da biblioteca: áreas de dados, copycodes, dois subprogramas de validação e dois JCLs. Abra um deles quando um dos *seus* programas usar `USING`, `INCLUDE` ou `CALLNAT` e você precisar entender o significado daquele nome. Eles **não** são programas extras, **não** pertencem a nenhuma dupla e **não** contam entre as três leituras atribuídas.
 
-Everything is kept in one directory because a Natural library is **flat**: `CALLNAT`, `INCLUDE`, and `USING` resolve members **by name**, never by path. See [`HOW-TO-READ-NATURAL.md`, section 2](../HOW-TO-READ-NATURAL.md#2-natural-library-members).
+Tudo fica em um único diretório porque uma biblioteca Natural é **plana**: `CALLNAT`, `INCLUDE` e `USING` resolvem membros **pelo nome**, nunca pelo caminho. Consulte a [seção 2 de `HOW-TO-READ-NATURAL.md`](../HOW-TO-READ-NATURAL.md#2-membros-da-biblioteca-natural).
 
 ---
 
-## 1. The 15 assigned programs—distribution by pair
+## 1. Os 15 programas atribuídos, distribuídos por dupla
 
-| Pair | Program | Author | Year | Description |
+| Dupla | Programa | Autor | Ano | Descrição |
 |---|---|---|---|---|
-| **1 · Vision** (PO + RE)—registration | `CADBENEF.NSP` | Roberto Meirelles | 1997 | Beneficiary registration—creation, update, deletion |
-| | `CADDEPEN.NSP` | José A. Lima | 1998 | Registration of a dependent linked to the primary beneficiary |
-| | `CADPROG.NSP` | Fernanda C. Oliveira | 1997 | Social program registration—parameters and value ranges |
-| **2 · Architecture** (EA + SA)—batch | `BATCHPGT.NSP` | José A. Lima | 1999 | Batch payment—generates monthly payment cycles |
-| | `BATCHREL.NSP` | José A. Lima | 1999 | Batch report—produces management reports |
-| | `BATCHCON.NSP` | Patrícia H. Moura | 2002 | Batch reconciliation—reconciles payments with SIAFI |
-| **3 · Implementation** (TL + Dev)—calculation | `CALCBENF.NSN` | Roberto Meirelles | 1998 | Calculates the benefit amount by program and range |
-| | `CALCCORR.NSP` | Patricia Gomes de Souza | 2001 | Calculates retroactive payment corrections using IPCA indexes |
-| | `CALCDSCT.NSP` | Roberto Mendes Junior | 1999 | Calculates mandatory deductions and discount caps |
-| **4 · Quality** (DBA + QA)—validation | `VALBENEF.NSN` | Roberto Meirelles | 1997 | Validates registration data (CPF, NIS) |
-| | `VALDOCS.NSP` | Ana Lucia Pereira | 1998 | Validates CPF, NIS/PIS, RG, CTPS and supporting documents |
-| | `VALELEG.NSN` | Fernanda C. Oliveira | 1999 | Validates eligibility against program rules |
-| **5 · Operations** (DevOps + TW)—query and reporting | `CONSBENF.NSP` | Marcia Helena Oliveira | 1998 | Queries beneficiary data by CPF or NIS (3270 screen) |
-| | `RELPGT.NSP` | Ana Lucia Pereira | 1999 | Payment detail report by period and program |
-| | `RELAUDIT.NSP` | Roberto Mendes Junior | 2002 | Audit trail report with period/action filters |
+| **1 · Visão** (PO + RE), cadastro | `CADBENEF.NSP` | Roberto Meirelles | 1997 | Cadastro de beneficiário: inclusão, alteração e exclusão |
+| | `CADDEPEN.NSP` | José A. Lima | 1998 | Cadastro de dependente vinculado ao beneficiário titular |
+| | `CADPROG.NSP` | Fernanda C. Oliveira | 1997 | Cadastro de programa social: parâmetros e faixas de valores |
+| **2 · Arquitetura** (EA + SA), batch | `BATCHPGT.NSP` | José A. Lima | 1999 | Pagamento em batch: gera ciclos mensais de pagamento |
+| | `BATCHREL.NSP` | José A. Lima | 1999 | Relatório em batch: produz relatórios gerenciais |
+| | `BATCHCON.NSP` | Patrícia H. Moura | 2002 | Conciliação em batch: concilia pagamentos com o SIAFI |
+| **3 · Implementação** (TL + Dev), cálculo | `CALCBENF.NSN` | Roberto Meirelles | 1998 | Calcula o valor do benefício por programa e faixa |
+| | `CALCCORR.NSP` | Patricia Gomes de Souza | 2001 | Calcula correções retroativas de pagamentos usando índices IPCA |
+| | `CALCDSCT.NSP` | Roberto Mendes Junior | 1999 | Calcula deduções obrigatórias e limites de desconto |
+| **4 · Qualidade** (DBA + QA), validação | `VALBENEF.NSN` | Roberto Meirelles | 1997 | Valida dados cadastrais (CPF, NIS) |
+| | `VALDOCS.NSP` | Ana Lucia Pereira | 1998 | Valida CPF, NIS/PIS, RG, CTPS e documentos comprobatórios |
+| | `VALELEG.NSN` | Fernanda C. Oliveira | 1999 | Valida a elegibilidade segundo as regras do programa |
+| **5 · Operações** (DevOps + TW), consulta e relatórios | `CONSBENF.NSP` | Marcia Helena Oliveira | 1998 | Consulta dados do beneficiário por CPF ou NIS (tela 3270) |
+| | `RELPGT.NSP` | Ana Lucia Pereira | 1999 | Relatório detalhado de pagamentos por período e programa |
+| | `RELAUDIT.NSP` | Roberto Mendes Junior | 2002 | Relatório da trilha de auditoria com filtros por período e ação |
 
 ---
 
-## 2. The nine supporting members—shared infrastructure
+## 2. Os nove membros de apoio, infraestrutura compartilhada
 
-None of these members belongs to a pair, and none counts as assigned reading.
+Nenhum desses membros pertence a uma dupla ou conta como leitura atribuída.
 
-| Member | Type | How it appears in code | Purpose |
+| Membro | Tipo | Como aparece no código | Finalidade |
 |---|---|---|---|
-| `PDAVALID.NSA` | PDA | `PARAMETER USING PDAVALID` / `LOCAL USING PDAVALID` | Parameter contract for the document-validation family: CPF and NIS are inputs; return code and message are outputs |
-| `PDACALC.NSA` | PDA | `PARAMETER USING PDACALC` / `LOCAL USING PDACALC` | Parameter contract for the payment chain: beneficiary key and context are inputs; calculated amounts are outputs |
-| `LDASIFAP.NSL` | LDA | `LOCAL USING LDASIFAP` | Shared parameter tables: regional factor, income ranges, rates, UF, dates, and the century window (Y2K) |
-| `CCVALCPF.NSC` | Copycode | `INCLUDE CCVALCPF` + `PERFORM VALID-CPF-STANDARD` | CPF mod-11 routine inserted at compile time—the **old** validation path |
-| `CCAUDIT.NSC` | Copycode | `INCLUDE CCAUDIT` + `PERFORM GRAVA-AUDIT` | Standard block for writing the audit trail to file 153 |
-| `SUBVALCP.NSN` | Subprogram | `CALLNAT 'SUBVALCP' ...` | Callable CPF validation (mod-11)—the **new** validation path |
-| `SUBVALNI.NSN` | Subprogram | `CALLNAT 'SUBVALNI' ...` | Callable NIS/PIS/PASEP validation (mod-11) |
-| `SIFAPJ01.jcl` | JCL z/OS | outside Natural | **Monthly payroll** job—runs `BATCHPGT` through `NATBATCH` |
-| `SIFAPJ02.jcl` | JCL z/OS | outside Natural | **Monthly reporting** job—runs `BATCHREL` and `RELPGT` |
+| `PDAVALID.NSA` | PDA | `PARAMETER USING PDAVALID` / `LOCAL USING PDAVALID` | Contrato de parâmetros da família de validação de documentos: CPF e NIS são entradas; código de retorno e mensagem são saídas |
+| `PDACALC.NSA` | PDA | `PARAMETER USING PDACALC` / `LOCAL USING PDACALC` | Contrato de parâmetros da cadeia de pagamentos: chave e contexto do beneficiário são entradas; valores calculados são saídas |
+| `LDASIFAP.NSL` | LDA | `LOCAL USING LDASIFAP` | Tabelas compartilhadas de parâmetros: fator regional, faixas de renda, alíquotas, UF, datas e janela de século (Y2K) |
+| `CCVALCPF.NSC` | Copycode | `INCLUDE CCVALCPF` + `PERFORM VALID-CPF-STANDARD` | Rotina módulo 11 de CPF inserida em tempo de compilação, o caminho **antigo** de validação |
+| `CCAUDIT.NSC` | Copycode | `INCLUDE CCAUDIT` + `PERFORM GRAVA-AUDIT` | Bloco padrão para gravar a trilha de auditoria no arquivo 153 |
+| `SUBVALCP.NSN` | Subprograma | `CALLNAT 'SUBVALCP' ...` | Validação de CPF (módulo 11) que pode ser chamada, o caminho **novo** de validação |
+| `SUBVALNI.NSN` | Subprograma | `CALLNAT 'SUBVALNI' ...` | Validação de NIS/PIS/PASEP (módulo 11) que pode ser chamada |
+| `SIFAPJ01.jcl` | JCL z/OS | fora do Natural | Job da **folha mensal**, executa `BATCHPGT` por meio de `NATBATCH` |
+| `SIFAPJ02.jcl` | JCL z/OS | fora do Natural | Job de **relatórios mensais**, executa `BATCHREL` e `RELPGT` |
 
 > [!NOTE]
-> `SUBVALCP.NSN` and `SUBVALNI.NSN` have the `.NSN` extension like other assigned members, but they are **subprograms**: they exist only to be called by `CALLNAT` and do not perform `INPUT` or `WRITE`. They are not among the 15 assigned members.
+> `SUBVALCP.NSN` e `SUBVALNI.NSN` têm a extensão `.NSN`, assim como outros membros atribuídos, mas são **subprogramas**: existem apenas para serem chamados por `CALLNAT` e não executam `INPUT` nem `WRITE`. Eles não estão entre os 15 membros atribuídos.
 
 ---
 
-## 3. From JCL to program—the production batch flow
+## 3. Do JCL ao programa, o fluxo batch de produção
 
-The two JCLs make the monthly flow traceable end to end:
+Os dois JCLs tornam o fluxo mensal rastreável de ponta a ponta:
 
-| Job | When it runs | What it runs | Output |
+| Job | Quando executa | O que executa | Saída |
 |---|---|---|---|
-| `SIFAPJ01.jcl` | Monthly—first business day | `BATCHPGT` | Monthly payroll and bank remittance file |
-| `SIFAPJ02.jcl` | Monthly—second business day, after `SIFAPJ01` | `BATCHREL` and `RELPGT` | Consolidated report and analytical report by program |
+| `SIFAPJ01.jcl` | Mensalmente, no primeiro dia útil | `BATCHPGT` | Folha mensal e arquivo de remessa bancária |
+| `SIFAPJ02.jcl` | Mensalmente, no segundo dia útil, depois de `SIFAPJ01` | `BATCHREL` e `RELPGT` | Relatório consolidado e relatório analítico por programa |
 
-Each JCL documents the schedule (Control-M), allocated files, and restart procedure in comments. It is the best source for answering "what happens every month, and in what order?"
+Cada JCL documenta em comentários o agendamento (Control-M), os arquivos alocados e o procedimento de reinício. Essa é a melhor fonte para responder "o que acontece todo mês e em qual ordem?".
 
 ---
 
-## 4. Dependency map—how to build it
+## 4. Mapa de dependências, como construí-lo
 
-The members in this folder reference one another. Discovering **who calls whom** is the Stage 1 dependency-mapping exercise: the result belongs in [`dependency-map.md`](../../dependency-map.md) and is not published here.
+Os membros desta pasta referenciam uns aos outros. Descobrir **quem chama quem** é o exercício de mapeamento de dependências do Estágio 1: o resultado deve ser registrado em [`dependency-map.md`](../../dependency-map.md), não publicado aqui.
 
-**The four edge types and how to find them:**
+**Os quatro tipos de aresta e como encontrá-los:**
 
 ```bash
 cd 01-archaeology/legacy-sifap/natural-programs
 
-grep -n "CALLNAT" *.NSP *.NSN   # subprogram call         (edge between modules)
-grep -n "INCLUDE" *.NSP *.NSN   # inserted copycode       (edge to .NSC)
-grep -n "USING"   *.NSP *.NSN   # PDA and LDA in use      (edge to .NSA/.NSL)
-grep -n -A 8 "CMSYNIN" *.jcl     # program run by each job
+grep -n "CALLNAT" *.NSP *.NSN   # chamada de subprograma   (aresta entre módulos)
+grep -n "INCLUDE" *.NSP *.NSN   # copycode inserido        (aresta para .NSC)
+grep -n "USING"   *.NSP *.NSN   # PDA e LDA em uso         (aresta para .NSA/.NSL)
+grep -n -A 8 "CMSYNIN" *.jcl     # programa executado por cada job
 ```
 
-In VS Code, the equivalent is Ctrl+Shift+F with the regular expression `CALLNAT|INCLUDE|USING` and the file filter `*.NSP,*.NSN`.
+No VS Code, o equivalente é Ctrl+Shift+F com a expressão regular `CALLNAT|INCLUDE|USING` e o filtro de arquivos `*.NSP,*.NSN`.
 
-**What to record for each edge found:**
+**O que registrar para cada aresta encontrada:**
 
-| Field | Example |
+| Campo | Exemplo |
 |---|---|
-| Source | `BATCHPGT` |
-| Type | `CALLNAT` · `INCLUDE` · `USING` · `JCL runs` |
-| Target | called member name |
-| Evidence | `file.NSN#L<line>` |
+| Origem | `BATCHPGT` |
+| Tipo | `CALLNAT` · `INCLUDE` · `USING` · `JCL executa` |
+| Destino | nome do membro chamado |
+| Evidência | `file.NSN#L<line>` |
 
 > [!TIP]
-> Three time-saving guidelines:
+> Três orientações para economizar tempo:
 >
-> 1. **Confirm every edge in the code.** A header comment is a clue, not proof: it may mention a dependency that is absent from the program body or omit one that is present.
-> 2. **Some edges cross pairs.** If one of your programs calls a program assigned to another pair, coordinate the reading with that pair before finalizing the map—this is how the system design emerges.
-> 3. **Start with supporting members.** Searching the entire directory for `SUBVALCP`, `SUBVALNI`, `CCVALCPF`, `CCAUDIT`, `PDAVALID`, `PDACALC`, and `LDASIFAP` reveals the graph skeleton in minutes.
+> 1. **Confirme cada aresta no código.** Um comentário no cabeçalho é uma pista, não uma prova: ele pode mencionar uma dependência ausente no corpo do programa ou omitir uma que está presente.
+> 2. **Algumas arestas cruzam duplas.** Se um dos seus programas chamar outro atribuído a outra dupla, coordene a leitura com ela antes de finalizar o mapa. É assim que o desenho do sistema surge.
+> 3. **Comece pelos membros de apoio.** Pesquisar `SUBVALCP`, `SUBVALNI`, `CCVALCPF`, `CCAUDIT`, `PDAVALID`, `PDACALC` e `LDASIFAP` em todo o diretório revela o esqueleto do grafo em minutos.
 
 ---
 
-### Continue reading
+### Continue lendo
 
-| Previous | Next |
+| Anterior | Próximo |
 |---|---|
-| [SIFAP Legacy—overview](../README.md)<br/><sub>System context and history.</sub> | [Adabas DDMs](../adabas-ddms/README.md)<br/><sub>Adabas data structures.</sub> |
+| [Legado SIFAP, visão geral](../README.md)<br/><sub>Contexto e história do sistema.</sub> | [DDMs do Adabas](../adabas-ddms/README.md)<br/><sub>Estruturas de dados do Adabas.</sub> |
 
-<sub>[Back to the kit index](../../../README.md)</sub>
+<sub>[Voltar ao índice do kit](../../../README.md)</sub>

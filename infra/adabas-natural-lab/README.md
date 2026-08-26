@@ -1,69 +1,69 @@
-# Adabas + Natural Lab — optional legacy runtime
+# Lab Adabas + Natural — runtime legado opcional
 
-> **Track:** [Team Kit](../../README.md) › [Stage 1 — Archaeology](../../01-archaeology/README.md) › **Adabas + Natural Lab**
+> **Trilha:** [Kit do Time](../../README.md) › [Estágio 1 — Arqueologia](../../01-archaeology/README.md) › **Lab Adabas + Natural**
 
-**Provisions an Azure VM in East US 2 running Adabas Community Edition and Natural Community Edition in containers, published behind a stable HTTPS demo URL, for participants who want to run the legacy programs of SIFAP (Payment Inspection and Administration System) instead of only reading them.**
+**Provisiona uma VM do Azure em East US 2 que executa o Adabas Community Edition e o Natural Community Edition em contêineres, publicados por uma URL HTTPS estável de demonstração, para participantes que desejam executar os programas legados do SIFAP (Sistema de Fiscalização e Administração de Pagamentos), em vez de apenas lê-los.**
 
-![Runbook Type](https://img.shields.io/badge/Type-Runbook-171717?style=flat-square) ![Optional Track](https://img.shields.io/badge/Track-Optional-737373?style=flat-square) ![Azure Subscription Cost](https://img.shields.io/badge/Cost-Azure%20Subscription-A3A3A3?style=flat-square)
+![Tipo runbook](https://img.shields.io/badge/Type-Runbook-171717?style=flat-square) ![Trilha opcional](https://img.shields.io/badge/Track-Optional-737373?style=flat-square) ![Custo da assinatura Azure](https://img.shields.io/badge/Cost-Azure%20Subscription-A3A3A3?style=flat-square)
 
-| Field | Value |
+| Campo | Valor |
 |---|---|
-| **Target audience** | DevOps Engineer (Pair 5) and anyone who wants to run the actual legacy system |
-| **Prerequisites** | Your own Azure subscription, authenticated Azure CLI, Terraform 1.14.x, SSH key pair, and a safe backup location for local Terraform state |
-| **Estimated time** | 15 minutes of commands, plus the VM's first-boot time |
-| **Region** | `eastus2` (East US 2) |
-| **Stage** | Optional track — support for Stage 1 (Archaeology) |
-| **Expected result** | Adabas CE and Natural CE running on a VM, reachable at `https://<label>.eastus2.cloudapp.azure.com` |
+| **Público-alvo** | DevOps Engineer (Dupla 5) e quem deseja executar o sistema legado real |
+| **Pré-requisitos** | Sua própria assinatura Azure, Azure CLI autenticada, Terraform 1.14.x, par de chaves SSH e um local seguro para backup do estado local do Terraform |
+| **Tempo estimado** | 15 minutos de comandos, mais o tempo da primeira inicialização da VM |
+| **Região** | `eastus2` (East US 2) |
+| **Estágio** | Trilha opcional: apoio ao Estágio 1 (Arqueologia) |
+| **Resultado esperado** | Adabas CE e Natural CE em execução em uma VM, acessíveis em `https://<label>.eastus2.cloudapp.azure.com` |
 
 > [!CAUTION]
-> This module creates paid resources in a real Azure subscription. Read [Cost and spending control](#cost-and-spending-control) before the first `terraform apply`.
+> Este módulo cria recursos pagos em uma assinatura Azure real. Leia [Controle de custos e gastos](#controle-de-custos-e-gastos) antes do primeiro `terraform apply`.
 
 > [!IMPORTANT]
-> **Moving from `brazilsouth`?** A previous version of this module deployed to `brazilsouth` and left a partially applied environment behind. Azure cannot move those resources to East US 2 in place. Follow [Migrating off `brazilsouth`](#migrating-off-brazilsouth) **before** your first apply here, or the Key Vault name collision will stop you mid-run.
+> **Está migrando de `brazilsouth`?** Uma versão anterior deste módulo implantou em `brazilsouth` e deixou um ambiente parcialmente aplicado. O Azure não pode mover esses recursos diretamente para East US 2. Siga [Migração de `brazilsouth`](#migração-de-brazilsouth) **antes** do primeiro apply, ou a colisão do nome do Key Vault interromperá a execução.
 
 ---
 
-## What this module provides
+## O que este módulo fornece
 
-The Terraform in this directory creates an isolated environment with a functional legacy runtime:
+O Terraform deste diretório cria um ambiente isolado com um runtime legado funcional:
 
-- A Linux VM (Ubuntu 22.04 LTS) with Docker installed on first boot;
-- The `adabas-db` container with Adabas Community Edition and a demonstration database;
-- The `natural-ce` container with Natural Community Edition, already mapped to Adabas;
-- **The frozen SIFAP legacy sources, shipped automatically** — packaged from the working tree with a SHA-256 manifest and uploaded over the allow-listed SSH path by `deploy-local.sh`;
-- **A provisioning unit that loads and compiles them** — `systemd` runs the scripts that create the Adabas file, load the data, import the DDMs and compile the `SIFAPPRD` library, then smoke-test it;
-- **A `ttyd` web terminal**, so the Natural green screen is reachable in a browser over HTTPS rather than only through a telnet-era client;
-- A **Caddy reverse proxy** that terminates TLS and requires authentication, routing `/` to a landing page, `/terminal` to the green screen, `/app` to the modern application from Stage 3, and `/admin` to the Adabas console;
-- A private-only Key Vault that stores the generated Adabas, demo URL and optional Windows workstation credentials, reachable only through a Private Endpoint;
-- A Network Security Group that opens the lab ports only to the IPs you declare;
-- A Log Analytics workspace, diagnostic settings, the Azure Monitor agent, and alerts for VM availability, bootstrap failure and provisioning failure;
-- A resource-group budget with notifications at 50%, 80%, and 100%;
-- A daily VM shutdown schedule and an optional data-disk snapshot to contain costs and protect work.
+- Uma VM Linux (Ubuntu 22.04 LTS) com Docker instalado na primeira inicialização;
+- O contêiner `adabas-db` com o Adabas Community Edition e um banco de dados de demonstração;
+- O contêiner `natural-ce` com o Natural Community Edition, já mapeado para o Adabas;
+- **As fontes legadas congeladas do SIFAP, enviadas automaticamente**: empacotadas a partir da árvore de trabalho com um manifesto SHA-256 e carregadas por `deploy-local.sh` pelo caminho SSH da lista de permissões;
+- **Uma unidade de provisionamento que as carrega e compila**: o `systemd` executa os scripts que criam o arquivo Adabas, carregam os dados, importam os DDMs, compilam a biblioteca `SIFAPPRD` e executam smoke tests;
+- **Um terminal web `ttyd`**, para acessar a tela verde do Natural em um navegador por HTTPS, em vez de depender de um cliente da era do telnet;
+- Um **proxy reverso Caddy** que encerra TLS e exige autenticação, roteando `/` para uma página inicial, `/terminal` para a tela verde, `/app` para a aplicação moderna do Estágio 3 e `/admin` para o console do Adabas;
+- Um Key Vault somente privado que armazena as credenciais geradas do Adabas, da URL de demonstração e da estação Windows opcional, acessível somente por um Private Endpoint;
+- Um Network Security Group que abre as portas do lab somente para os IPs declarados;
+- Um workspace do Log Analytics, configurações de diagnóstico, o agente do Azure Monitor e alertas de disponibilidade da VM, falha de bootstrap e falha de provisionamento;
+- Um orçamento do grupo de recursos com notificações em 50%, 80% e 100%;
+- Um agendamento diário de desligamento das VMs e um snapshot opcional do disco de dados para limitar custos e proteger o trabalho.
 
-The goal is a legacy system that actually runs: sources on the VM, data in Adabas, programs compiled, and a URL you can hand to an audience. Loading and compiling are automated by the scripts in [`provisioning/`](provisioning/); if that directory is empty the module still deploys, and says so loudly rather than quietly presenting an empty database.
+O objetivo é um sistema legado que realmente funcione: fontes na VM, dados no Adabas, programas compilados e uma URL que você possa fornecer ao público. Os scripts em [`provisioning/`](provisioning/) automatizam a carga e a compilação; se esse diretório estiver vazio, o módulo ainda será implantado e informará o problema claramente, em vez de apresentar silenciosamente um banco de dados vazio.
 
 > [!NOTE]
-> **Software AG licence.** `cloud-init.yaml` sets `ACCEPT_EULA: "Y"` on the `adabas-db` and `natural-ce` containers, which accepts the Software AG Community Edition licence terms on your behalf when the lab boots. If you have not read those terms, read them before applying: the acceptance is recorded against whoever owns the subscription, not against this repository.
+> **Licença da Software AG.** `cloud-init.yaml` define `ACCEPT_EULA: "Y"` nos contêineres `adabas-db` e `natural-ce`, aceitando em seu nome os termos de licença da Software AG Community Edition quando o lab inicializa. Se você ainda não leu os termos, leia-os antes de aplicar: a aceitação fica registrada para o responsável pela assinatura, não para este repositório.
 
-### When you do not need this lab
+### Quando você não precisa deste lab
 
-The immersion's main path does not depend on this environment. In Stages 1 through 4, the SIFAP legacy system is reading material: the Natural programs and DDMs in [`01-archaeology/legacy-sifap/`](../../01-archaeology/legacy-sifap/) are text files, and the traceability required in Stage 2 (`source_legacy:`) points to those files, not to an execution.
+O caminho principal da imersão não depende deste ambiente. Nos Estágios 1 a 4, o sistema legado SIFAP é material de leitura: os programas Natural e DDMs em [`01-archaeology/legacy-sifap/`](../../01-archaeology/legacy-sifap/) são arquivos de texto, e a rastreabilidade exigida no Estágio 2 (`source_legacy:`) aponta para esses arquivos, não para uma execução.
 
-| Situation | Do you need the lab? |
+| Situação | Você precisa do lab? |
 |---|---|
-| Read the programs, catalog rules, and write EARS requirements | No |
-| Implement SIFAP 2.0 with Java 21 + Next.js 15 | No |
-| Pass the immersion CI gates | No |
-| See Natural syntax actually compiled and executed | Yes |
-| Confirm the behavior of a program whose code was ambiguous during reading | Yes |
-| Demonstrate the difference between the legacy runtime and the modern architecture | Yes |
+| Ler os programas, catalogar regras e escrever requisitos EARS | Não |
+| Implementar o SIFAP 2.0 com Java 21 + Next.js 15 | Não |
+| Passar pelos gates de CI da imersão | Não |
+| Ver a sintaxe Natural realmente compilada e executada | Sim |
+| Confirmar o comportamento de um programa cujo código ficou ambíguo durante a leitura | Sim |
+| Demonstrar a diferença entre o runtime legado e a arquitetura moderna | Sim |
 
 > [!NOTE]
-> Treat this lab as an optional advanced track. No required immersion artifact depends on it.
+> Trate este lab como uma trilha avançada opcional. Nenhum artefato obrigatório da imersão depende dele.
 
 ---
 
-## Provisioned architecture
+## Arquitetura provisionada
 
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
@@ -73,21 +73,21 @@ flowchart LR
     classDef muted fill:#FAFAFA,stroke:#A3A3A3,color:#404040
     classDef result fill:#FFFFFF,stroke:#171717,color:#171717,stroke-width:2px
 
-    DEV["Browser or laptop<br/>IP declared in allowed_source_cidrs"]:::step
+    DEV["Navegador ou laptop<br/>IP declarado em allowed_source_cidrs"]:::step
     DNS["Public IP sifap-lab-pip-eus2<br/>label.eastus2.cloudapp.azure.com"]:::alt
     NSG["NSG sifap-lab-nsg-eus2<br/>443 · 80 · 22 · 2700 · 60001"]:::alt
-    CAD["caddy container<br/>TLS termination · basic_auth · routing"]:::result
+    CAD["contêiner caddy<br/>encerramento TLS · basic_auth · roteamento"]:::result
     VM["VM sifap-lab-vm-eus2<br/>Ubuntu 22.04 · Docker"]:::step
-    WWW["/ landing page<br/>static HTML"]:::muted
-    TTY["ttyd container<br/>/terminal · web green screen"]:::result
-    APP["/app · modern Java + Next.js<br/>Stage 3 · 502 until then"]:::muted
-    NAT["natural-ce container<br/>Natural CE · port 2700"]:::result
-    ADA["adabas-db container<br/>Adabas CE · DBID 12"]:::result
+    WWW["/ página inicial<br/>HTML estático"]:::muted
+    TTY["contêiner ttyd<br/>/terminal · tela verde web"]:::result
+    APP["/app · Java + Next.js modernos<br/>Estágio 3 · 502 até lá"]:::muted
+    NAT["contêiner natural-ce<br/>Natural CE · porta 2700"]:::result
+    ADA["contêiner adabas-db<br/>Adabas CE · DBID 12"]:::result
     KV["Lab Key Vault<br/>adabas-admin-password<br/>demo-basic-auth-password"]:::muted
-    PAYLOAD["Checksummed SSH payload<br/>legacy corpus + provisioning scripts"]:::muted
-    WS["Optional Windows VM<br/>NaturalONE · RDP allow-list"]:::alt
+    PAYLOAD["Payload SSH com checksum<br/>corpus legado + scripts de provisionamento"]:::muted
+    WS["VM Windows opcional<br/>NaturalONE · lista de permissões RDP"]:::alt
     PROV["systemd sifap-provisioning<br/>ADALOD · CATALL · smoke test"]:::alt
-    LAW["Log Analytics<br/>metrics · alerts · diagnostics"]:::muted
+    LAW["Log Analytics<br/>métricas · alertas · diagnósticos"]:::muted
 
     DEV --> DNS --> NSG --> VM
     VM --> CAD
@@ -98,186 +98,186 @@ flowchart LR
     TTY -->|"docker exec"| NAT
     VM --> NAT
     NAT -->|"adatcp://adabas-db:60001"| ADA
-    VM -.->|"managed identity"| KV
+    VM -.->|"identidade gerenciada"| KV
     DEV -->|"deploy-local.sh"| PAYLOAD -->|"SSH"| VM
     VM --> PROV
     DEV -->|"RDP"| WS -->|"private :2700"| NAT
-    PROV -->|"loads + compiles"| ADA
+    PROV -->|"carrega + compila"| ADA
     VM -.->|"Azure Monitor agent"| LAW
 ```
 
-Names follow the `{project}-{env}-{resource}-{region}` convention from [`infrastructure.instructions.md`](../../.github/instructions/infrastructure.instructions.md). The region suffix is **derived from `var.location`** rather than typed by hand, so changing the region cannot leave a stale suffix behind. With the default values (`project = sifap`, `environment = lab`, `location = eastus2`), the resource group is `sifap-lab-rg-eus2`.
+Os nomes seguem a convenção `{project}-{env}-{resource}-{region}` de [`infrastructure.instructions.md`](../../.github/instructions/infrastructure.instructions.md). O sufixo da região é **derivado de `var.location`**, e não digitado manualmente. Assim, alterar a região não deixa um sufixo obsoleto. Com os valores padrão (`project = sifap`, `environment = lab`, `location = eastus2`), o grupo de recursos é `sifap-lab-rg-eus2`.
 
-| Location | Derived suffix | Example resource group |
+| Localização | Sufixo derivado | Exemplo de grupo de recursos |
 |---|---|---|
 | `eastus2` | `eus2` | `sifap-lab-rg-eus2` |
 | `eastus` | `eus` | `sifap-lab-rg-eus` |
 | `westeurope` | `weu` | `sifap-lab-rg-weu` |
 
-Set `location_short` explicitly only if your region is not in the map in `main.tf`; leaving it empty is the supported path.
+Defina `location_short` explicitamente somente se sua região não estiver no mapa em `main.tf`; deixá-lo vazio é o caminho suportado.
 
 ---
 
-## The demo URL and how TLS is terminated
+## A URL de demonstração e o encerramento de TLS
 
-The lab publishes one URL. It is a name, not an address, and it survives a VM restart:
+O lab publica uma URL. Ela é um nome, não um endereço, e sobrevive à reinicialização da VM:
 
 ```text
 https://sifap-lab-<random>.eastus2.cloudapp.azure.com
 ```
 
-Azure issues that FQDN because the public IP carries a `domain_name_label`. The label is derived from the same random suffix that makes the Key Vault name unique, so the two are traceably one deployment. The IP is `Static` with the `Standard` SKU, so stopping and starting the VM does not change the address behind the name. Override the label with `dns_label_prefix` if you want something memorable — it must be globally unique within the region.
+O Azure emite esse FQDN porque o IP público contém um `domain_name_label`. O rótulo deriva do mesmo sufixo aleatório que torna o nome do Key Vault exclusivo, portanto ambos pertencem de forma rastreável à mesma implantação. O IP é `Static` com SKU `Standard`; parar e iniciar a VM não altera o endereço associado ao nome. Sobrescreva o rótulo com `dns_label_prefix` se quiser algo fácil de lembrar. Ele deve ser globalmente exclusivo na região.
 
-TLS is terminated by a **Caddy container** running alongside `adabas-db`, `natural-ce` and `ttyd`. Requests arrive at 443, Caddy terminates TLS and reverse-proxies over Docker's internal network. Nothing it proxies publishes a plaintext public port.
+Um **contêiner Caddy** executado junto com `adabas-db`, `natural-ce` e `ttyd` encerra o TLS. As solicitações chegam à porta 443; o Caddy encerra TLS e atua como proxy reverso pela rede interna do Docker. Nenhum serviço atrás do proxy publica uma porta pública em texto simples.
 
-### What lives at each route
+### O que existe em cada rota
 
-| Route | Serves | Auth | Notes |
+| Rota | Serviço | Autenticação | Observações |
 |---|---|---|---|
-| `/` | Landing page linking the two demos | Yes | Static HTML from `/opt/sifap/www` |
-| `/terminal/` | **The legacy green screen** — a Natural session in the browser | Yes | `ttyd` → `docker exec` into `natural-ce` |
-| `/app/` | **The modern Java + Next.js app** from Stage 3 | Yes | **502 until Stage 3 ships** — see below |
-| `/admin/` | Adabas REST administration console | Yes | Was the default route; no longer is |
-| `/healthz` | Fixed `ok` string | **No** | So uptime probes need no credential |
+| `/` | Página inicial com links para as duas demonstrações | Sim | HTML estático de `/opt/sifap/www` |
+| `/terminal/` | **A tela verde legada**: uma sessão Natural no navegador | Sim | `ttyd` → `docker exec` em `natural-ce` |
+| `/app/` | **A aplicação moderna Java + Next.js** do Estágio 3 | Sim | **502 até a entrega do Estágio 3**: veja abaixo |
+| `/admin/` | Console de administração REST do Adabas | Sim | Era a rota padrão; não é mais |
+| `/healthz` | String fixa `ok` | **Não** | As sondagens de disponibilidade não precisam de credencial |
 
-Get them from Terraform rather than assembling them by hand:
+Obtenha as URLs pelo Terraform, em vez de montá-las manualmente:
 
 ```bash
 terraform output demo_url terminal_url modern_app_url admin_console_url healthz_url
 ```
 
-**Why a web terminal at all.** Natural is a character-mode system. Its port 2700 carries the Natural Development Server protocol that NaturalONE attaches to — it is not telnet, and no browser can open either. `ttyd` bridges the gap: it serves an xterm.js terminal over HTTP/WebSocket and runs one command per connection, and that command opens a Natural session inside the `natural-ce` container. That is what makes "here is the 1980s system, running" a link you can paste into a chat window.
+**Por que usar um terminal web.** O Natural é um sistema em modo caractere. Sua porta 2700 transporta o protocolo do Natural Development Server ao qual o NaturalONE se conecta. Não é telnet, e nenhum navegador consegue abrir esse protocolo. O `ttyd` conecta esses dois lados: serve um terminal xterm.js por HTTP/WebSocket e executa um comando por conexão; esse comando abre uma sessão Natural dentro do contêiner `natural-ce`. Assim, o sistema legado em execução se torna um link que você pode enviar em uma conversa.
 
-**`/app/` returns 502 on purpose.** The route is provisioned before the application exists so the URL never has to change once the team builds it. Point it at whatever Stage 3 produces with `modern_app_upstream` (default `sifap-app:8080`) and attach that container to the `sifap-lab` Docker network.
+**`/app/` retorna 502 intencionalmente.** A rota é provisionada antes da existência da aplicação para que a URL não precise mudar depois que o time a construir. Aponte-a para a saída do Estágio 3 com `modern_app_upstream` (padrão `sifap-app:8080`) e conecte esse contêiner à rede Docker `sifap-lab`.
 
-**The `ttyd` trade-off, stated plainly.** The terminal container mounts the Docker socket, which is root-equivalent control of the host. It is how `docker exec` reaches into `natural-ce`; the alternative — a second Natural container sharing the FUSER volume — risks corrupting the library the immersion just compiled. What contains it: `ttyd` publishes no host port, so it is reachable only through Caddy; Caddy requires authentication; and the NSG still gates 80/443 unless `enable_public_acme` is on. This is a disposable lab holding no production data. Destroy it after the demo.
+**O trade-off do `ttyd`, de forma direta.** O contêiner do terminal monta o socket do Docker, o que equivale a controle root do host. É assim que `docker exec` alcança `natural-ce`; a alternativa, um segundo contêiner Natural compartilhando o volume FUSER, arrisca corromper a biblioteca compilada durante a imersão. As contenções são: `ttyd` não publica porta no host e só pode ser acessado pelo Caddy; o Caddy exige autenticação; e o NSG ainda restringe 80/443, exceto quando `enable_public_acme` está habilitado. Este é um lab descartável sem dados de produção. Destrua-o depois da demonstração.
 
-### Authentication on the public origin
+### Autenticação na origem pública
 
-Every route except `/healthz` is behind HTTP basic auth, using Caddy's `basic_auth` directive (renamed from `basicauth` in Caddy 2.10; the old spelling still parses but warns). bcrypt is the default algorithm, and the value in the config is the hash itself.
+Todas as rotas, exceto `/healthz`, usam autenticação HTTP básica pela diretiva `basic_auth` do Caddy (renomeada de `basicauth` no Caddy 2.10; a grafia antiga ainda funciona, mas gera aviso). bcrypt é o algoritmo padrão, e o valor da configuração é o próprio hash.
 
-Neither the username nor the hash appears in this repository, in `cloud-init.yaml` or in `custom_data`. The flow is:
+Nem o nome de usuário nem o hash aparecem neste repositório, em `cloud-init.yaml` ou em `custom_data`. O fluxo é:
 
-1. Terraform generates a random password; a protected VM Extension stores it in Key Vault as `demo-basic-auth-password` through the VM identity and private endpoint.
-2. At boot the VM reads it with its managed identity and pipes it through `caddy hash-password` **on stdin** — so the plaintext never appears in the process table or in `docker inspect`.
-3. The resulting hash is written to `/opt/sifap/caddy.env`, mode `0600`, and read by Caddy as `{$SIFAP_BASIC_AUTH_HASH}`.
+1. O Terraform gera uma senha aleatória; uma VM Extension protegida a armazena no Key Vault como `demo-basic-auth-password` pela identidade da VM e pelo endpoint privado.
+2. Na inicialização, a VM a lê com sua identidade gerenciada e a envia para `caddy hash-password` **por stdin**. Assim, o texto simples nunca aparece na tabela de processos nem em `docker inspect`.
+3. O hash resultante é gravado em `/opt/sifap/caddy.env`, com modo `0600`, e lido pelo Caddy como `{$SIFAP_BASIC_AUTH_HASH}`.
 
-Read the password back with:
+Recupere a senha com:
 
 ```bash
-# Prints the az command for your deployment; run it to see the password
+# Imprime o comando az da sua implantação; execute-o para ver a senha
 terraform output -raw demo_basic_auth_password_command
 terraform output -raw demo_basic_auth_username
 ```
 
-To bring your own credential instead, hash it yourself and pass it through the environment — never through a committed file:
+Para usar sua própria credencial, gere o hash e forneça-o pelo ambiente, nunca por um arquivo versionado:
 
 ```bash
-caddy hash-password                     # or: docker run --rm -it caddy caddy hash-password
-export TF_VAR_demo_basic_auth_password_hash='$2a$14$...'   # single quotes: the hash contains $
+caddy hash-password                     # ou: docker run --rm -it caddy caddy hash-password
+export TF_VAR_demo_basic_auth_password_hash='$2a$14$...'   # aspas simples: o hash contém $
 SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh apply
 ```
 
-Terraform then stores only the hash, as `demo-basic-auth-hash`, and the plaintext stays with you.
+O Terraform armazena somente o hash, como `demo-basic-auth-hash`, e o texto simples permanece com você.
 
-**It fails closed.** If the VM cannot read the secret, `bootstrap.sh` locks the site with a hash of a random string nobody holds: the URL stays up, `/healthz` still answers, and every other route is simply unenterable until it is fixed. And if the env file were missing entirely, Caddy refuses to start rather than serving an open origin — verified locally against Caddy 2.10.2, which errors with `username and password cannot be empty or missing`.
+**A falha mantém o acesso fechado.** Se a VM não conseguir ler o segredo, `bootstrap.sh` bloqueia o site com o hash de uma string aleatória que ninguém possui: a URL continua ativa, `/healthz` ainda responde, e todas as outras rotas ficam inacessíveis até a correção. Se o arquivo de ambiente estiver ausente, o Caddy se recusa a iniciar em vez de servir uma origem aberta. Esse comportamento foi verificado localmente no Caddy 2.10.2, que retorna `username and password cannot be empty or missing`.
 
-### The viewer account
+### A conta viewer
 
-`enable_viewer_account = true` adds a second credential to the same URL for people who should be shown the legacy system without being able to change it. Caddy exposes the authenticated name as `{http.auth.user.id}` and `basic_auth` sorts ahead of `handle` in its directive order, so the routes can decide what to do per user.
+`enable_viewer_account = true` adiciona uma segunda credencial à mesma URL para pessoas que devem visualizar o sistema legado sem alterá-lo. O Caddy expõe o nome autenticado como `{http.auth.user.id}`, e `basic_auth` vem antes de `handle` na ordem das diretivas. Assim, as rotas podem decidir o comportamento por usuário.
 
-| Route | `sifap` | `viewer` |
+| Rota | `sifap` | `viewer` |
 |---|---|---|
-| `/` and `/app/` | 200 | 200 |
-| `/terminal/` | full Natural session | session pinned to generated read-only `VIEWBENF` |
+| `/` e `/app/` | 200 | 200 |
+| `/terminal/` | sessão Natural completa | sessão fixada no `VIEWBENF` somente leitura gerado |
 | `/admin/` | 200 | **403** |
-| `/healthz` | open | open |
+| `/healthz` | aberta | aberta |
 
-The viewer's green screen is a **different upstream**, not a different path: ttyd cannot see who authenticated, so the only way to give one account a restricted session is to send it to a container started with one. `ttyd-viewer` runs `viewer_terminal_command`, whose default stacks `VIEWBENF` behind a `FIN`. That trailing `FIN` is one half of the mechanism — with it, anything typed after the program ends is discarded instead of being run as a Natural command. Verified on the lab: typing `CADBENEF` and `SCRATCH CONSBENF` into that session started neither and removed nothing.
+A tela verde do viewer usa um **upstream diferente**, não um caminho diferente: o ttyd não identifica quem se autenticou. A única forma de fornecer uma sessão restrita a uma conta é encaminhá-la a um contêiner iniciado com essa restrição. `ttyd-viewer` executa `viewer_terminal_command`, cujo padrão empilha `VIEWBENF` antes de um `FIN`. Esse `FIN` final é metade do mecanismo: tudo o que for digitado depois do fim do programa é descartado, em vez de ser executado como comando Natural. Verificação no lab: digitar `CADBENEF` e `SCRATCH CONSBENF` nessa sessão não iniciou nenhum programa nem removeu nada.
 
-Its session script also has no shell fallback, unlike the operator's. Dropping a viewer at a prompt inside `natural-ce` would hand it more than the account it signed in with.
+Ao contrário do script do operador, o script dessa sessão também não oferece fallback para um shell. Deixar um viewer em um prompt dentro de `natural-ce` concederia mais acesso do que a conta usada no login.
 
 > [!IMPORTANT]
-> **The other half is the program itself.** Frozen `CONSBENF` appends an AUDIT record after every query, so the build derives `VIEWBENF` as a staged runtime object with the AUDIT view, fields, action block and copycode removed. The generator fails if any `STORE`, `UPDATE`, `DELETE`, transaction, work-file or audit statement remains, and allows only the read-only `SUBVALCP` validator call. The frozen immersion evidence stays unchanged.
+> **A outra metade é o próprio programa.** O `CONSBENF` congelado adiciona um registro AUDIT depois de cada consulta. Por isso, o build deriva `VIEWBENF` como um objeto de runtime preparado sem a view, os campos, o bloco de ação e o copycode de AUDIT. O gerador falha se restar qualquer instrução `STORE`, `UPDATE`, `DELETE`, transação, work-file ou auditoria, e permite somente a chamada ao validador somente leitura `SUBVALCP`. A evidência congelada da imersão permanece inalterada.
 >
-> This makes the viewer application-level read-only, not a separate Adabas principal or tenant. Both accounts still share one Natural runtime and one database.
+> Isso torna o viewer somente leitura no nível da aplicação, não um principal ou tenant separado do Adabas. As duas contas ainda compartilham um runtime Natural e um banco de dados.
 
-Read its password with `terraform output -raw viewer_account`, which prints the command along with the same caveat.
+Leia a senha com `terraform output -raw viewer_account`, que imprime o comando com a mesma ressalva.
 
-### Choosing a certificate mode
+### Escolha do modo de certificado
 
-There is a real tradeoff here, and the module makes you choose rather than deciding quietly for you.
+Existe um trade-off real, e o módulo exige sua escolha em vez de decidir silenciosamente.
 
-Let's Encrypt validates an HTTP-01 challenge by connecting to port 80 **from arbitrary addresses worldwide**. An NSG allow-list that excludes those addresses also excludes the challenge. So a CIDR allow-list and a publicly trusted certificate are mutually exclusive — you cannot have both, and any module that claims otherwise is quietly opening the port.
+O Let's Encrypt valida um desafio HTTP-01 conectando-se à porta 80 **a partir de endereços arbitrários no mundo todo**. Uma lista de permissões do NSG que exclui esses endereços também exclui o desafio. Portanto, uma lista de permissões CIDR e um certificado publicamente confiável são mutuamente exclusivos. Não é possível ter ambos; qualquer módulo que afirme o contrário está abrindo a porta silenciosamente.
 
-| `enable_public_acme` | NSG rules for 80/443 | Certificate | Browser warning |
+| `enable_public_acme` | Regras do NSG para 80/443 | Certificado | Aviso do navegador |
 |---|---|---|---|
-| `false` (default) | `allowed_source_cidrs` only | Caddy's internal CA | Yes, until you trust the CA |
-| `true` | `Internet` service tag | Let's Encrypt | No |
+| `false` (padrão) | Somente `allowed_source_cidrs` | CA interna do Caddy | Sim, até você confiar na CA |
+| `true` | Tag de serviço `Internet` | Let's Encrypt | Não |
 
-Default is `false`. The demo is still `https://`, the traffic is still encrypted, and the listener is still restricted to your CIDRs — you just get a browser warning, which is the honest cost of not widening the port.
+O padrão é `false`. A demonstração continua em `https://`, o tráfego continua criptografado e o listener continua restrito aos seus CIDRs. O aviso do navegador é o custo transparente de não ampliar a porta.
 
-Set `enable_public_acme = true` when you need a green padlock for an audience that cannot install a CA certificate. Understand what it changes: ports 80 and 443 become reachable from the whole internet. Basic auth is then the only thing between that internet and an interactive terminal on the database host, so treat the password accordingly and destroy the lab when the demo ends. SSH, Natural (2700), and ADATCP (60001) stay allow-listed in both modes; they are never widened.
+Defina `enable_public_acme = true` quando precisar de um cadeado confiável para um público que não pode instalar um certificado de CA. Entenda a mudança: as portas 80 e 443 ficam acessíveis por toda a internet. A autenticação básica passa a ser a única barreira entre a internet e um terminal interativo no host do banco de dados. Proteja a senha e destrua o lab ao fim da demonstração. SSH, Natural (2700) e ADATCP (60001) permanecem na lista de permissões nos dois modos; nunca são ampliados.
 
 > [!IMPORTANT]
-> Even in ACME mode the module uses the `Internet` service tag rather than a literal `0.0.0.0/0`, and `allowed_source_cidrs` still rejects `0.0.0.0/0` outright. If you want a genuinely open demo, widen `allowed_source_cidrs` yourself, deliberately, and write down why.
+> Mesmo no modo ACME, o módulo usa a tag de serviço `Internet`, não um `0.0.0.0/0` literal, e `allowed_source_cidrs` ainda rejeita `0.0.0.0/0`. Se quiser uma demonstração realmente aberta, amplie `allowed_source_cidrs` deliberadamente e registre o motivo.
 
-To trust the internal CA instead of widening anything:
+Para confiar na CA interna sem ampliar o acesso:
 
 ```bash
 terraform output -raw trust_demo_ca_command
 ```
 
-### Confirming the URL is live
+### Confirmação de que a URL está ativa
 
-`deploy-local.sh apply` returns after cloud-init, payload upload and provisioning restart. The URL can answer before the Adabas load and Natural catalog are complete; check it rather than guessing:
+`deploy-local.sh apply` retorna depois do cloud-init, do upload do payload e da reinicialização do provisionamento. A URL pode responder antes da conclusão da carga do Adabas e do catálogo do Natural; verifique em vez de presumir:
 
 ```bash
-# Prints a ready-to-run curl for your deployment
+# Imprime um curl pronto para sua implantação
 terraform output -raw health_check_command
 
-# /healthz is unauthenticated, so this needs no credential.
-# Internal-CA mode needs -k, because the CA is not in your trust store yet
+# /healthz não exige autenticação, portanto não precisa de credencial.
+# O modo de CA interna exige -k, pois a CA ainda não está em seu repositório de confiança
 curl -sSfk "$(terraform output -raw healthz_url)" && echo "demo is up"
 ```
 
-If it does not answer, the bootstrap log is the first place to look:
+Se não responder, consulte primeiro o log de bootstrap:
 
 ```bash
 terraform output -raw bootstrap_log_command
 ```
 
-Bootstrap writes a machine-readable verdict to syslog on the way out — `SIFAP-BOOTSTRAP RESULT: SUCCESS` or `FAILED` — which is what the bootstrap-failure alert watches for. It also probes the demo URL itself before finishing and warns in the log if the proxy never came up.
+Ao encerrar, o bootstrap grava no syslog um resultado legível por máquina, `SIFAP-BOOTSTRAP RESULT: SUCCESS` ou `FAILED`, monitorado pelo alerta de falha de bootstrap. Ele também sonda a própria URL de demonstração antes de terminar e registra um aviso se o proxy não iniciar.
 
 ---
 
-## Prerequisites
+## Pré-requisitos
 
-- [ ] **Have an Azure subscription with permission to create resources.** You must be able to create a resource group, VMs, a Key Vault, access policies, a Private Endpoint and DNS zone, a Log Analytics workspace, and a consumption budget. Confirm with `az account show`.
-- [ ] **Install and authenticate the Azure CLI.** Run `az login` and, if you have more than one subscription, `az account set --subscription "<SUBSCRIPTION-ID>"`.
-- [ ] **Install Terraform 1.14.x.** The requirement is in `versions.tf` (`required_version = "~> 1.14.0"`). Check with `terraform version`.
-- [ ] **Prepare to protect local state.** This tenant forces Storage Account `publicNetworkAccess=Disabled` at management-group scope, so the Azure Blob backend is not reachable from laptops or GitHub-hosted runners. Local `terraform.tfstate` is the supported default; keep it on the facilitator workstation and back it up after every apply.
-- [ ] **Have an SSH key pair.** The module reads the public key specified by `ssh_public_key_path`, which defaults to `~/.ssh/id_rsa.pub`. If it does not exist, generate it with `ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa`.
-- [ ] **Confirm the regional vCPU quota.** This is not optional bookkeeping — a zero quota is what left the previous `brazilsouth` attempt half-applied.
-- [ ] **Accept the cost.** The VM, its managed disks, and the static public IP incur charges while they exist.
+- [ ] **Tenha uma assinatura Azure com permissão para criar recursos.** Você deve poder criar um grupo de recursos, VMs, um Key Vault, políticas de acesso, um Private Endpoint e uma zona DNS, um workspace do Log Analytics e um orçamento de consumo. Confirme com `az account show`.
+- [ ] **Instale e autentique a Azure CLI.** Execute `az login` e, se tiver mais de uma assinatura, `az account set --subscription "<SUBSCRIPTION-ID>"`.
+- [ ] **Instale o Terraform 1.14.x.** O requisito está em `versions.tf` (`required_version = "~> 1.14.0"`). Verifique com `terraform version`.
+- [ ] **Prepare-se para proteger o estado local.** Este tenant força `publicNetworkAccess=Disabled` na Storage Account no escopo do grupo de gerenciamento. Por isso, laptops e runners hospedados pelo GitHub não acessam o backend Azure Blob. O padrão suportado é o `terraform.tfstate` local; mantenha-o na estação do facilitador e faça backup depois de cada apply.
+- [ ] **Tenha um par de chaves SSH.** O módulo lê a chave pública indicada por `ssh_public_key_path`, cujo padrão é `~/.ssh/id_rsa.pub`. Se ela não existir, gere-a com `ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa`.
+- [ ] **Confirme a cota regional de vCPU.** Isso não é uma formalidade opcional: uma cota zero deixou a tentativa anterior em `brazilsouth` parcialmente aplicada.
+- [ ] **Aceite o custo.** A VM, seus discos gerenciados e o IP público estático geram cobranças enquanto existirem.
 
-### Quota preflight
+### Preflight de cota
 
-Run this **before** every first apply in a new region or subscription. It takes seconds and it is the single check that would have prevented the `brazilsouth` failure:
+Execute isto **antes** do primeiro apply em cada região ou assinatura nova. Leva segundos e é a única verificação que teria evitado a falha em `brazilsouth`:
 
 ```bash
 az vm list-usage --location eastus2 -o table
 ```
 
-Look for the `Standard Dsv7 Family vCPUs` row. The default `Standard_D2s_v7` needs 2 vCPUs per enabled VM (4 when the DDM workstation is enabled). If the limit is too low, request an increase before applying — Terraform will otherwise create the resource group, Key Vault, disk, and network, then fail on a VM and leave you with exactly the half-applied state this module now works to avoid.
+Procure a linha `Standard Dsv7 Family vCPUs`. O padrão `Standard_D2s_v7` precisa de 2 vCPUs por VM habilitada (4 quando a estação DDM está habilitada). Se o limite for baixo, solicite um aumento antes de aplicar. Caso contrário, o Terraform criará o grupo de recursos, o Key Vault, o disco e a rede, falhará na VM e deixará exatamente o estado parcialmente aplicado que este módulo procura evitar.
 
-The same quota check runs in the manual preflight job of [`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml), and the command is available as an output:
+A mesma verificação de cota é executada no job manual de preflight de [`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml), e o comando está disponível como saída:
 
 ```bash
 terraform output -raw quota_preflight_command
 ```
 
-Confirm the region and size too:
+Confirme também a região e o tamanho:
 
 ```bash
 az account show --output table
@@ -286,64 +286,64 @@ az vm list-skus --location eastus2 --size Standard_D2s_v7 --all --output table
 
 ---
 
-## Migrating off `brazilsouth`
+## Migração de `brazilsouth`
 
-The previous version of this module deployed to `brazilsouth` and, in at least one subscription, stopped partway through: the resource group, Key Vault, a 32 GB Premium disk, VNet, subnet, and NSG were created, while the VM, public IP, NIC, Key Vault secret, disk attachment, and auto-shutdown schedule were not. The signature of a vCPU quota failure on `Standard_D2s_v3`.
+A versão anterior deste módulo foi implantada em `brazilsouth` e, em pelo menos uma assinatura, parou no meio: o grupo de recursos, o Key Vault, um disco Premium de 32 GB, a VNet, a sub-rede e o NSG foram criados; a VM, o IP público, a NIC, o segredo do Key Vault, o anexo do disco e o agendamento de desligamento automático não foram. Essa é a assinatura de uma falha de cota de vCPU em `Standard_D2s_v3`.
 
-**Azure cannot move those resources to East US 2.** A region is fixed at creation. There is no `az resource move` across regions for a VM, a disk, or a vault, and Terraform will not attempt it. The old environment has to go before the new one comes up.
+**O Azure não pode mover esses recursos para East US 2.** A região é fixada na criação. Não existe `az resource move` entre regiões para VM, disco ou vault, e o Terraform não tentará fazer isso. Remova o ambiente antigo antes de criar o novo.
 
 > [!CAUTION]
-> Read this whole section before running anything. Step 2 is the one people skip, and it is the one that blocks the next apply with an error that does not mention regions at all.
+> Leia toda esta seção antes de executar qualquer comando. As pessoas costumam pular o Passo 2, que bloqueia o próximo apply com um erro que não menciona regiões.
 
-### Option A — delete the resource group (recommended)
+### Opção A — excluir o grupo de recursos (recomendado)
 
-Use this when the local state no longer matches the configuration, which is the case here: the module has been rewritten around it. Terraform cannot cleanly destroy resources it can no longer describe, so let Azure remove them by group.
+Use esta opção quando o estado local não corresponder mais à configuração, como neste caso: o módulo foi reescrito. O Terraform não consegue destruir corretamente recursos que não pode mais descrever; permita que o Azure os remova por grupo.
 
-- [ ] **Step 1 — Confirm what you are about to delete.** Check the group is the lab and nothing else moved in.
+- [ ] **Passo 1 — Confirme o que será excluído.** Verifique se o grupo pertence ao lab e se nenhum outro recurso foi movido para ele.
 
 ```bash
 az group show --name sifap-lab-rg-brs --output table
 az resource list --resource-group sifap-lab-rg-brs --output table
 ```
 
-- [ ] **Step 2 — Delete the resource group.**
+- [ ] **Passo 2 — Exclua o grupo de recursos.**
 
 ```bash
 az group delete --name sifap-lab-rg-brs --yes
 ```
 
-- [ ] **Step 3 — Purge the soft-deleted Key Vault.** Do not skip this. Deleting the group only *soft*-deletes the vault; the name stays reserved for seven days, and the next apply fails with a name-already-taken error.
+- [ ] **Passo 3 — Elimine permanentemente o Key Vault com exclusão reversível.** Não pule esta etapa. Excluir o grupo apenas aplica *soft delete* ao vault; o nome fica reservado por sete dias, e o próximo apply falha informando que o nome já está em uso.
 
 ```bash
 az keyvault purge --name sifaplabkvsz7tag --location brazilsouth
 ```
 
-Substitute your own vault name if it differs — the six-character suffix is random per deployment. To find it:
+Substitua pelo nome do seu vault se ele for diferente. O sufixo de seis caracteres é aleatório em cada implantação. Para encontrá-lo:
 
 ```bash
 az keyvault list-deleted --query "[].{name:name, location:properties.location}" -o table
 ```
 
-- [ ] **Step 4 — Discard the local state.** It describes resources that no longer exist, in a region this module no longer targets. Keeping it around only invites a confusing plan.
+- [ ] **Passo 4 — Descarte o estado local.** Ele descreve recursos que não existem mais em uma região que este módulo não usa. Mantê-lo apenas produzirá um plano confuso.
 
 ```bash
 cd infra/adabas-natural-lab
 rm -f terraform.tfstate terraform.tfstate.backup
 ```
 
-- [ ] **Step 5 — Confirm nothing remains.** Both commands should report that the object does not exist.
+- [ ] **Passo 5 — Confirme que nada restou.** Os dois comandos devem informar que o objeto não existe.
 
 ```bash
 az group show --name sifap-lab-rg-brs
 az keyvault show-deleted --name sifaplabkvsz7tag --location brazilsouth
 ```
 
-### Option B — terraform destroy from the old commit
+### Opção B — terraform destroy a partir do commit antigo
 
-Cleaner in principle, and only possible if you still have the commit where the configuration matched the state. Terraform must be able to describe a resource to destroy it.
+Em princípio, esta opção é mais limpa, mas só é possível se você ainda tiver o commit no qual a configuração correspondia ao estado. O Terraform precisa descrever um recurso para destruí-lo.
 
 ```bash
-git stash                                  # park the new configuration
+git stash                                  # guarda a nova configuração
 git checkout <commit-before-the-eastus2-migration> -- infra/adabas-natural-lab
 cd infra/adabas-natural-lab
 terraform init
@@ -352,58 +352,58 @@ git checkout HEAD -- infra/adabas-natural-lab
 git stash pop
 ```
 
-Then run Step 3 above anyway, because an interrupted destroy leaves the vault soft-deleted just the same.
+Mesmo assim, execute o Passo 3 acima, pois um destroy interrompido também deixa o vault com exclusão reversível.
 
-### The trap worth knowing about
+### A armadilha que você precisa conhecer
 
-`versions.tf` sets `recover_soft_deleted_key_vaults = true`. That is the right default for day-to-day work — it stops a re-apply from tripping over its own soft-deleted vault — but it has a sharp edge during a region move.
+`versions.tf` define `recover_soft_deleted_key_vaults = true`. Esse é o padrão correto para o trabalho diário, pois impede que um novo apply colida com o próprio vault excluído de forma reversível. Porém, ele cria um risco durante a mudança de região.
 
-**If a soft-deleted vault with the same name still exists in `brazilsouth`, a new apply targeting `eastus2` recovers the old vault in `brazilsouth` instead of creating a new one in `eastus2`.** Terraform reports success. You end up with a lab in East US 2 whose vault is in Brazil, paying cross-region latency on every secret read, and wondering why the region move did not take.
+**Se um vault com exclusão reversível e o mesmo nome ainda existir em `brazilsouth`, um novo apply destinado a `eastus2` recuperará o vault antigo em `brazilsouth`, em vez de criar um novo em `eastus2`.** O Terraform informa sucesso. O resultado é um lab em East US 2 com o vault no Brasil, adicionando latência entre regiões a cada leitura de segredo.
 
-Purging first is what prevents it. That is the whole reason Step 3 is not optional.
+A eliminação permanente antecipada evita esse resultado. Por isso, o Passo 3 é obrigatório.
 
-### After migrating
+### Depois da migração
 
-Everything is renamed. The `-brs` suffix is derived from `var.location` now, so nothing needs a manual edit:
+Todos os recursos são renomeados. O sufixo `-brs` agora deriva de `var.location`, portanto nada exige edição manual:
 
-| Before (`brazilsouth`) | After (`eastus2`) |
+| Antes (`brazilsouth`) | Depois (`eastus2`) |
 |---|---|
 | `sifap-lab-rg-brs` | `sifap-lab-rg-eus2` |
 | `sifap-lab-vnet-brs` | `sifap-lab-vnet-eus2` |
 | `sifap-lab-nsg-brs` | `sifap-lab-nsg-eus2` |
 | `sifap-lab-vm-brs` | `sifap-lab-vm-eus2` |
-| `sifaplabkv<random>` | `sifaplabkv<random>` (new random suffix) |
+| `sifaplabkv<random>` | `sifaplabkv<random>` (novo sufixo aleatório) |
 
 ---
 
-## Step-by-step deployment
+## Implantação passo a passo
 
-- [ ] **Step 0 — Select the immersion subscription.**
+- [ ] **Passo 0 — Selecione a assinatura da imersão.**
 
 ```bash
 az account set --subscription bf39c110-94c5-4bfa-959d-216b1f971d81
 az account show --query "{subscription:id, tenant:tenantId, user:user.name}" -o table
 ```
 
-- [ ] **Step 1 — Enter the module directory.**
+- [ ] **Passo 1 — Entre no diretório do módulo.**
 
 ```bash
 cd infra/adabas-natural-lab
 ```
 
-- [ ] **Step 2 — Create your variables file.**
+- [ ] **Passo 2 — Crie seu arquivo de variáveis.**
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
 ```
 
-- [ ] **Step 3 — Discover your public IP.**
+- [ ] **Passo 3 — Descubra seu IP público.**
 
 ```bash
 curl -s https://api.ipify.org
 ```
 
-- [ ] **Step 4 — Fill in `terraform.tfvars`.** Two variables are required: `owner` and `allowed_source_cidrs`. Use the IP from the previous step with a `/32` mask.
+- [ ] **Passo 4 — Preencha `terraform.tfvars`.** Duas variáveis são obrigatórias: `owner` e `allowed_source_cidrs`. Use o IP da etapa anterior com uma máscara `/32`.
 
 ```hcl
 owner = "your-github-handle"
@@ -413,103 +413,103 @@ allowed_source_cidrs = [
 ]
 ```
 
-- [ ] **Step 5 — Run the complete preflight and review the plan.** This checks the subscription, providers, Contributor-or-higher RBAC, pinned Windows image, SKU restrictions, aggregate quota for both VMs, Terraform formatting and validation.
+- [ ] **Passo 5 — Execute o preflight completo e revise o plano.** Isso verifica a assinatura, os providers, RBAC Contributor ou superior, a imagem Windows fixada, as restrições de SKU, a cota agregada das duas VMs, a formatação e a validação do Terraform.
 
 ```bash
 SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh plan
 ```
 
-- [ ] **Step 6 — Apply and deliver the payload.** The script re-runs preflight, applies the reviewed configuration, backs up local state with mode `0600`, waits for SSH, uploads the checksummed working-tree payload, verifies it on the VM and starts provisioning.
+- [ ] **Passo 6 — Aplique e entregue o payload.** O script repete o preflight, aplica a configuração revisada, faz backup do estado local com modo `0600`, aguarda o SSH, envia o payload da árvore de trabalho com checksum, verifica-o na VM e inicia o provisionamento.
 
 ```bash
 SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh apply
 ```
 
-A different tenant that permits reachable state storage can opt in by uncommenting the `backend "azurerm"` block in `versions.tf` and supplying the backend config from [`infra/bootstrap`](../bootstrap/README.md). Do not do that in the Microsoft corporate tenant: management-group policy forces Storage `publicNetworkAccess=Disabled`.
+Um tenant diferente que permita acesso ao armazenamento de estado pode optar pelo backend removendo o comentário do bloco `backend "azurerm"` em `versions.tf` e fornecendo a configuração de [`infra/bootstrap`](../bootstrap/README.md). Não faça isso no tenant corporativo da Microsoft: a política do grupo de gerenciamento força `publicNetworkAccess=Disabled` no Storage.
 
-- [ ] **Step 7 — Check bootstrap and base provisioning.** The command shows cloud-init, systemd and the four marker files without hiding a failed base phase.
+- [ ] **Passo 7 — Verifique o bootstrap e o provisionamento base.** O comando mostra cloud-init, systemd e os quatro arquivos marcadores sem ocultar uma falha da fase base.
 
 ```bash
 ./deploy-local.sh status
 ```
 
-- [ ] **Step 8 — Read the outputs, starting with the demo URL.**
+- [ ] **Passo 8 — Leia as saídas, começando pela URL de demonstração.**
 
 ```bash
 terraform output
 terraform output -raw demo_url
 ```
 
-`apply` returns only after payload installation and the provisioning unit has been restarted, but Adabas and Natural can still be processing. The next two steps turn the base runtime into the complete mainframe; skipping them leaves DDM-dependent members uncataloged.
+`apply` retorna somente depois da instalação do payload e da reinicialização da unidade de provisionamento, mas o Adabas e o Natural ainda podem estar processando. Os dois passos seguintes transformam o runtime base no mainframe completo; ignorá-los deixa os membros dependentes de DDM sem catalogação.
 
-- [ ] **Step 9 — Wait for the base phase to finish.** It loads Adabas files 150-153 and catalogs the three data areas. It exits successfully with the DDMs still missing — that is the expected state, not a failure.
+- [ ] **Passo 9 — Aguarde a conclusão da fase base.** Ela carrega os arquivos Adabas 150-153 e cataloga as três áreas de dados. A execução termina com sucesso mesmo sem os DDMs. Esse é o estado esperado, não uma falha.
 
 ```bash
 eval "$(terraform output -raw provisioning_status_command)"
 ```
 
-- [ ] **Step 10 — Create the four DDMs once, in NaturalONE.** This is the only manual step in the whole deployment, and Natural CE cannot automate it. If you do not have a Windows machine, [Creating the DDMs](#creating-the-ddms) uses the workstation created by `SIFAP_ENABLE_DDM_WORKSTATION=true`. Generate `BENEFIC` (150), `SOCPROG` (151), `PAYMENT` (152) and `AUDIT` (153) against `DBID 12`.
+- [ ] **Passo 10 — Crie os quatro DDMs uma vez no NaturalONE.** Esta é a única etapa manual de toda a implantação, e o Natural CE não pode automatizá-la. Se você não tiver uma máquina Windows, [Criação dos DDMs](#criação-dos-ddms) usa a estação criada por `SIFAP_ENABLE_DDM_WORKSTATION=true`. Gere `BENEFIC` (150), `SOCPROG` (151), `PAYMENT` (152) e `AUDIT` (153) em `DBID 12`.
 
-- [ ] **Step 11 — Re-run provisioning to finalize.** `auto` detects the four `.NGD` objects, catalogs the subprograms and programs, runs the smoke tests, archives the DDMs on the managed data disk, and writes `/opt/sifap/PROVISIONED`.
+- [ ] **Passo 11 — Execute o provisionamento novamente para finalizar.** `auto` detecta os quatro objetos `.NGD`, cataloga os subprogramas e programas, executa os smoke tests, arquiva os DDMs no disco de dados gerenciado e grava `/opt/sifap/PROVISIONED`.
 
 ```bash
 eval "$(terraform output -raw provisioning_rerun_command)"
 ```
 
-The lab is a working mainframe only once `/opt/sifap/PROVISIONED` exists. See [Completion criteria](#completion-criteria).
+O lab só é um mainframe funcional quando `/opt/sifap/PROVISIONED` existe. Consulte [Critérios de conclusão](#critérios-de-conclusão).
 
 > [!WARNING]
-> `terraform.tfvars` is ignored by git because it contains real participant IP addresses. Only `terraform.tfvars.example` is versioned. The same applies to `*.tfplan` and `plan.txt`, which store sensitive values — including the generated Adabas password — in plain text with no redaction. Never force-commit these files.
+> `terraform.tfvars` é ignorado pelo Git porque contém endereços IP reais de participantes. Somente `terraform.tfvars.example` é versionado. O mesmo vale para `*.tfplan` e `plan.txt`, que armazenam valores sensíveis, incluindo a senha gerada do Adabas, em texto simples sem redação. Nunca force o commit desses arquivos.
 
-### Protecting and recovering local state
+### Proteção e recuperação do estado local
 
-Local state is the source of truth for the lab. Losing `terraform.tfstate` does not delete Azure resources; it only makes Terraform forget them. `deploy-local.sh apply` and `destroy` automatically copy it to `.local-state-backups/adabas-natural-lab/` with mode `0600`; the intended cleanup is always the same script from the same working copy.
+O estado local é a fonte da verdade do lab. Perder `terraform.tfstate` não exclui os recursos Azure; apenas faz o Terraform esquecê-los. `deploy-local.sh apply` e `destroy` o copiam automaticamente para `.local-state-backups/adabas-natural-lab/` com modo `0600`; a limpeza prevista sempre usa o mesmo script na mesma cópia de trabalho.
 
-- `*.tfstate*`, `.terraform/`, `*.tfvars`, `*.tfplan`, `plan.txt`, `backend.hcl`, `override.tf`, and `.local-state-backups/` are ignored; verify before every immersion with `git check-ignore`.
-- Back up `infra/adabas-natural-lab/terraform.tfstate` after every successful `apply` or `destroy` to an encrypted drive or private, access-controlled store.
-- If state is lost, either restore the newest backup or import each resource back with `terraform import` before running `destroy`. The lab resource group defaults to `sifap-lab-rg-eus2`; use `az resource list -g sifap-lab-rg-eus2 -o table` to inventory what must be imported.
-- If recovery is not worth the time, delete the lab resource group manually in Azure. That is the last-resort cleanup for orphaned local state, not the normal path.
+- `*.tfstate*`, `.terraform/`, `*.tfvars`, `*.tfplan`, `plan.txt`, `backend.hcl`, `override.tf` e `.local-state-backups/` são ignorados; verifique antes de cada imersão com `git check-ignore`.
+- Faça backup de `infra/adabas-natural-lab/terraform.tfstate` depois de cada `apply` ou `destroy` bem-sucedido em uma unidade criptografada ou armazenamento privado com controle de acesso.
+- Se o estado for perdido, restaure o backup mais recente ou importe cada recurso com `terraform import` antes de executar `destroy`. O grupo de recursos padrão do lab é `sifap-lab-rg-eus2`; use `az resource list -g sifap-lab-rg-eus2 -o table` para inventariar o que precisa ser importado.
+- Se a recuperação não compensar o tempo, exclua manualmente o grupo de recursos do lab no Azure. Essa é a limpeza de último recurso para um estado local órfão, não o caminho normal.
 
-A module validation rejects `0.0.0.0/0` in `allowed_source_cidrs`. The reason is documented in `variables.tf`: Adabas CE does not provide channel encryption, and the Natural Development Server does not have strong authentication, so an open listener is a direct compromise path.
+Uma validação do módulo rejeita `0.0.0.0/0` em `allowed_source_cidrs`. O motivo está documentado em `variables.tf`: o Adabas CE não oferece criptografia de canal, e o Natural Development Server não tem autenticação forte. Portanto, um listener aberto cria um caminho direto de comprometimento.
 
 ---
 
-## How to connect
+## Como se conectar
 
-The `apply` finishes while the VM is still running the bootstrap: installing Docker, formatting the data disk, reading the Key Vault secret, and downloading the images. Follow the log before trying to use the endpoints (see [Bootstrap still running](#bootstrap-still-running)).
+O `apply` termina enquanto a VM ainda executa o bootstrap: instala o Docker, formata o disco de dados, lê o segredo do Key Vault e baixa as imagens. Acompanhe o log antes de usar os endpoints (consulte [Bootstrap ainda em execução](#bootstrap-ainda-em-execução)).
 
-| What you want | Terraform output | How to use it |
+| O que você deseja | Saída do Terraform | Como usar |
 |---|---|---|
-| The demo URL | `demo_url` | Open it in a browser: the landing page linking both demos |
-| **The legacy green screen** | `terminal_url` | A Natural session in the browser |
-| **The modern application** | `modern_app_url` | 502 until Stage 3 answers on `modern_app_upstream` |
-| Just the hostname | `demo_fqdn` | For DNS checks and `ssh` |
-| Adabas REST administration | `admin_console_url` | `/admin/` on the demo origin, proxied over TLS. Sign in to the console as `admin` |
-| Adabas console without the proxy | `admin_console_tunnel_command` | `ssh -L` tunnel, for when the `/admin/` prefix breaks the console's assets |
-| **Demo URL username** | `demo_basic_auth_username` | Required on every route except `/healthz` |
-| **Demo URL password** | `demo_basic_auth_password_command` | Prints an SSH command that reads the private vault through the VM identity |
-| Non-administrative login | `viewer_account` | What the viewer can reach, what it cannot, and how to read its password |
-| Readiness endpoint | `healthz_url` | Unauthenticated, for uptime probes |
-| Which certificate you will get | `tls_mode` | Tells you whether to expect a browser warning |
-| Trust the internal CA | `trust_demo_ca_command` | Removes the warning without widening the NSG |
-| Confirm the URL is live | `health_check_command` | Ready-to-run `curl` |
-| SSH session on the VM | `ssh_command` | `ssh sifapadmin@<FQDN>` |
-| VM public IP | `public_ip` | For tools that accept only an address |
-| Natural Development Server endpoint | `natural_development_server` | Register it as a remote server in NaturalONE |
-| Adabas administration password | `adabas_admin_password_command` | Prints an SSH command that reads the private vault through the VM identity |
-| Bootstrap log | `bootstrap_log_command` | Prints the `tail -f` command for the VM log |
-| Bootstrap verdict in Log Analytics | `bootstrap_status_query` | KQL to run in the workspace |
-| **Did the legacy load and compile?** | `provisioning_status_command` | `systemctl status sifap-provisioning` |
-| **Provisioning log** | `provisioning_log_command` | Follows the Adabas load and the Natural compile |
-| **Re-run the load and compile** | `provisioning_rerun_command` | Idempotent; safe to repeat |
-| Provisioning verdict in Log Analytics | `provisioning_status_query` | KQL to run in the workspace |
-| What is packaged for the VM | `payload_file_count` | Corpus and provisioning file counts |
-| Log Analytics workspace | `log_analytics_workspace_name` | For queries and alert rules |
-| Data-disk snapshot | `data_disk_snapshot_name` | Name of the snapshot, when one was requested |
-| Resource group name | `resource_group_name` | For `az` commands and to confirm removal |
-| VM name | `vm_name` | For `az vm deallocate` and `az vm start` |
+| URL de demonstração | `demo_url` | Abra no navegador: a página inicial com links para as duas demonstrações |
+| **Tela verde legada** | `terminal_url` | Uma sessão Natural no navegador |
+| **Aplicação moderna** | `modern_app_url` | 502 até o Estágio 3 responder em `modern_app_upstream` |
+| Somente o hostname | `demo_fqdn` | Para verificações de DNS e `ssh` |
+| Administração REST do Adabas | `admin_console_url` | `/admin/` na origem da demonstração, com proxy por TLS. Entre no console como `admin` |
+| Console do Adabas sem o proxy | `admin_console_tunnel_command` | Túnel `ssh -L`, caso o prefixo `/admin/` quebre os assets do console |
+| **Usuário da URL de demonstração** | `demo_basic_auth_username` | Obrigatório em todas as rotas, exceto `/healthz` |
+| **Senha da URL de demonstração** | `demo_basic_auth_password_command` | Imprime um comando SSH que lê o vault privado pela identidade da VM |
+| Login não administrativo | `viewer_account` | O que o viewer pode ou não acessar e como ler sua senha |
+| Endpoint de prontidão | `healthz_url` | Sem autenticação, para sondagens de disponibilidade |
+| Certificado que será usado | `tls_mode` | Informa se haverá aviso no navegador |
+| Confiar na CA interna | `trust_demo_ca_command` | Remove o aviso sem ampliar o NSG |
+| Confirmar que a URL está ativa | `health_check_command` | `curl` pronto para execução |
+| Sessão SSH na VM | `ssh_command` | `ssh sifapadmin@<FQDN>` |
+| IP público da VM | `public_ip` | Para ferramentas que aceitam somente um endereço |
+| Endpoint do Natural Development Server | `natural_development_server` | Registre-o como servidor remoto no NaturalONE |
+| Senha de administração do Adabas | `adabas_admin_password_command` | Imprime um comando SSH que lê o vault privado pela identidade da VM |
+| Log de bootstrap | `bootstrap_log_command` | Imprime o comando `tail -f` para o log da VM |
+| Resultado do bootstrap no Log Analytics | `bootstrap_status_query` | KQL para executar no workspace |
+| **O legado foi carregado e compilado?** | `provisioning_status_command` | `systemctl status sifap-provisioning` |
+| **Log de provisionamento** | `provisioning_log_command` | Acompanha a carga do Adabas e a compilação do Natural |
+| **Executar novamente carga e compilação** | `provisioning_rerun_command` | Idempotente; pode ser repetido com segurança |
+| Resultado do provisionamento no Log Analytics | `provisioning_status_query` | KQL para executar no workspace |
+| Conteúdo empacotado para a VM | `payload_file_count` | Contagens de arquivos do corpus e do provisionamento |
+| Workspace do Log Analytics | `log_analytics_workspace_name` | Para consultas e regras de alerta |
+| Snapshot do disco de dados | `data_disk_snapshot_name` | Nome do snapshot, quando solicitado |
+| Nome do grupo de recursos | `resource_group_name` | Para comandos `az` e confirmação da remoção |
+| Nome da VM | `vm_name` | Para `az vm deallocate` e `az vm start` |
 
-To get an unquoted value, use `-raw`:
+Para obter um valor sem aspas, use `-raw`:
 
 ```bash
 terraform output -raw demo_url
@@ -517,304 +517,304 @@ terraform output -raw ssh_command
 terraform output -raw natural_development_server
 ```
 
-### Read the Adabas password from Key Vault
+### Leia a senha do Adabas no Key Vault
 
-The password is generated by Terraform, stored in the private-only Key Vault by a protected VM Extension, and read through the VM managed identity. The value never appears in Terraform outputs or this repository; protect local state because generated credentials are stateful Terraform values.
+A senha é gerada pelo Terraform, armazenada no Key Vault somente privado por uma VM Extension protegida e lida pela identidade gerenciada da VM. O valor nunca aparece nas saídas do Terraform nem neste repositório; proteja o estado local porque as credenciais geradas são valores com estado do Terraform.
 
 ```bash
-# 1. Print the ready-to-use SSH command
+# 1. Imprima o comando SSH pronto para uso
 terraform output -raw adabas_admin_password_command
 
-# 2. Run the command printed above to view the password in the terminal
+# 2. Execute o comando impresso acima para ver a senha no terminal
 ```
 
-The printed command has this form:
+O comando impresso tem este formato:
 
 ```bash
 ssh sifapadmin@<FQDN> 'sudo /opt/sifap/read-secret.sh adabas-admin-password'
 ```
 
 > [!WARNING]
-> Do not copy the password into repository files, issues, PRs, or messages. Read it from Key Vault whenever you need it.
+> Não copie a senha para arquivos do repositório, issues, PRs ou mensagens. Leia-a no Key Vault sempre que precisar.
 
-### The legacy sources: shipped automatically
+### As fontes legadas: envio automático
 
-You do not copy individual files. `deploy-local.sh` packages the frozen SIFAP corpus, provisioning scripts and static pages from the current working tree, writes a SHA-256 manifest, uploads one archive over SSH, verifies it on the VM, and starts provisioning:
+Você não copia arquivos individuais. `deploy-local.sh` empacota o corpus congelado do SIFAP, os scripts de provisionamento e as páginas estáticas da árvore de trabalho atual, grava um manifesto SHA-256, envia um arquivo compactado por SSH, verifica-o na VM e inicia o provisionamento:
 
 ```text
 /opt/sifap/corpus/natural-programs/   22 Natural members + 2 JCL jobs
-/opt/sifap/corpus/adabas-ddms/        4 DDMs + the FDT for file 150
+/opt/sifap/corpus/adabas-ddms/        4 DDMs + a FDT do arquivo 150
 ```
 
-`/opt/sifap/corpus` is mounted read-only at `/corpus` inside `natural-ce`.
+`/opt/sifap/corpus` é montado como somente leitura em `/corpus` dentro de `natural-ce`.
 
-**Why SSH and not `cloud-init` or Blob Storage.** Azure caps `custom_data` at 65535 bytes decoded. The corpus alone is roughly 77 KB once base64-encoded — over the limit before a single line of configuration is added. The corporate management-group policy also forces Storage Account `publicNetworkAccess=Disabled`, making a new Blob data plane unreachable from both the facilitator and a GitHub-hosted runner without private networking. SSH already exists, is allow-listed, and ships exactly the working-tree bytes rather than a stale git ref.
+**Por que SSH, e não `cloud-init` ou Blob Storage.** O Azure limita `custom_data` a 65535 bytes decodificados. Somente o corpus ocupa aproximadamente 77 KB quando codificado em base64, acima do limite antes de adicionar qualquer configuração. A política corporativa do grupo de gerenciamento também força `publicNetworkAccess=Disabled` na Storage Account, tornando um novo plano de dados Blob inacessível ao facilitador e a um runner hospedado pelo GitHub sem rede privada. O SSH já existe, está na lista de permissões e envia exatamente os bytes da árvore de trabalho, em vez de uma referência Git obsoleta.
 
-Confirm what was packaged and what arrived:
+Confirme o que foi empacotado e recebido:
 
 ```bash
 terraform output -raw payload_file_count
 ssh "$(terraform output -raw demo_fqdn)" 'ls -R /opt/sifap/corpus | head -40'
 ```
 
-If the directories are empty, payload upload or verification did not complete. Re-run it from the repository:
+Se os diretórios estiverem vazios, o upload ou a verificação do payload não terminou. Execute novamente a partir do repositório:
 
 ```bash
 infra/adabas-natural-lab/deploy-local.sh upload
 ```
 
-To work with the sources directly:
+Para trabalhar diretamente com as fontes:
 
 ```bash
 sudo docker exec -it natural-ce bash
 ls /corpus
 ```
 
-### Loading and compiling: the provisioning unit
+### Carga e compilação: a unidade de provisionamento
 
-Shipping the sources is not the same as running them. The scripts under `infra/adabas-natural-lab/provisioning/` are what create the Adabas file, load the data, verify DDM readiness and compile the `SIFAPPRD` library. They are staged and executed the same way the corpus is, landing at `/opt/sifap/provisioning`:
+Enviar as fontes não é o mesmo que executá-las. Os scripts em `infra/adabas-natural-lab/provisioning/` criam o arquivo Adabas, carregam os dados, verificam a prontidão dos DDMs e compilam a biblioteca `SIFAPPRD`. Eles são preparados e executados como o corpus e ficam em `/opt/sifap/provisioning`:
 
-| Script | Does |
+| Script | Função |
 |---|---|
-| `run-all.sh` | Single idempotent entry point; honors `SIFAP_PHASE=auto\|base\|finalize` |
-| `01-load-adabas.sh` | `ADAFRM` / `ADACMP` / `ADALOD` — creates SIFAP file 150 and loads the data |
-| `02-build-natural.sh` | Base catalogs data areas; finalize catalogs subprograms/programs after DDMs exist |
-| `03-smoke-test.sh` | Asserts that `CONSBENF` and a batch program really execute |
+| `run-all.sh` | Ponto de entrada idempotente único; respeita `SIFAP_PHASE=auto\|base\|finalize` |
+| `01-load-adabas.sh` | `ADAFRM` / `ADACMP` / `ADALOD`: cria o arquivo 150 do SIFAP e carrega os dados |
+| `02-build-natural.sh` | Base cataloga as áreas de dados; finalize cataloga subprogramas/programas depois da criação dos DDMs |
+| `03-smoke-test.sh` | Verifica se `CONSBENF` e um programa batch realmente são executados |
 
-**It runs as a systemd unit, not as a cloud-init step.** Adabas needs several minutes to build its demo database before any `ADALOD` can succeed, and a full `CATALL` on top of that runs long. A blocking `runcmd` risks the cloud-init timeout killing the load halfway through and leaving a half-populated file. The unit starts after Docker and the persistent data disk are ready, survives the end of cloud-init and reboots, and reports through `systemctl`.
+**A execução ocorre como unidade systemd, não como etapa do cloud-init.** O Adabas precisa de vários minutos para criar seu banco de demonstração antes que `ADALOD` funcione, e um `CATALL` completo demora ainda mais. Um `runcmd` bloqueante arrisca atingir o timeout do cloud-init, interromper a carga e deixar um arquivo parcialmente preenchido. A unidade inicia depois que o Docker e o disco de dados persistente estão prontos, sobrevive ao fim do cloud-init e às reinicializações e informa o estado por `systemctl`.
 
-**Provisioning is two-phase because Natural CE 9.3.3 cannot create DDMs.**
+**O provisionamento tem duas fases porque o Natural CE 9.3.3 não cria DDMs.**
 
-1. `SIFAP_PHASE=auto` (the default in `/etc/sifap/provisioning.env`) runs the `base` work: load Adabas, verify the four files, and catalog the three data areas. On a fresh VM it exits successfully when the four DDMs are still missing; that is expected, not a failed deployment.
-2. Create the four DDMs (`BENEFIC`, `SOCPROG`, `PAYMENT`, `AUDIT`) once in NaturalONE, against the endpoint from the `natural_development_server` output. Full procedure: [`provisioning/README.md`](provisioning/README.md#manual-ddm-creation).
-3. Restart the unit. `auto` detects the DDMs, runs `finalize`, catalogs the remaining objects, runs smoke tests, and leaves `/opt/sifap/PROVISIONED`.
+1. `SIFAP_PHASE=auto` (padrão em `/etc/sifap/provisioning.env`) executa o trabalho `base`: carrega o Adabas, verifica os quatro arquivos e cataloga as três áreas de dados. Em uma VM nova, termina com sucesso mesmo quando os quatro DDMs ainda estão ausentes; isso é esperado, não uma falha de implantação.
+2. Crie uma vez os quatro DDMs (`BENEFIC`, `SOCPROG`, `PAYMENT`, `AUDIT`) no NaturalONE, usando o endpoint da saída `natural_development_server`. Procedimento completo: [`provisioning/README.md`](provisioning/README.md#criação-manual-dos-ddms).
+3. Reinicie a unidade. `auto` detecta os DDMs, executa `finalize`, cataloga os objetos restantes, executa smoke tests e deixa `/opt/sifap/PROVISIONED`.
 
-`/opt/sifap/state` is a symlink to the managed data disk. The DDM readiness marker is `/opt/sifap/state/DDMS-READY`; the phase file at `/etc/sifap/provisioning.env` is also backed by that disk, so it survives reboots and OS disk rebuilds.
+`/opt/sifap/state` é um link simbólico para o disco de dados gerenciado. O marcador de prontidão dos DDMs é `/opt/sifap/state/DDMS-READY`; o arquivo de fase em `/etc/sifap/provisioning.env` também tem suporte desse disco e sobrevive a reinicializações e reconstruções do disco do sistema operacional.
 
-Check what happened:
+Verifique o que aconteceu:
 
 ```bash
-# active (exited) = it finished cleanly. failed = it did not, and the log says why.
+# active (exited) = terminou sem erros. failed = não terminou, e o log informa o motivo.
 terraform output -raw provisioning_status_command
 
-# Follow the load and the compile
+# Acompanhe a carga e a compilação
 terraform output -raw provisioning_log_command
 ```
 
-Or without SSH, using the syslog marker the failure alert also watches:
+Ou, sem SSH, use o marcador do syslog monitorado pelo alerta de falha:
 
 ```bash
-terraform output -raw provisioning_status_query   # paste into Log Analytics
+terraform output -raw provisioning_status_query   # cole no Log Analytics
 ```
 
-Re-run it after fixing something, after creating the DDMs, or after changing the corpus — `run-all.sh` is idempotent by contract:
+Execute novamente depois de uma correção, da criação dos DDMs ou de uma alteração no corpus. `run-all.sh` é idempotente por contrato:
 
 ```bash
 terraform output -raw provisioning_rerun_command
 ```
 
-**If the scripts are absent it fails loudly.** `provisioning/` may be empty at apply time. In that case `payload_file_count` says so, and the unit starts, fails immediately with exit code 3, and writes an explanation naming the missing file to `/var/log/sifap-provisioning.log`. That is deliberate: a unit in the `failed` state is a signal, whereas a silent no-op is how a demo reaches the room with an empty database.
+**Se os scripts estiverem ausentes, a falha será explícita.** `provisioning/` pode estar vazio no momento do apply. Nesse caso, `payload_file_count` informa isso, e a unidade inicia, falha imediatamente com código de saída 3 e grava em `/var/log/sifap-provisioning.log` uma explicação com o nome do arquivo ausente. Isso é intencional: uma unidade no estado `failed` é um sinal; uma operação silenciosa sem efeito permite que uma demonstração chegue ao público com um banco vazio.
 
-### Creating the DDMs
+### Criação dos DDMs
 
-This is the one step nothing in this module can automate, and it is worth understanding why before working around it. Verified against `softwareag/natural-ce:9.3.3`:
+Esta é a única etapa que o módulo não automatiza. Entenda o motivo antes de buscar uma alternativa. Verificado em `softwareag/natural-ce:9.3.3`:
 
-| Attempted route | Result |
+| Caminho tentado | Resultado |
 |---|---|
-| `SYSDDM` utility | The library does not exist in the image; `LOGON SYSDDM` succeeds into an empty library |
-| Any sample DDM to copy | The image contains zero `.NGD` objects and only the `SAMP4ONE` library |
+| Utilitário `SYSDDM` | A biblioteca não existe na imagem; `LOGON SYSDDM` entra com sucesso em uma biblioteca vazia |
+| DDM de exemplo para copiar | A imagem contém zero objetos `.NGD` e somente a biblioteca `SAMP4ONE` |
 | `ftouch lib=SYSDDM` | Return code 6149 |
-| Cataloging a `.ddm` listing as source | `NAT4225 Invalid level` — a `LISTDDM` report is not compilable Natural source |
-| Forging the compiled `.NGD` byte by byte | 15 × `NAT0002`; abandoned, see [failure #8](../../docs/failures/README.md) |
+| Catalogar uma listagem `.ddm` como fonte | `NAT4225 Invalid level`: um relatório `LISTDDM` não é código-fonte Natural compilável |
+| Forjar o `.NGD` compilado byte a byte | 15 × `NAT0002`; tentativa abandonada, consulte a [falha 8](../../docs/failures/README.md) |
 
-Software AG's own answer is NaturalONE, the Eclipse IDE that attaches to the Natural Development Server. Its [Docker Hub page for `natural-ce`](https://hub.docker.com/r/softwareag/natural-ce) states the image "will be used together with the NaturalONE development environment", and [NaturalONE Community Edition](https://tech.forums.softwareag.com/t/adabas-natural-community-edition-for-docker-download/235228) is a free download that needs a TECHcommunity account.
+A solução da Software AG é o NaturalONE, a IDE Eclipse que se conecta ao Natural Development Server. A [página de `natural-ce` no Docker Hub](https://hub.docker.com/r/softwareag/natural-ce) informa que a imagem "will be used together with the NaturalONE development environment", e o [NaturalONE Community Edition](https://tech.forums.softwareag.com/t/adabas-natural-community-edition-for-docker-download/235228) pode ser baixado gratuitamente com uma conta TECHcommunity.
 
-**NaturalONE ships for Windows. There is no macOS build, and none for arm64.** That is what `enable_ddm_workstation` exists for.
+**O NaturalONE é fornecido para Windows. Não há build para macOS nem para arm64.** Por isso existe `enable_ddm_workstation`.
 
-#### Option A — a Windows workstation in the lab VNet
+#### Opção A — uma estação Windows na VNet do lab
 
-Use this when you do not have a Windows machine, which includes every Apple Silicon Mac.
+Use esta opção quando não tiver uma máquina Windows, incluindo qualquer Mac com Apple Silicon.
 
-- [ ] **Create it.** Roughly USD 0.19/hour including the Windows licence, plus the NAT gateway described below, and it shares the lab's auto-shutdown.
+- [ ] **Crie a estação.** O custo aproximado é USD 0,19/hora, incluindo a licença do Windows, mais o gateway NAT descrito abaixo. Ela compartilha o desligamento automático do lab.
 
 ```bash
 SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh apply
 ```
 
-- [ ] **Connect through Azure Bastion.** The workstation has no public IP, because this tenant deletes public RDP rules. The output opens the VM's **Connect** blade in the portal, where Bastion Developer runs the session in the browser — no RDP client, and nothing to install on macOS. The password never leaves Key Vault.
+- [ ] **Conecte-se pelo Azure Bastion.** A estação não tem IP público porque este tenant exclui regras públicas de RDP. A saída abre a página **Connect** da VM no portal, onde o Bastion Developer executa a sessão no navegador. Não é necessário cliente RDP nem instalação no macOS. A senha nunca sai do Key Vault.
 
 ```bash
 terraform output -raw ddm_workstation_rdp_command
 eval "$(terraform output -raw ddm_workstation_password_command)"
 ```
 
-- [ ] **Install NaturalONE** on the workstation from the TECHcommunity download above. Its outbound path is a NAT gateway: without one it would have no internet at all, since Azure has retired default outbound access for subnets and this VM has no public IP of its own. The gateway is outbound-only, so RDP stays unreachable from the internet.
-- [ ] **Register the development server** using the **private** endpoint. The public one is allow-listed to the immersion CIDRs, which do not include the workstation's NAT egress address.
+- [ ] **Instale o NaturalONE** na estação usando o download da TECHcommunity acima. O caminho de saída usa um gateway NAT: sem ele, não haveria acesso à internet, pois o Azure desativou o acesso de saída padrão das sub-redes e esta VM não tem IP público. O gateway permite somente saída, portanto o RDP permanece inacessível pela internet.
+- [ ] **Registre o servidor de desenvolvimento** usando o endpoint **privado**. O endpoint público está restrito aos CIDRs da imersão, que não incluem o endereço de saída NAT da estação.
 
 ```bash
 terraform output -raw ddm_workstation_ndv_endpoint
 ```
 
-- [ ] **Destroy it when the DDMs are archived.** The Natural FUSER and compact DDM archive survive on the managed data disk, so nothing is lost.
+- [ ] **Destrua a estação depois de arquivar os DDMs.** O FUSER do Natural e o arquivo compacto dos DDMs permanecem no disco de dados gerenciado, portanto nada é perdido.
 
 ```bash
 SIFAP_ENABLE_DDM_WORKSTATION=false ./deploy-local.sh apply
 ```
 
-#### Option B — a Windows machine you already have
+#### Opção B — uma máquina Windows existente
 
-Register `terraform output -raw natural_development_server` instead. It works with no extra infrastructure, provided that machine's public IP is in `allowed_source_cidrs`.
+Registre `terraform output -raw natural_development_server`. Isso funciona sem infraestrutura adicional, desde que o IP público da máquina esteja em `allowed_source_cidrs`.
 
-#### Either way
+#### Em qualquer opção
 
-Generate the DDMs from the live database (`DBID 12`) rather than typing them, then correct the long names against the corpus listings. The member names are constrained by Natural's 8-character limit:
+Gere os DDMs a partir do banco ativo (`DBID 12`), em vez de digitá-los, e corrija os nomes longos comparando-os às listagens do corpus. Os nomes dos membros estão sujeitos ao limite de oito caracteres do Natural:
 
-| FNR | DDM member | Corpus listing |
+| FNR | Membro DDM | Listagem do corpus |
 |---|---|---|
 | 150 | `BENEFIC` | `BENEFIC.ddm` |
 | 151 | `SOCPROG` | `SOCPROG.ddm` |
 | 152 | `PAYMENT` | `PAYMENT.ddm` |
 | 153 | `AUDIT` | `AUDIT.ddm` |
 
-A long name that does not match the listing breaks every `VIEW OF` in the corpus. When all four exist as `SIFAPPRD/GP/*.NGD`, provisioning writes `/opt/sifap/state/DDMS-READY` and the finalize phase can run. Full reference: [`provisioning/README.md`](provisioning/README.md#manual-ddm-creation).
+Um nome longo diferente da listagem quebra cada `VIEW OF` do corpus. Quando os quatro existirem como `SIFAPPRD/GP/*.NGD`, o provisionamento grava `/opt/sifap/state/DDMS-READY`, e a fase finalize pode ser executada. Referência completa: [`provisioning/README.md`](provisioning/README.md#criação-manual-dos-ddms).
 
-### Permissions the payload needs
+### Permissões necessárias ao payload
 
-Payload delivery needs no Azure data-plane role and creates no role assignment. The facilitator needs Contributor-or-higher to deploy resources and an SSH key accepted by the Linux VM. `allowed_source_cidrs` must contain the facilitator's current public address; otherwise Terraform can create the VM but `deploy-local.sh` cannot upload the archive.
+A entrega do payload não exige função no plano de dados do Azure nem cria atribuição de função. O facilitador precisa de Contributor ou superior para implantar recursos e de uma chave SSH aceita pela VM Linux. `allowed_source_cidrs` deve conter o endereço público atual do facilitador; caso contrário, o Terraform cria a VM, mas `deploy-local.sh` não envia o arquivo.
 
 ---
 
-## Open ports and their purpose
+## Portas abertas e suas finalidades
 
-The rules are in `main.tf`, in the `azurerm_network_security_group.lab` resource. The NSG is attached at both the subnet and the network interface, so a rebuilt NIC cannot silently leave the VM unfiltered. The `DenyAllOtherInbound` rule, at priority 4096, blocks everything else.
+As regras estão em `main.tf`, no recurso `azurerm_network_security_group.lab`. O NSG é associado à sub-rede e à interface de rede; assim, a reconstrução de uma NIC não deixa silenciosamente a VM sem filtro. A regra `DenyAllOtherInbound`, com prioridade 4096, bloqueia todo o restante.
 
-| Port | NSG rule | Priority | Source | Purpose |
+| Porta | Regra do NSG | Prioridade | Origem | Finalidade |
 |---|---|---|---|---|
-| 443 | `AllowHttpsDemo` | 150 | Allow-list, or `Internet` with ACME | The demo URL: landing page, green screen, modern app, Adabas console. TLS terminated by Caddy, all of it behind basic auth except `/healthz` |
-| 80 | `AllowHttpRedirectAndAcme` | 140 | Allow-list, or `Internet` with ACME | Redirect to HTTPS, and the ACME HTTP-01 challenge |
-| 22 | `AllowSshFromImmersion` | 100 | Allow-list only | SSH. Key authentication; passwords disabled |
-| 2700 | `AllowNaturalDevelopmentServer` | 110 | Allow-list only | Natural Development Server, for NaturalONE |
-| 60001 | `AllowAdabasAdatcp` | 120 | Allow-list only | Adabas ADATCP, only for clients outside the VM |
-| 8190 | `AllowAdabasRestAdmin` | 130 | Allow-list only | **Disabled by default.** Plaintext admin console, superseded by the HTTPS proxy |
+| 443 | `AllowHttpsDemo` | 150 | Lista de permissões ou `Internet` com ACME | URL de demonstração: página inicial, tela verde, aplicação moderna e console do Adabas. TLS encerrado pelo Caddy; tudo usa autenticação básica, exceto `/healthz` |
+| 80 | `AllowHttpRedirectAndAcme` | 140 | Lista de permissões ou `Internet` com ACME | Redirecionamento para HTTPS e desafio ACME HTTP-01 |
+| 22 | `AllowSshFromImmersion` | 100 | Somente lista de permissões | SSH. Autenticação por chave; senhas desabilitadas |
+| 2700 | `AllowNaturalDevelopmentServer` | 110 | Somente lista de permissões | Natural Development Server para NaturalONE |
+| 60001 | `AllowAdabasAdatcp` | 120 | Somente lista de permissões | ADATCP do Adabas, somente para clientes fora da VM |
+| 8190 | `AllowAdabasRestAdmin` | 130 | Somente lista de permissões | **Desabilitada por padrão.** Console administrativo em texto simples, substituído pelo proxy HTTPS |
 
-Port 8190 is now opt-in through `expose_adabas_admin_port`. Leave it off: the same console is available over TLS and behind authentication at `admin_console_url`, and the direct port is unencrypted. It exists only as a fallback for debugging the proxy itself, and `admin_console_direct_url` prints the address when you need it.
+A porta 8190 agora exige opt-in por `expose_adabas_admin_port`. Mantenha-a desabilitada: o mesmo console está disponível com TLS e autenticação em `admin_console_url`, enquanto a porta direta não usa criptografia. Ela existe somente como alternativa para depurar o próprio proxy, e `admin_console_direct_url` imprime o endereço quando necessário.
 
-Defence in depth backs that up at the container layer. Docker publishes ports by writing its own firewall rules, so a plain `8190:8190` listens on every interface regardless of what the host firewall says. With `expose_adabas_admin_port = false` the module binds the console to `127.0.0.1:8190` instead, which keeps it reachable over an SSH tunnel for debugging while making it unreachable from the network even if someone later widens the NSG by hand:
+A defesa em profundidade reforça isso na camada de contêiner. O Docker publica portas gravando suas próprias regras de firewall; um simples `8190:8190` escuta em todas as interfaces, independentemente do firewall do host. Com `expose_adabas_admin_port = false`, o módulo associa o console a `127.0.0.1:8190`. Assim, ele permanece acessível por túnel SSH para depuração e inacessível pela rede, mesmo que alguém amplie o NSG manualmente:
 
 ```bash
-terraform output -raw admin_console_tunnel_command   # prints the ssh -L line
-# then browse to http://localhost:8190
+terraform output -raw admin_console_tunnel_command   # imprime a linha ssh -L
+# depois, acesse http://localhost:8190
 ```
 
-Caddy is unaffected either way — it reaches `adabas-db:8190` across the Docker bridge, not through the host binding. The same is true of `ttyd`, which publishes no host port at all and is reachable only through the authenticated proxy.
+O Caddy não é afetado: ele acessa `adabas-db:8190` pela bridge do Docker, não pela associação do host. O mesmo vale para `ttyd`, que não publica nenhuma porta no host e só pode ser acessado pelo proxy autenticado.
 
 ---
 
-## Module variables
+## Variáveis do módulo
 
-Only two variables are required. The others have defaults defined in `variables.tf`.
+Somente duas variáveis são obrigatórias. As demais têm padrões definidos em `variables.tf`.
 
-| Variable | Required | Default | Purpose |
+| Variável | Obrigatória | Padrão | Finalidade |
 |---|---|---|---|
-| `owner` | Yes | — | Owner tag: GitHub handle or e-mail |
-| `allowed_source_cidrs` | Yes | — | CIDRs allowed on the lab ports. Validation rejects `0.0.0.0/0` |
-| `project` | No | `sifap` | Name and tag prefix. From 2 to 12 lowercase alphanumeric characters |
-| `environment` | No | `lab` | Accepts `lab`, `dev`, or `immersion` |
-| `cost_center` | No | `workshop-legacy-modernization` | Cost allocation tag |
-| `location` | No | `eastus2` | Azure region. Also drives the name suffix |
-| `location_short` | No | `""` | Name suffix. Empty derives it from `location` — leave it empty |
-| `vm_size` | No | `Standard_D2s_v7` | 2 vCPU / 8 GB, the practical minimum for Adabas CE and Natural CE together |
-| `source_image_version` | No | `22.04.202608060` | Ubuntu image version. See [Reproducible builds](#reproducible-builds) |
-| `admin_username` | No | `sifapadmin` | VM administrator. `cloud-init.yaml` adds `sifapadmin` to the `docker` group explicitly, so changing this value requires `sudo` for Docker commands |
-| `ssh_public_key_path` | No | `~/.ssh/id_rsa.pub` | Path to the authorized public key |
-| `dns_label_prefix` | No | `""` | DNS label for the demo URL. Empty derives it from the project and random suffix |
-| `enable_public_acme` | No | `false` | `true` opens 80/443 to the internet for a Let's Encrypt certificate. See [Choosing a certificate mode](#choosing-a-certificate-mode) |
-| `acme_contact_email` | No | `""` | Expiry-notice address, used only when `enable_public_acme` is `true` |
-| `expose_adabas_admin_port` | No | `false` | `true` reopens plaintext 8190. Prefer the HTTPS proxy |
-| `data_disk_size_gb` | No | `32` | Size of the managed disk that stores Adabas data, Natural FUSER, and provisioning state |
-| `data_disk_snapshot_label` | No | `""` | Non-empty takes a snapshot of the data disk. See [Data protection](#data-protection) |
-| `adabas_image` | No | `softwareag/adabas-ce:7.4.0@sha256:...` | Adabas Community Edition image, pinned by digest |
-| `natural_image` | No | `softwareag/natural-ce:9.3.3@sha256:...` | Natural Community Edition image, pinned by digest |
-| `caddy_image` | No | `caddy:2.10.2-alpine@sha256:...` | Reverse proxy image, pinned by digest. Also used to bcrypt the demo password at boot |
-| `ttyd_image` | No | `tsl0922/ttyd:1.7.7-alpine@sha256:...` | Web terminal serving the green screen, pinned by digest |
-| `docker_cli_image` | No | `docker:29.7.2-cli@sha256:...` | Source of the musl-linked `docker` client the terminal needs, pinned by digest |
-| `demo_basic_auth_username` | No | `sifap` | Username for the demo URL. See [Authentication on the public origin](#authentication-on-the-public-origin) |
-| `demo_basic_auth_password_hash` | No | `""` | Bring your own bcrypt hash. Empty makes Terraform generate a password into Key Vault. **Pass it via `TF_VAR_`, never in a file** |
-| `modern_app_upstream` | No | `sifap-app:8080` | What `/app/` proxies to. Returns 502 until Stage 3 answers there |
-| `terminal_natural_command` | No | `""` | Command the terminal runs to open a Natural session. Empty probes the known paths and falls back to a shell |
-| `enable_viewer_account` | No | `false` | `true` adds a second, non-administrative credential to the same URL. See [The viewer account](#the-viewer-account) |
-| `viewer_username` | No | `viewer` | Username for that credential. Not a secret; the password is |
-| `viewer_terminal_command` | No | `natural SM=ON 'STACK=(LOGON SIFAPPRD;VIEWBENF;FIN)'` | Natural session the viewer's green screen runs. The trailing `FIN` is what keeps it off the Natural command line |
-| `legacy_corpus_path` | No | `../../01-archaeology/legacy-sifap` | Frozen legacy sources packaged for the VM |
-| `enable_ddm_workstation` | No | `false` | `true` creates a Windows VM in the lab VNet for running NaturalONE. Required only to create the DDMs, and only if you have no Windows machine. See [Creating the DDMs](#creating-the-ddms) |
-| `ddm_workstation_size` | No | `Standard_D2s_v7` | Size of the NaturalONE workstation |
-| `ddm_workstation_admin_username` | No | `sifapadmin` | Local administrator on the workstation. Windows reserved names are rejected |
-| `ddm_workstation_image_version` | No | `20348.5499.260809` | Windows Server 2022 Gen2 image version, pinned |
-| `adabas_dbid` | No | `12` | Adabas DBID mapped by Natural |
-| `auto_shutdown_enabled` | No | `true` | Whether the daily shutdown schedule stops the VMs. Set `false` for a shared lab whose URL is handed out in advance; the budget then becomes the only automatic cost guard |
-| `enable_vm_start_watchdog` | No | `false` | Azure Automation checks the VMs every 15 minutes and starts either one that external governance deallocated. Use only when tenant automation overrides the disabled shutdown schedules |
-| `auto_shutdown_time` | No | `2000` | Daily shutdown time in HHmm format. Ignored when `auto_shutdown_enabled` is `false` |
-| `auto_shutdown_timezone` | No | `Eastern Standard Time` | Shutdown schedule time zone |
-| `auto_shutdown_notification_email` | No | `""` | **Strongly recommended.** Notified 30 minutes before shutdown, and the target for the availability and bootstrap alerts. Empty disables all three |
-| `monthly_budget_amount` | No | `100` | Budget in USD, with alerts at 50%, 80%, and 100% |
-| `budget_start_date` | No | `""` | Budget start. Empty uses the first of the current month |
-| `log_retention_days` | No | `30` | Log Analytics retention |
-| `log_daily_quota_gb` | No | `1` | Daily ingestion cap, so a log loop cannot generate a surprise bill |
+| `owner` | Sim | — | Tag do responsável: usuário do GitHub ou e-mail |
+| `allowed_source_cidrs` | Sim | — | CIDRs permitidos nas portas do lab. A validação rejeita `0.0.0.0/0` |
+| `project` | Não | `sifap` | Prefixo de nomes e tags. De 2 a 12 caracteres alfanuméricos minúsculos |
+| `environment` | Não | `lab` | Aceita `lab`, `dev` ou `immersion` |
+| `cost_center` | Não | `workshop-legacy-modernization` | Tag de alocação de custos |
+| `location` | Não | `eastus2` | Região do Azure. Também determina o sufixo dos nomes |
+| `location_short` | Não | `""` | Sufixo dos nomes. Vazio deriva de `location`; deixe vazio |
+| `vm_size` | Não | `Standard_D2s_v7` | 2 vCPU / 8 GB, mínimo prático para Adabas CE e Natural CE juntos |
+| `source_image_version` | Não | `22.04.202608060` | Versão da imagem Ubuntu. Consulte [Builds reproduzíveis](#builds-reproduzíveis) |
+| `admin_username` | Não | `sifapadmin` | Administrador da VM. `cloud-init.yaml` adiciona `sifapadmin` explicitamente ao grupo `docker`; alterar este valor exige `sudo` nos comandos Docker |
+| `ssh_public_key_path` | Não | `~/.ssh/id_rsa.pub` | Caminho da chave pública autorizada |
+| `dns_label_prefix` | Não | `""` | Rótulo DNS da URL de demonstração. Vazio deriva do projeto e do sufixo aleatório |
+| `enable_public_acme` | Não | `false` | `true` abre 80/443 para a internet para um certificado Let's Encrypt. Consulte [Escolha do modo de certificado](#escolha-do-modo-de-certificado) |
+| `acme_contact_email` | Não | `""` | Endereço para aviso de expiração, usado somente quando `enable_public_acme` é `true` |
+| `expose_adabas_admin_port` | Não | `false` | `true` reabre 8190 em texto simples. Prefira o proxy HTTPS |
+| `data_disk_size_gb` | Não | `32` | Tamanho do disco gerenciado que armazena dados do Adabas, FUSER do Natural e estado do provisionamento |
+| `data_disk_snapshot_label` | Não | `""` | Valor não vazio cria snapshot do disco de dados. Consulte [Proteção de dados](#proteção-de-dados) |
+| `adabas_image` | Não | `softwareag/adabas-ce:7.4.0@sha256:...` | Imagem do Adabas Community Edition fixada por digest |
+| `natural_image` | Não | `softwareag/natural-ce:9.3.3@sha256:...` | Imagem do Natural Community Edition fixada por digest |
+| `caddy_image` | Não | `caddy:2.10.2-alpine@sha256:...` | Imagem do proxy reverso fixada por digest. Também aplica bcrypt à senha na inicialização |
+| `ttyd_image` | Não | `tsl0922/ttyd:1.7.7-alpine@sha256:...` | Terminal web da tela verde, fixado por digest |
+| `docker_cli_image` | Não | `docker:29.7.2-cli@sha256:...` | Fonte do cliente `docker` vinculado à musl necessário ao terminal, fixada por digest |
+| `demo_basic_auth_username` | Não | `sifap` | Usuário da URL de demonstração. Consulte [Autenticação na origem pública](#autenticação-na-origem-pública) |
+| `demo_basic_auth_password_hash` | Não | `""` | Hash bcrypt próprio. Vazio faz o Terraform gerar uma senha no Key Vault. **Forneça por `TF_VAR_`, nunca em arquivo** |
+| `modern_app_upstream` | Não | `sifap-app:8080` | Destino do proxy de `/app/`. Retorna 502 até o Estágio 3 responder |
+| `terminal_natural_command` | Não | `""` | Comando que abre uma sessão Natural. Vazio testa caminhos conhecidos e usa shell como fallback |
+| `enable_viewer_account` | Não | `false` | `true` adiciona uma segunda credencial não administrativa à mesma URL. Consulte [A conta viewer](#a-conta-viewer) |
+| `viewer_username` | Não | `viewer` | Usuário dessa credencial. Não é segredo; a senha é |
+| `viewer_terminal_command` | Não | `natural SM=ON 'STACK=(LOGON SIFAPPRD;VIEWBENF;FIN)'` | Sessão Natural da tela verde do viewer. O `FIN` final impede acesso à linha de comando do Natural |
+| `legacy_corpus_path` | Não | `../../01-archaeology/legacy-sifap` | Fontes legadas congeladas empacotadas para a VM |
+| `enable_ddm_workstation` | Não | `false` | `true` cria uma VM Windows na VNet do lab para executar o NaturalONE. Necessária somente para criar DDMs quando não há máquina Windows. Consulte [Criação dos DDMs](#criação-dos-ddms) |
+| `ddm_workstation_size` | Não | `Standard_D2s_v7` | Tamanho da estação NaturalONE |
+| `ddm_workstation_admin_username` | Não | `sifapadmin` | Administrador local da estação. Nomes reservados do Windows são rejeitados |
+| `ddm_workstation_image_version` | Não | `20348.5499.260809` | Versão fixada da imagem Windows Server 2022 Gen2 |
+| `adabas_dbid` | Não | `12` | DBID do Adabas mapeado pelo Natural |
+| `auto_shutdown_enabled` | Não | `true` | Se o agendamento diário desliga as VMs. Use `false` para um lab compartilhado cuja URL é divulgada antes; o orçamento passa a ser a única proteção automática de custo |
+| `enable_vm_start_watchdog` | Não | `false` | Azure Automation verifica as VMs a cada 15 minutos e inicia as desalocadas pela governança externa. Use somente quando a automação do tenant sobrescrever os agendamentos desabilitados |
+| `auto_shutdown_time` | Não | `2000` | Horário diário de desligamento em HHmm. Ignorado quando `auto_shutdown_enabled` é `false` |
+| `auto_shutdown_timezone` | Não | `Eastern Standard Time` | Fuso horário do agendamento |
+| `auto_shutdown_notification_email` | Não | `""` | **Fortemente recomendado.** Recebe aviso 30 minutos antes do desligamento e alertas de disponibilidade e bootstrap. Vazio desabilita os três |
+| `monthly_budget_amount` | Não | `100` | Orçamento em USD, com alertas em 50%, 80% e 100% |
+| `budget_start_date` | Não | `""` | Início do orçamento. Vazio usa o primeiro dia do mês atual |
+| `log_retention_days` | Não | `30` | Retenção do Log Analytics |
+| `log_daily_quota_gb` | Não | `1` | Limite diário de ingestão para impedir custos inesperados por loop de logs |
 
 ---
 
-## Cost and spending control
+## Controle de custos e gastos
 
-The `estimated_cost_note` output carries the module's estimate for the Linux VM, its managed disks, and a static IP in `eastus2`. The optional Windows workstation adds its VM, its Windows licence and the NAT gateway that gives it outbound access, all only while enabled. These are estimates only; confirm current retail prices and your own agreement before relying on them.
+A saída `estimated_cost_note` contém a estimativa do módulo para a VM Linux, seus discos gerenciados e um IP estático em `eastus2`. A estação Windows opcional adiciona sua VM, a licença do Windows e o gateway NAT de saída, somente enquanto estiver habilitada. São apenas estimativas; confirme os preços atuais e seu contrato antes de usá-las.
 
 > [!NOTE]
-> This tenant rewrites disk SKUs to `Standard_LRS` at create time, so the module declares that value rather than the Premium tier it would otherwise prefer. Restoring `Premium_LRS` does not produce a Premium disk; it only makes the next plan force-replace both VMs. See [failure #9](../../docs/failures/README.md).
+> Este tenant reescreve os SKUs de disco como `Standard_LRS` na criação. Por isso, o módulo declara esse valor, não a camada Premium que usaria em outro contexto. Restaurar `Premium_LRS` não produz um disco Premium; apenas faz o próximo plano forçar a substituição das duas VMs. Consulte a [falha 9](../../docs/failures/README.md).
 
-Four mechanisms protect the budget, from weakest to strongest:
+Quatro mecanismos protegem o orçamento, do mais fraco ao mais forte:
 
-| Mechanism | What it does | When to use it |
+| Mecanismo | O que faz | Quando usar |
 |---|---|---|
-| Budget alerts | E-mails at 50%, 80%, and 100% of `monthly_budget_amount` | Always on. Tells you, does not stop you |
-| Automatic shutdown | Shuts the VMs down daily at 20:00 in `auto_shutdown_timezone` | On by default; a safety net, not an operating plan. Set `auto_shutdown_enabled = false` for a lab that must stay reachable between sessions |
-| `az vm deallocate` | Stops compute charges, preserves the environment | Pausing between sessions |
-| `SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy` | Removes everything | When you have finished with the lab |
+| Alertas de orçamento | E-mails em 50%, 80% e 100% de `monthly_budget_amount` | Sempre ativos. Avisam, mas não interrompem |
+| Desligamento automático | Desliga as VMs diariamente às 20:00 em `auto_shutdown_timezone` | Ativo por padrão; é proteção, não plano operacional. Use `auto_shutdown_enabled = false` para manter o lab acessível entre sessões |
+| `az vm deallocate` | Interrompe cobranças de computação e preserva o ambiente | Pausa entre sessões |
+| `SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy` | Remove tudo | Ao terminar o uso do lab |
 
-The budget is scoped to the resource group and is deliberately independent of the VM. That matters: in the `brazilsouth` failure the VM was never created, so a VM-scoped control would not have existed either. A resource-group budget starts working as soon as the group does.
+O orçamento tem escopo no grupo de recursos e é intencionalmente independente da VM. Na falha em `brazilsouth`, a VM nunca foi criada; um controle com escopo na VM também não existiria. Um orçamento do grupo começa a funcionar assim que o grupo existe.
 
 > [!WARNING]
-> With `auto_shutdown_enabled = false` the budget is the only automatic guard left, and it alerts rather than stops. A lab left running around the clock costs roughly USD 3/day for the Linux VM alone, plus the Windows workstation and its licence when `enable_ddm_workstation` is on. Set `auto_shutdown_notification_email` so somebody hears the alerts.
+> Com `auto_shutdown_enabled = false`, o orçamento é a única proteção automática restante e apenas alerta. Um lab ligado continuamente custa aproximadamente USD 3/dia somente para a VM Linux, além da estação Windows e sua licença quando `enable_ddm_workstation` está ativo. Defina `auto_shutdown_notification_email` para que alguém receba os alertas.
 
-### Tenant governance can still stop the VMs
+### A governança do tenant ainda pode parar as VMs
 
-Disabling the two DevTestLab schedules controls only resources in this module. A subscription may have a tenant-level automation with permission above the resource group. In the immersion subscription, `MCAPSGov-AutomationApp` deallocated both VMs even while both schedules reported `Disabled`.
+Desabilitar os dois agendamentos do DevTestLab controla somente os recursos deste módulo. Uma assinatura pode ter automação no nível do tenant com permissão acima do grupo de recursos. Na assinatura da imersão, `MCAPSGov-AutomationApp` desalocou as duas VMs mesmo quando os dois agendamentos informavam `Disabled`.
 
-`enable_vm_start_watchdog = true` is the compensating control. Terraform creates:
+`enable_vm_start_watchdog = true` é o controle compensatório. O Terraform cria:
 
-- one Azure Automation account with a system-assigned identity;
-- one PowerShell runbook that calls the Azure Resource Manager API directly, using that identity rather than a password or an Az module;
-- four hourly schedules, offset by 15 minutes, so the runbook executes every 15 minutes.
+- uma conta do Azure Automation com identidade atribuída pelo sistema;
+- um runbook PowerShell que chama diretamente a API do Azure Resource Manager usando essa identidade, não senha nem módulo Az;
+- quatro agendamentos por hora, deslocados em 15 minutos, para executar o runbook a cada 15 minutos.
 
-A GitHub Actions schedule is deliberately not the control here. Scheduled workflows are
-best-effort, run only from the repository's default branch, and can be disabled by an
-unrelated account-level billing lock. That exact failure was reproduced while building this
-watchdog: the OIDC workflow was accepted by GitHub but the job never started because Actions
-was locked. Azure Automation keeps the remediation in the same control plane as the VMs.
+Um agendamento do GitHub Actions não é o controle usado aqui. Workflows agendados são de
+melhor esforço, executam somente a partir da branch padrão do repositório e podem ser
+desabilitados por um bloqueio de cobrança da conta sem relação com o lab. Essa falha foi
+reproduzida durante a criação deste watchdog: o GitHub aceitou o workflow OIDC, mas o job não
+iniciou porque o Actions estava bloqueado. O Azure Automation mantém a correção no mesmo plano de controle das VMs.
 
-After the first apply, run the commands Terraform prints:
+Depois do primeiro apply, execute os comandos impressos pelo Terraform:
 
 ```bash
 terraform output -raw vm_start_watchdog_role_commands
 ```
 
-They grant `Virtual Machine Contributor` to the Automation identity on the **two individual VM resource IDs**, not on the resource group. Role assignments are intentionally not in this plan: this lab's policy auditor rejects `azurerm_role_assignment`, and the signed-in operator needs sufficient Azure RBAC rights to make the one-time assignments.
+Eles concedem `Virtual Machine Contributor` à identidade de Automation nos **dois IDs individuais de recursos das VMs**, não no grupo de recursos. As atribuições de função não fazem parte deste plano intencionalmente: o auditor de políticas do lab rejeita `azurerm_role_assignment`, e o operador autenticado precisa de direitos RBAC suficientes no Azure para fazer as atribuições uma vez.
 
 > [!IMPORTANT]
-> This is remediation, not high availability. The governance stop still creates an outage, normally bounded to about 15 minutes plus VM boot time. A governance exemption or a subscription without the external stop is the only way to make "always running" literal.
+> Isto é correção, não alta disponibilidade. A parada da governança ainda causa indisponibilidade, normalmente limitada a cerca de 15 minutos mais o tempo de inicialização da VM. Somente uma exceção de governança ou uma assinatura sem a parada externa torna "sempre em execução" literal.
 
 > [!NOTE]
-> Budget notifications need `auto_shutdown_notification_email`. Left empty, the budget still exists and still enforces its thresholds in the portal, but nobody gets an e-mail. Set it.
+> As notificações de orçamento precisam de `auto_shutdown_notification_email`. Se ficar vazio, o orçamento continua existindo e aplicando os limites no portal, mas ninguém recebe e-mail. Defina-o.
 
-To pause and resume:
+Para pausar e retomar:
 
 ```bash
 az vm deallocate \
@@ -827,50 +827,50 @@ az vm start \
 ```
 
 > [!IMPORTANT]
-> `az vm deallocate` stops compute charges, but the managed disks (64 GB OS and 32 GB data) and the static public IP keep charging. To eliminate the cost, use `SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy`.
+> `az vm deallocate` interrompe as cobranças de computação, mas os discos gerenciados (64 GB do sistema e 32 GB de dados) e o IP público estático continuam gerando custos. Para eliminar o custo, use `SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy`.
 
-The public IP is static and keeps its DNS label, so the demo URL is the same after a stop and start.
+O IP público é estático e mantém o rótulo DNS, portanto a URL de demonstração não muda depois de parar e iniciar.
 
 ---
 
-## Monitoring
+## Monitoramento
 
-Observability is wired in at apply time rather than added after the first incident.
+A observabilidade é configurada no apply, não depois do primeiro incidente.
 
-| Component | What it covers |
+| Componente | O que cobre |
 |---|---|
-| `azurerm_log_analytics_workspace` | Central workspace, retention and a daily ingestion cap |
-| `azurerm_monitor_diagnostic_setting` on the Key Vault | `AuditEvent` — who read which secret, and when |
-| `azurerm_monitor_diagnostic_setting` on the NSG | Rule counters and events — which rule allowed or blocked traffic |
-| `AzureMonitorLinuxAgent` extension | Guest metrics and syslog, via a data collection rule |
-| Metric alert on VM availability | Fires when the platform reports the VM as unavailable |
-| Scheduled query alert on bootstrap failure | Fires on `SIFAP-BOOTSTRAP RESULT: FAILED` in syslog |
+| `azurerm_log_analytics_workspace` | Workspace central, retenção e limite diário de ingestão |
+| `azurerm_monitor_diagnostic_setting` no Key Vault | `AuditEvent`: quem leu qual segredo e quando |
+| `azurerm_monitor_diagnostic_setting` no NSG | Contadores e eventos de regras: qual regra permitiu ou bloqueou tráfego |
+| Extensão `AzureMonitorLinuxAgent` | Métricas do guest e syslog por regra de coleta de dados |
+| Alerta de métrica de disponibilidade da VM | Dispara quando a plataforma informa indisponibilidade da VM |
+| Alerta de consulta agendada de falha de bootstrap | Dispara com `SIFAP-BOOTSTRAP RESULT: FAILED` no syslog |
 
-The bootstrap alert is the one worth understanding. Cloud-init failures are silent by default — the VM boots, Azure reports success, and you discover the containers never started when someone opens the demo URL. The bootstrap script now emits an explicit verdict to syslog on the way out, and the alert watches for it.
+É importante entender o alerta de bootstrap. Falhas do cloud-init são silenciosas por padrão: a VM inicializa, o Azure informa sucesso, e você só descobre que os contêineres não iniciaram quando alguém abre a URL. Agora, o script de bootstrap emite um resultado explícito no syslog ao encerrar, e o alerta o monitora.
 
 ```bash
 terraform output -raw bootstrap_status_query
 ```
 
-Both alerts notify the address in `auto_shutdown_notification_email`. Without it the alert rules still exist and still evaluate, but they have nowhere to send anything.
+Os dois alertas notificam o endereço em `auto_shutdown_notification_email`. Sem ele, as regras continuam existindo e sendo avaliadas, mas não têm destino.
 
 ---
 
-## Data protection
+## Proteção de dados
 
-| Control | Applied to | Rationale |
+| Controle | Aplicado a | Justificativa |
 |---|---|---|
-| `prevent_destroy` | Lab Key Vault | The one resource holding a credential |
-| Local state backup | Facilitator workstation | Losing `terraform.tfstate` orphans every resource it tracked |
-| `azurerm_snapshot` | Adabas data disk | On-demand copy before a risky change |
-| Managed data disk bind mounts | Adabas `/data`, Natural FUSER, `/opt/sifap/state` | Keeps database files, cataloged Natural objects, DDM markers, and phase state off the OS disk |
-| DDM GP archive | `/mnt/sifap-data/state/ddm-gp-backup.tgz` | Backs up manually created `*.NGD` DDM objects after finalize and restores them when the FUSER is empty |
+| `prevent_destroy` | Key Vault do lab | Único recurso que contém uma credencial |
+| Backup do estado local | Estação do facilitador | Perder `terraform.tfstate` deixa órfãos todos os recursos rastreados |
+| `azurerm_snapshot` | Disco de dados do Adabas | Cópia sob demanda antes de alteração arriscada |
+| Bind mounts do disco gerenciado | `/data` do Adabas, FUSER do Natural, `/opt/sifap/state` | Mantém arquivos do banco, objetos Natural catalogados, marcadores DDM e estado das fases fora do disco do sistema |
+| Arquivo GP dos DDMs | `/mnt/sifap-data/state/ddm-gp-backup.tgz` | Faz backup dos objetos DDM `*.NGD` criados manualmente após finalize e os restaura quando o FUSER está vazio |
 
-**Intentional exceptions.** The VM, its OS and data disks, the public IP, and the network carry no `prevent_destroy`. This lab is disposable by design, and guarding everything would make the documented teardown impossible. The guard is on the two things whose loss is not recoverable by re-running `apply`: the credential store and the state.
+**Exceções intencionais.** A VM, seus discos do sistema e de dados, o IP público e a rede não têm `prevent_destroy`. O lab é descartável por design, e proteger tudo impediria a desativação documentada. A proteção cobre os dois elementos cuja perda não é recuperável executando `apply` novamente: o armazenamento de credenciais e o estado.
 
-The Natural FUSER is mounted from `/mnt/sifap-data/natural-fuser`, owned by uid/gid `1724` for the Software AG containers. Docker is started only after `/mnt/sifap-data` is mounted; if the disk is missing, bootstrap fails rather than creating an empty FUSER on the OS disk.
+O FUSER do Natural é montado de `/mnt/sifap-data/natural-fuser`, com uid/gid `1724` para os contêineres da Software AG. O Docker só inicia depois da montagem de `/mnt/sifap-data`; se o disco estiver ausente, o bootstrap falha em vez de criar um FUSER vazio no disco do sistema.
 
-To snapshot the data disk before something risky — a CATALL across the whole corpus, an image upgrade — set a label and apply:
+Para criar snapshot do disco de dados antes de algo arriscado, como um CATALL em todo o corpus ou upgrade de imagem, defina um rótulo e aplique:
 
 ```hcl
 data_disk_snapshot_label = "before-catall-2026-08-17"
@@ -881,33 +881,33 @@ SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh apply
 terraform output -raw data_disk_snapshot_name
 ```
 
-Snapshots are incremental, so a second snapshot of a mostly unchanged disk costs a fraction of the first. Clear the variable and apply again to remove it.
+Os snapshots são incrementais; um segundo snapshot de um disco quase inalterado custa uma fração do primeiro. Limpe a variável e aplique novamente para removê-lo.
 
 ---
 
-## Reproducible builds
+## Builds reproduzíveis
 
-Two versions of "the same" lab should not differ because a tag moved underneath you.
+Duas versões do "mesmo" lab não devem divergir porque uma tag mudou.
 
-**Container images are pinned by digest.** `adabas_image`, `natural_image`, `caddy_image`, `ttyd_image`, and `docker_cli_image` all carry `@sha256:...`, and a variable validation rejects any value without one. A digest names exactly one image; a tag names whatever was pushed last.
+**As imagens de contêiner são fixadas por digest.** `adabas_image`, `natural_image`, `caddy_image`, `ttyd_image` e `docker_cli_image` contêm `@sha256:...`, e uma validação rejeita valores sem digest. Um digest identifica exatamente uma imagem; uma tag identifica o último conteúdo enviado.
 
-To move to a new version, resolve the digest first — never guess it:
+Para atualizar a versão, resolva primeiro o digest; nunca o presuma:
 
 ```bash
 docker buildx imagetools inspect softwareag/adabas-ce:7.4.0
 ```
 
-Copy the `Digest:` line into the variable, keeping the tag for readability:
+Copie a linha `Digest:` para a variável e mantenha a tag para facilitar a leitura:
 
 ```hcl
 adabas_image = "softwareag/adabas-ce:7.4.0@sha256:<digest-from-the-command-above>"
 ```
 
-### The `cloud-init` size budget
+### O limite de tamanho do `cloud-init`
 
-Azure rejects `custom_data` larger than **65535 bytes decoded**, and `cloud-init.yaml` currently renders to about **57 KB — roughly 88% of the limit**. That is a real constraint, not a footnote: a few hundred added lines will fail the apply.
+O Azure rejeita `custom_data` maior que **65535 bytes decodificados**, e `cloud-init.yaml` atualmente renderiza cerca de **57 KB, aproximadamente 88% do limite**. Essa é uma restrição real: algumas centenas de linhas adicionais farão o apply falhar.
 
-`terraform validate` cannot catch it, because the template is only rendered during plan. Check it directly before committing a large edit:
+`terraform validate` não detecta isso porque o template só é renderizado durante o plano. Verifique diretamente antes de enviar uma alteração grande:
 
 ```bash
 terraform console <<'EOF'
@@ -925,9 +925,9 @@ length(templatefile("cloud-init.yaml", {
 EOF
 ```
 
-Anything large — sources, seed data, binaries — belongs in the checksummed SSH payload instead. That is exactly why the legacy corpus is uploaded after apply rather than embedded: it is 77 KB base64-encoded on its own, and the provisioning seed data is another 3.5 MB.
+Conteúdo grande, como fontes, dados de seed e binários, pertence ao payload SSH com checksum. Por isso, o corpus legado é enviado depois do apply, não incorporado: sozinho, ocupa 77 KB em base64, e os dados de seed do provisionamento adicionam 3,5 MB.
 
-**The VM image version is pinned.** `source_image_version` defaults to `22.04.202608060` for the Canonical Ubuntu 22.04 LTS Gen2 image in East US 2. To bump it, list the available versions and then verify the exact URN before editing the default:
+**A versão da imagem da VM é fixada.** `source_image_version` usa por padrão `22.04.202608060` para a imagem Canonical Ubuntu 22.04 LTS Gen2 em East US 2. Para atualizá-la, liste as versões disponíveis e verifique o URN exato antes de editar o padrão:
 
 ```bash
 az vm image list \
@@ -943,13 +943,13 @@ az vm image show --location eastus2 --urn \
 
 ---
 
-## GitHub Actions validation
+## Validação no GitHub Actions
 
-[`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml) is intentionally **not** continuous deployment. It is `workflow_dispatch`-only and runs static checks, Azure preflight, and an optional ephemeral plan preview. Apply, finalize, and destroy are facilitator-local commands because GitHub-hosted runners cannot persist local Terraform state between runs.
+[`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml) intencionalmente **não** faz implantação contínua. Ele usa somente `workflow_dispatch` e executa verificações estáticas, preflight do Azure e uma prévia opcional de plano efêmero. Apply, finalize e destroy são comandos locais do facilitador porque runners hospedados pelo GitHub não persistem o estado local do Terraform entre execuções.
 
-### Required repository variables
+### Variáveis obrigatórias do repositório
 
-All are non-secret and set as **variables**, not secrets:
+Todos os valores não são secretos e são definidos como **variables**, não secrets:
 
 ```bash
 gh variable set AZURE_CLIENT_ID          --body "<app-registration-client-id>"
@@ -960,15 +960,15 @@ gh variable set LAB_ALLOWED_SOURCE_CIDRS --body '["203.0.113.10/32"]'
 gh variable set LAB_SSH_PUBLIC_KEY       --body "$(cat ~/.ssh/id_rsa.pub)"
 ```
 
-`LAB_SSH_PUBLIC_KEY` is a *public* key. It is not a secret, and storing it as one would only make it harder to read in logs when something breaks.
+`LAB_SSH_PUBLIC_KEY` é uma chave *pública*. Não é segredo; armazená-la como um apenas dificultaria a leitura dos logs em caso de falha.
 
-### Federated credentials
+### Credenciais federadas
 
-The workflow will fail at login with `AADSTS70021` unless this subject exists on the app registration:
+O login do workflow falhará com `AADSTS70021` se este subject não existir no registro do aplicativo:
 
-| Subject | Used by |
+| Subject | Usado por |
 |---|---|
-| `repo:paulasilvatech/datacorp-mm-team-kit:ref:refs/heads/english-version` | manual preflight and ephemeral plan runs from this branch |
+| `repo:paulasilvatech/datacorp-mm-team-kit:ref:refs/heads/english-version` | preflight manual e execuções de plano efêmero a partir desta branch |
 
 ```bash
 az ad app federated-credential create --id "<APP-OBJECT-ID>" --parameters '{
@@ -979,122 +979,122 @@ az ad app federated-credential create --id "<APP-OBJECT-ID>" --parameters '{
 }'
 ```
 
-The service principal used for validation needs enough Azure rights to check providers, quota, and RBAC. The facilitator identity that runs `deploy-local.sh` needs Owner or Contributor on the subscription or lab resource group. The lab creates no role assignments.
+O service principal usado na validação precisa de direitos suficientes no Azure para verificar providers, cota e RBAC. A identidade do facilitador que executa `deploy-local.sh` precisa ser Owner ou Contributor na assinatura ou no grupo de recursos do lab. O lab não cria atribuições de função.
 
-### Security gates
+### Gates de segurança
 
-| Gate | Blocking | Notes |
+| Gate | Bloqueante | Observações |
 |---|---|---|
-| `terraform fmt -check` | Yes | Formatting |
-| `terraform validate` | Yes | Every module under `infra/` |
-| `tflint` | Yes | Dead locals, missing types, deprecated syntax |
-| Trivy config scan | Yes, on HIGH/CRITICAL | tfsec's supported successor, same AVD rule IDs |
-| Checkov | No, advisory | SARIF uploaded as an artifact |
+| `terraform fmt -check` | Sim | Formatação |
+| `terraform validate` | Sim | Todos os módulos em `infra/` |
+| `tflint` | Sim | Locals sem uso, tipos ausentes e sintaxe obsoleta |
+| Varredura de configuração do Trivy | Sim, em HIGH/CRITICAL | Sucessor suportado do tfsec, com os mesmos IDs de regras AVD |
+| Checkov | Não, consultivo | SARIF enviado como artefato |
 
-Accepted Trivy findings are suppressed **inline, next to the resource, with the reasoning written down**. Audit them at any time:
+Os achados aceitos do Trivy são suprimidos **inline, ao lado do recurso, com a justificativa registrada**. Audite-os a qualquer momento:
 
 ```bash
 grep -rn '#trivy:ignore' infra/
 ```
 
-Checkov is advisory on purpose. Its Azure pack assumes a production estate — private endpoints, customer-managed keys, no public IP anywhere — and this lab is a deliberately internet-reachable demo box, so most of its findings describe the design rather than a defect. Open-source Checkov also cannot filter by severity without a Prisma API key, and adding a credential to the repository for a non-blocking report is a bad trade.
+O Checkov é consultivo de propósito. Seu pacote Azure pressupõe um ambiente de produção, com endpoints privados, chaves gerenciadas pelo cliente e nenhum IP público. Este lab é uma máquina de demonstração deliberadamente acessível pela internet; a maioria dos achados descreve o design, não um defeito. O Checkov open source também não filtra por severidade sem uma chave de API do Prisma, e adicionar uma credencial ao repositório para um relatório não bloqueante não compensa.
 
-### Terraform version alignment
+### Alinhamento da versão do Terraform
 
-This module requires `~> 1.14.0`. Every workflow that runs Terraform pins `1.14.6` to match: [`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml) through `env.TERRAFORM_VERSION`, plus the `infra` job in [`ci.yml`](../../.github/workflows/ci.yml) and [`copilot-setup-steps.yml`](../../.github/workflows/copilot-setup-steps.yml).
+Este módulo exige `~> 1.14.0`. Todos os workflows que executam Terraform fixam `1.14.6`: [`deploy-lab.yml`](../../.github/workflows/deploy-lab.yml) por `env.TERRAFORM_VERSION`, além do job `infra` em [`ci.yml`](../../.github/workflows/ci.yml) e [`copilot-setup-steps.yml`](../../.github/workflows/copilot-setup-steps.yml).
 
 > [!IMPORTANT]
-> Bump all four together. Terraform state is forward-only, so a CLI older than the version that last wrote the state cannot read it, and the failure lands mid-command against the lab.
+> Atualize os quatro juntos. O estado do Terraform avança somente para versões mais novas; uma CLI anterior à versão que gravou o estado por último não consegue lê-lo, e a falha ocorre no meio de um comando contra o lab.
 
 ---
 
-## Troubleshooting
+## Solução de problemas
 
-| Symptom | Likely cause | Resolution |
+| Sintoma | Causa provável | Resolução |
 |---|---|---|
-| Demo URL does not resolve | DNS label not yet propagated, or apply did not finish | Wait a minute, then `dig +short "$(terraform output -raw demo_fqdn)"` |
-| Browser warns about the certificate | Internal-CA mode, which is the default | Expected. Trust the CA with `terraform output -raw trust_demo_ca_command`, or set `enable_public_acme = true` |
-| Demo URL times out | Your IP is not in `allowed_source_cidrs` | Same fix as SSH below — the 443 rule uses the same allow-list |
-| Browser asks for a password | Working as designed — everything except `/healthz` is authenticated | `terraform output -raw demo_basic_auth_username` and `-raw demo_basic_auth_password_command` |
-| Password from Key Vault rejected at the demo URL | The VM could not read the secret and fell back to a random hash nobody holds | Search `/var/log/sifap-bootstrap.log` for `could not build the basic-auth hash`, fix the vault access, then re-run `sudo /opt/sifap/bootstrap.sh` |
-| `/terminal/` returns 502 | `ttyd` did not start | `sudo docker compose logs ttyd`; a common cause is a missing `/opt/sifap/bin/docker`, fixed by re-running `sudo /opt/sifap/bootstrap.sh` |
-| Terminal connects, then drops immediately | `--check-origin` rejecting the WebSocket upgrade | Remove `--check-origin` from the `ttyd` command in `/opt/sifap/docker-compose.yml` and `sudo docker compose up -d ttyd` |
-| Terminal opens a shell instead of Natural | The Natural start-up path was not found | Follow the instructions it prints, then set `terminal_natural_command` |
-| `/app/` returns 502 | Nothing is answering on `modern_app_upstream` | Expected until Stage 3. Attach the app container to the `sifap-lab` network |
-| `/admin/` renders half-broken | The console's assets assume a root path | Use `terraform output -raw admin_console_tunnel_command` |
-| `/corpus` is empty in `natural-ce` | The SSH payload upload or verification failed | Run `infra/adabas-natural-lab/deploy-local.sh upload` from the repository |
-| `sifap-provisioning` is `failed` with exit 3 | `provisioning/run-all.sh` was not delivered | Run `infra/adabas-natural-lab/deploy-local.sh upload` from the repository |
-| `https://` refused, bootstrap finished | Caddy container did not start | `sudo docker compose logs caddy` on the VM |
-| Let's Encrypt certificate never issues | ACME challenge cannot reach port 80 | Confirm `enable_public_acme = true` and that the DNS label resolves publicly |
-| `terraform plan` fails while reading the SSH key | The file at `ssh_public_key_path` does not exist | Generate the key pair or set the variable to the correct path |
-| SSH times out | Your public IP changed and is no longer in `allowed_source_cidrs` | Update `terraform.tfvars` and apply again |
-| `Permission denied (publickey)` | The private key does not match the submitted public key | Connect with `ssh -i ~/.ssh/id_rsa sifapadmin@<FQDN>` |
-| Ports 2700 or 60001 do not respond | Bootstrap still running, or a container stopped | Follow the bootstrap log and check the containers |
-| Key Vault password rejected by Adabas | The private seed extension or bootstrap read failed | Check `azurerm_virtual_machine_extension.seed_key_vault` and `/var/log/sifap-bootstrap.log`; then run `SIFAP_TERRAFORM_EXTRA_ARGS='-replace=azurerm_virtual_machine_extension.seed_key_vault' ./deploy-local.sh apply` |
-| `docker` returns `permission denied` | Docker group membership applies only in a new session | Reconnect through SSH, or use `sudo docker ...` |
-| `apply` fails with an SKU or quota error | The region lacks `Standard_D2s_v7`, the SKU is restricted for the subscription, or quota is insufficient | Run the [quota preflight](#quota-preflight), then request capacity or change size |
-| Key Vault name already exists | A soft-deleted vault still holds the name | `az keyvault purge --name <NAME> --location eastus2` |
-| `terraform init` tries to reach an Azure Blob backend | A previous `.terraform/` directory still remembers the old backend | Run `terraform init -reconfigure` after the backend block has been commented out; do not pass `-backend-config` in this tenant |
-| `destroy` stops on the Key Vault | `prevent_destroy` is doing its job | See [Destroy the environment](#destroy-the-environment) |
+| A URL de demonstração não resolve | O rótulo DNS ainda não foi propagado ou o apply não terminou | Aguarde um minuto e execute `dig +short "$(terraform output -raw demo_fqdn)"` |
+| O navegador avisa sobre o certificado | Modo de CA interna, que é o padrão | Esperado. Confie na CA com `terraform output -raw trust_demo_ca_command` ou defina `enable_public_acme = true` |
+| A URL de demonstração atinge timeout | Seu IP não está em `allowed_source_cidrs` | Use a mesma correção do SSH abaixo; a regra 443 usa a mesma lista de permissões |
+| O navegador solicita senha | Comportamento esperado: tudo, exceto `/healthz`, exige autenticação | `terraform output -raw demo_basic_auth_username` e `-raw demo_basic_auth_password_command` |
+| A senha do Key Vault é rejeitada na URL | A VM não leu o segredo e usou um hash aleatório que ninguém possui | Procure `could not build the basic-auth hash` em `/var/log/sifap-bootstrap.log`, corrija o acesso ao vault e execute `sudo /opt/sifap/bootstrap.sh` novamente |
+| `/terminal/` retorna 502 | `ttyd` não iniciou | `sudo docker compose logs ttyd`; uma causa comum é a ausência de `/opt/sifap/bin/docker`, corrigida executando `sudo /opt/sifap/bootstrap.sh` novamente |
+| O terminal conecta e cai imediatamente | `--check-origin` rejeita o upgrade de WebSocket | Remova `--check-origin` do comando `ttyd` em `/opt/sifap/docker-compose.yml` e execute `sudo docker compose up -d ttyd` |
+| O terminal abre um shell em vez do Natural | O caminho de inicialização do Natural não foi encontrado | Siga as instruções exibidas e defina `terminal_natural_command` |
+| `/app/` retorna 502 | Nada responde em `modern_app_upstream` | Esperado até o Estágio 3. Conecte o contêiner da aplicação à rede `sifap-lab` |
+| `/admin/` renderiza parcialmente | Os assets do console pressupõem um caminho raiz | Use `terraform output -raw admin_console_tunnel_command` |
+| `/corpus` está vazio em `natural-ce` | O upload ou a verificação do payload SSH falhou | Execute `infra/adabas-natural-lab/deploy-local.sh upload` a partir do repositório |
+| `sifap-provisioning` está `failed` com saída 3 | `provisioning/run-all.sh` não foi entregue | Execute `infra/adabas-natural-lab/deploy-local.sh upload` a partir do repositório |
+| `https://` recusado depois do bootstrap | O contêiner Caddy não iniciou | Execute `sudo docker compose logs caddy` na VM |
+| O certificado Let's Encrypt não é emitido | O desafio ACME não alcança a porta 80 | Confirme `enable_public_acme = true` e que o rótulo DNS resolve publicamente |
+| `terraform plan` falha ao ler a chave SSH | O arquivo em `ssh_public_key_path` não existe | Gere o par de chaves ou defina a variável com o caminho correto |
+| SSH atinge timeout | Seu IP público mudou e não está mais em `allowed_source_cidrs` | Atualize `terraform.tfvars` e aplique novamente |
+| `Permission denied (publickey)` | A chave privada não corresponde à chave pública enviada | Conecte com `ssh -i ~/.ssh/id_rsa sifapadmin@<FQDN>` |
+| As portas 2700 ou 60001 não respondem | O bootstrap ainda executa ou um contêiner parou | Acompanhe o log de bootstrap e verifique os contêineres |
+| O Adabas rejeita a senha do Key Vault | A extensão privada de seed ou a leitura do bootstrap falhou | Verifique `azurerm_virtual_machine_extension.seed_key_vault` e `/var/log/sifap-bootstrap.log`; execute `SIFAP_TERRAFORM_EXTRA_ARGS='-replace=azurerm_virtual_machine_extension.seed_key_vault' ./deploy-local.sh apply` |
+| `docker` retorna `permission denied` | A associação ao grupo Docker só vale em uma nova sessão | Reconecte por SSH ou use `sudo docker ...` |
+| `apply` falha com erro de SKU ou cota | A região não tem `Standard_D2s_v7`, o SKU é restrito ou a cota é insuficiente | Execute o [preflight de cota](#preflight-de-cota) e solicite capacidade ou altere o tamanho |
+| O nome do Key Vault já existe | Um vault com exclusão reversível ainda reserva o nome | `az keyvault purge --name <NAME> --location eastus2` |
+| `terraform init` tenta acessar um backend Azure Blob | Um diretório `.terraform/` anterior ainda lembra o backend antigo | Execute `terraform init -reconfigure` depois de comentar o bloco de backend; não forneça `-backend-config` neste tenant |
+| `destroy` para no Key Vault | `prevent_destroy` está funcionando | Consulte [Destruição do ambiente](#destruição-do-ambiente) |
 
-### Bootstrap still running
+### Bootstrap ainda em execução
 
-The first boot installs Docker and downloads several GB of images. That download is the slow step, and its duration depends on regional bandwidth. Follow the progress instead of estimating:
+A primeira inicialização instala o Docker e baixa vários GB de imagens. O download é a etapa lenta, e sua duração depende da largura de banda regional. Acompanhe o progresso:
 
 ```bash
 terraform output -raw bootstrap_log_command
 ```
 
-The printed command has this form:
+O comando impresso tem este formato:
 
 ```bash
 ssh sifapadmin@<FQDN> 'sudo tail -f /var/log/sifap-bootstrap.log'
 ```
 
-The log begins with `=== SIFAP lab bootstrap started` and ends with `=== SIFAP lab bootstrap finished`. At the end, bootstrap creates the `/opt/sifap/READY` marker file and logs a verdict to syslog. For a quick check:
+O log começa com `=== SIFAP lab bootstrap started` e termina com `=== SIFAP lab bootstrap finished`. Ao final, o bootstrap cria o marcador `/opt/sifap/READY` e registra um resultado no syslog. Para uma verificação rápida:
 
 ```bash
 ssh sifapadmin@<FQDN> 'ls -l /opt/sifap/READY'
 ```
 
-### Provisioning still running
+### Provisionamento ainda em execução
 
-Bootstrap finishing does **not** mean the legacy has loaded. `bootstrap.sh` hands off to the `sifap-provisioning` unit and returns; the Adabas load and the Natural compile continue in the background for several more minutes.
+O fim do bootstrap **não** significa que o legado foi carregado. `bootstrap.sh` transfere o controle para a unidade `sifap-provisioning` e retorna; a carga do Adabas e a compilação do Natural continuam em segundo plano por vários minutos.
 
 ```bash
 terraform output -raw provisioning_status_command   # active (exited) | activating | failed
-terraform output -raw provisioning_log_command      # follow it
+terraform output -raw provisioning_log_command      # acompanhe
 ```
 
-Marker files answer the same question without parsing anything:
+Os arquivos marcadores respondem à mesma pergunta sem parsing:
 
-| File | Meaning |
+| Arquivo | Significado |
 |---|---|
-| `/opt/sifap/PAYLOAD-OK` | The corpus and scripts were uploaded and checksummed cleanly |
-| `/opt/sifap/PAYLOAD-FAILED` | They did not — the VM has no legacy sources |
-| `/opt/sifap/PROVISIONED` | `run-all.sh` finished successfully |
-| `/opt/sifap/PROVISIONING-FAILED` | It ran and failed; the file records when and where |
+| `/opt/sifap/PAYLOAD-OK` | O corpus e os scripts foram enviados e tiveram checksum validado |
+| `/opt/sifap/PAYLOAD-FAILED` | O envio falhou; a VM não tem fontes legadas |
+| `/opt/sifap/PROVISIONED` | `run-all.sh` terminou com sucesso |
+| `/opt/sifap/PROVISIONING-FAILED` | A execução falhou; o arquivo registra quando e onde |
 
-### SSH refused or unresponsive
+### SSH recusado ou sem resposta
 
-This is the lab's most common failure, and it almost always has the same cause: **your public IP changed**. Home networks, corporate VPNs, and mobile connections change addresses frequently. The NSG still allows the old IP, while `DenyAllOtherInbound` blocks the new one.
+Esta é a falha mais comum do lab e quase sempre tem a mesma causa: **seu IP público mudou**. Redes domésticas, VPNs corporativas e conexões móveis mudam de endereço com frequência. O NSG ainda permite o IP antigo, enquanto `DenyAllOtherInbound` bloqueia o novo.
 
 ```bash
-# 1. Check your current IP
+# 1. Verifique seu IP atual
 curl -s https://api.ipify.org
 
-# 2. Compare it with the declared value
+# 2. Compare com o valor declarado
 grep -A3 allowed_source_cidrs terraform.tfvars
 
-# 3. If they differ, update the file and apply again
+# 3. Se forem diferentes, atualize o arquivo e aplique novamente
 SIFAP_ENABLE_DDM_WORKSTATION=true ./deploy-local.sh apply
 ```
 
-The `apply` changes only the NSG rules. The VM and containers keep running.
+O `apply` altera somente as regras do NSG. A VM e os contêineres continuam em execução.
 
-### Containers do not start
+### Os contêineres não iniciam
 
-Connect to the VM and inspect the Compose file generated by bootstrap at `/opt/sifap/docker-compose.yml`:
+Conecte-se à VM e inspecione o arquivo Compose gerado pelo bootstrap em `/opt/sifap/docker-compose.yml`:
 
 ```bash
 cd /opt/sifap
@@ -1106,23 +1106,23 @@ sudo docker compose logs caddy
 sudo docker compose up -d
 ```
 
-All three containers share the `sifap-lab` bridge network. `natural-ce` reaches the database by the `adabas-db` name, and `caddy` proxies to the same name. If `adabas-db` does not start, neither `natural-ce` nor the demo URL is usable.
+Todos os três contêineres compartilham a rede bridge `sifap-lab`. `natural-ce` acessa o banco pelo nome `adabas-db`, e `caddy` usa o mesmo nome no proxy. Se `adabas-db` não iniciar, nem `natural-ce` nem a URL poderão ser usados.
 
-### Region without quota or VM size
+### Região sem cota ou tamanho de VM
 
-Not every region or subscription offers `Standard_D2s_v7`, and new subscriptions often have a low quota. Confirm both restrictions and quota with the [quota preflight](#quota-preflight). To change regions, set `location` alone — the name suffix follows automatically:
+Nem toda região ou assinatura oferece `Standard_D2s_v7`, e assinaturas novas costumam ter cota baixa. Confirme as restrições e a cota com o [preflight de cota](#preflight-de-cota). Para mudar de região, defina somente `location`; o sufixo acompanha automaticamente:
 
 ```hcl
 location = "westeurope"
 ```
 
-If your region is not in the suffix map in `main.tf`, set `location_short` as well. If you prefer to keep the region and change the size, remember the minimum documented in `variables.tf`: together, Adabas CE and Natural CE consume roughly 4 GB to 6 GB of RAM.
+Se sua região não estiver no mapa de sufixos em `main.tf`, defina também `location_short`. Para manter a região e alterar o tamanho, considere o mínimo documentado em `variables.tf`: juntos, Adabas CE e Natural CE consomem aproximadamente 4 GB a 6 GB de RAM.
 
 ---
 
-## Destroy the environment
+## Destruição do ambiente
 
-- [ ] **Step 1 — Destroy through the state-owning orchestrator.** It backs up state, temporarily lifts only the Key Vault guard, destroys with the same workstation flag used by apply, removes the override and purges any soft-deleted SIFAP vault.
+- [ ] **Passo 1 — Destrua pelo orquestrador que mantém o estado.** Ele faz backup do estado, remove temporariamente somente a proteção do Key Vault, destrói com a mesma flag de estação usada no apply, remove o override e elimina permanentemente qualquer vault SIFAP com exclusão reversível.
 
 ```bash
 cd infra/adabas-natural-lab
@@ -1131,76 +1131,76 @@ SIFAP_ENABLE_DDM_WORKSTATION=true \
   ./deploy-local.sh destroy
 ```
 
-- [ ] **Step 2 — Confirm that nothing remains.** The command should fail and report that the group does not exist.
+- [ ] **Passo 2 — Confirme que nada restou.** O comando deve falhar e informar que o grupo não existe.
 
 ```bash
 az group show --name "<RESOURCE-GROUP-NAME>"
 ```
 
-Run destroy locally from the workstation that holds `terraform.tfstate`. The GitHub workflow intentionally has no destroy job because a hosted runner does not have the persistent local state needed to know what to destroy.
+Execute destroy localmente na estação que mantém `terraform.tfstate`. O workflow do GitHub não tem job de destroy porque um runner hospedado não possui o estado local persistente necessário para saber o que destruir.
 
 > [!CAUTION]
-> `deploy-local.sh destroy` removes the VM, disks, and all data loaded into Adabas. If the lab contains work you want to keep, copy it out first, or take a snapshot with `data_disk_snapshot_label`. Never use `terraform state rm` to get past the guard — that leaves real Azure resources running with nothing tracking them, and nothing to bill against.
+> `deploy-local.sh destroy` remove a VM, os discos e todos os dados carregados no Adabas. Se quiser manter algo, copie antes ou crie um snapshot com `data_disk_snapshot_label`. Nunca use `terraform state rm` para contornar a proteção: isso deixa recursos Azure reais em execução sem rastreamento.
 
-### Key Vault and the soft-delete window
+### Key Vault e a janela de exclusão reversível
 
-The lab Key Vault uses `soft_delete_retention_days = 7` and `purge_protection_enabled = false`. The provider is configured in `versions.tf` with `purge_soft_delete_on_destroy = true` and `recover_soft_deleted_key_vaults = true`, so `destroy` normally purges the vault and a later `apply` recovers one with the same name.
+O Key Vault do lab usa `soft_delete_retention_days = 7` e `purge_protection_enabled = false`. O provider está configurado em `versions.tf` com `purge_soft_delete_on_destroy = true` e `recover_soft_deleted_key_vaults = true`; normalmente, `destroy` elimina o vault, e um `apply` posterior recupera um com o mesmo nome.
 
-The problem shows up when `destroy` is interrupted or the account lacks purge permission. The name then stays reserved for up to seven days, and a new `apply` with the same name fails.
+O problema ocorre quando `destroy` é interrompido ou a conta não tem permissão de purge. O nome fica reservado por até sete dias, e um novo `apply` com o mesmo nome falha.
 
 ```bash
-# List soft-deleted vaults
+# Liste vaults com exclusão reversível
 az keyvault list-deleted --output table
 
-# Permanently remove the lab vault
+# Remova permanentemente o vault do lab
 az keyvault purge --name "<KEY-VAULT-NAME>" --location eastus2
 ```
 
-Note the `--location` argument: it is the region the vault was deleted *from*. When cleaning up after the region move, that is `brazilsouth`, not `eastus2`. See [Migrating off `brazilsouth`](#migrating-off-brazilsouth).
+Observe o argumento `--location`: ele indica a região *da qual* o vault foi excluído. Na limpeza após a mudança de região, use `brazilsouth`, não `eastus2`. Consulte [Migração de `brazilsouth`](#migração-de-brazilsouth).
 
 ---
 
-## Completion criteria
+## Critérios de conclusão
 
-- [ ] `terraform output -raw demo_url` returns an `https://` FQDN, and it answers.
-- [ ] `curl -sSfk "$(terraform output -raw healthz_url)"` returns `ok` **without** a credential.
-- [ ] The demo URL prompts for a password, and the one from `demo_basic_auth_password_command` works.
-- [ ] The bootstrap log finished and `/opt/sifap/READY` exists.
-- [ ] `sudo docker compose ps` shows `adabas-db`, `natural-ce`, `ttyd`, and `caddy` running.
-- [ ] `/opt/sifap/corpus/natural-programs` and `/opt/sifap/corpus/adabas-ddms` are populated, and `/opt/sifap/PAYLOAD-OK` exists.
-- [ ] The four DDMs exist as `BENEFIC.NGD`, `SOCPROG.NGD`, `PAYMENT.NGD`, and `AUDIT.NGD` in `SIFAPPRD/GP`, and `/opt/sifap/state/DDMS-READY` exists.
-- [ ] Adabas files 150-153 hold 500, 6, 2000, and 200 records with zero incorrect records.
-- [ ] `systemctl status sifap-provisioning` reports `active (exited)`, and `/opt/sifap/PROVISIONED` exists.
-- [ ] `terminal_url` opens a Natural session in the browser, not a bare shell.
-- [ ] Adabas REST administration opens at `/admin/` with the `admin` user and the password read from Key Vault.
-- [ ] `terraform state list` reads from `infra/adabas-natural-lab/terraform.tfstate`, and that file has been backed up outside git.
-- [ ] `terraform.tfvars` remains outside version control.
-- [ ] The budget exists and `auto_shutdown_notification_email` is set.
-- [ ] When finished, you ran `az vm deallocate` (pause) or `SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy` (removal).
+- [ ] `terraform output -raw demo_url` retorna um FQDN `https://` que responde.
+- [ ] `curl -sSfk "$(terraform output -raw healthz_url)"` retorna `ok` **sem** credencial.
+- [ ] A URL solicita senha, e a senha de `demo_basic_auth_password_command` funciona.
+- [ ] O log de bootstrap terminou e `/opt/sifap/READY` existe.
+- [ ] `sudo docker compose ps` mostra `adabas-db`, `natural-ce`, `ttyd` e `caddy` em execução.
+- [ ] `/opt/sifap/corpus/natural-programs` e `/opt/sifap/corpus/adabas-ddms` estão preenchidos, e `/opt/sifap/PAYLOAD-OK` existe.
+- [ ] Os quatro DDMs existem como `BENEFIC.NGD`, `SOCPROG.NGD`, `PAYMENT.NGD` e `AUDIT.NGD` em `SIFAPPRD/GP`, e `/opt/sifap/state/DDMS-READY` existe.
+- [ ] Os arquivos Adabas 150-153 contêm 500, 6, 2000 e 200 registros, sem registros incorretos.
+- [ ] `systemctl status sifap-provisioning` informa `active (exited)`, e `/opt/sifap/PROVISIONED` existe.
+- [ ] `terminal_url` abre uma sessão Natural no navegador, não um shell simples.
+- [ ] A administração REST do Adabas abre em `/admin/` com o usuário `admin` e a senha lida do Key Vault.
+- [ ] `terraform state list` lê de `infra/adabas-natural-lab/terraform.tfstate`, e esse arquivo tem backup fora do Git.
+- [ ] `terraform.tfvars` permanece fora do controle de versão.
+- [ ] O orçamento existe e `auto_shutdown_notification_email` está definido.
+- [ ] Ao terminar, você executou `az vm deallocate` (pausa) ou `SIFAP_CONFIRM_DESTROY=DESTROY ./deploy-local.sh destroy` (remoção).
 
 ---
 
-## References
+## Referências
 
-| Resource | Location |
+| Recurso | Localização |
 |---|---|
-| Optional remote state backend module | [`infra/bootstrap/README.md`](../bootstrap/README.md) |
-| Deployment workflow | [`.github/workflows/deploy-lab.yml`](../../.github/workflows/deploy-lab.yml) |
-| Kit infrastructure conventions | [`.github/instructions/infrastructure.instructions.md`](../../.github/instructions/infrastructure.instructions.md) |
-| Kit CI/CD conventions | [`.github/instructions/cicd.instructions.md`](../../.github/instructions/cicd.instructions.md) |
-| SIFAP Natural programs and DDMs | [`01-archaeology/legacy-sifap/`](../../01-archaeology/legacy-sifap/) |
-| How to read Natural code | [`01-archaeology/legacy-sifap/HOW-TO-READ-NATURAL.md`](../../01-archaeology/legacy-sifap/HOW-TO-READ-NATURAL.md) |
+| Módulo opcional de backend de estado remoto | [`infra/bootstrap/README.md`](../bootstrap/README.md) |
+| Workflow de implantação | [`.github/workflows/deploy-lab.yml`](../../.github/workflows/deploy-lab.yml) |
+| Convenções de infraestrutura do kit | [`.github/instructions/infrastructure.instructions.md`](../../.github/instructions/infrastructure.instructions.md) |
+| Convenções de CI/CD do kit | [`.github/instructions/cicd.instructions.md`](../../.github/instructions/cicd.instructions.md) |
+| Programas Natural e DDMs do SIFAP | [`01-archaeology/legacy-sifap/`](../../01-archaeology/legacy-sifap/) |
+| Como ler código Natural | [`01-archaeology/legacy-sifap/HOW-TO-READ-NATURAL.md`](../../01-archaeology/legacy-sifap/HOW-TO-READ-NATURAL.md) |
 | Caddy `basic_auth` directive | <https://caddyserver.com/docs/caddyfile/directives/basic_auth> |
 | `ttyd` web terminal | <https://github.com/tsl0922/ttyd> |
-| Immersion operations runbook | [`docs/runbook.md`](../../docs/runbook.md) |
-| Immersion troubleshooting | [`docs/troubleshooting.md`](../../docs/troubleshooting.md) |
+| Runbook de operações da imersão | [`docs/runbook.md`](../../docs/runbook.md) |
+| Solução de problemas da imersão | [`docs/troubleshooting.md`](../../docs/troubleshooting.md) |
 
 ---
 
-### Continue reading
+### Continue lendo
 
-| Previous | Next |
+| Anterior | Próximo |
 |---|---|
-| [Stage 1 — Archaeology](../../01-archaeology/README.md)<br/><sub>Overview of the stage supported by this lab.</sub> | [SIFAP Legacy System](../../01-archaeology/legacy-sifap/README.md)<br/><sub>Legacy system documentation and program inventory.</sub> |
+| [Estágio 1 — Arqueologia](../../01-archaeology/README.md)<br/><sub>Visão geral do estágio apoiado por este lab.</sub> | [Sistema legado SIFAP](../../01-archaeology/legacy-sifap/README.md)<br/><sub>Documentação do sistema legado e inventário de programas.</sub> |
 
-<sub>[Back to the kit index](../../README.md)</sub>
+<sub>[Voltar ao índice do kit](../../README.md)</sub>

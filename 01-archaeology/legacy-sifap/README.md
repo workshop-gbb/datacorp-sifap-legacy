@@ -1,96 +1,97 @@
-# SIFAP — Payment Inspection and Administration System
+# SIFAP — Sistema de Fiscalização e Administração de Pagamentos
 
-> **Path:** [Team Kit](../../README.md) › [Stage 1](../README.md) › **SIFAP Legacy**
+> **Trilha:** [Kit do Time](../../README.md) › [Estágio 1](../README.md) › **Legado SIFAP**
 
-**Technical documentation for the legacy SIFAP system.** It contains the history, architecture, program inventory, and reading guidance for Stage 1 Archaeology.
+**Documentação técnica do sistema SIFAP legado.** Contém a história, a arquitetura, o inventário de programas e as orientações de leitura para a Arqueologia do Estágio 1.
 
-| Field | Value |
+| Campo | Valor |
 |---|---|
-| **Audience** | All pairs during Stage 1 |
-| **Prerequisites** | None—the entry point to the legacy system |
-| **Stage** | Stage 1—Archaeology |
-| **Expected outcome** | Understand the system context before opening the `.NSN` files |
+| **Público-alvo** | Todas as duplas durante o Estágio 1 |
+| **Pré-requisitos** | Nenhum, este é o ponto de entrada para o sistema legado |
+| **Estágio** | Estágio 1 — Arqueologia |
+| **Resultado esperado** | Compreender o contexto do sistema antes de abrir os arquivos `.NSN` |
 
-![Legacy](https://img.shields.io/badge/Legacy-SIFAP%201.0-171717?style=flat-square) ![Years in operation](https://img.shields.io/badge/Operation-29%20years-404040?style=flat-square) ![Language](https://img.shields.io/badge/Language-Natural%2BAdabas-737373?style=flat-square)
+![Legado SIFAP 1.0](https://img.shields.io/badge/Legado-SIFAP%201.0-171717?style=flat-square) ![29 anos em operação](https://img.shields.io/badge/Opera%C3%A7%C3%A3o-29%20anos-404040?style=flat-square) ![Linguagem Natural e Adabas](https://img.shields.io/badge/Linguagem-Natural%2BAdabas-737373?style=flat-square)
 
-> **Classification:** Internal Document—the organization / SUPDE / DESIF
-> **System version:** 4.1.2
-> **Environment:** Production—the organization Mainframe / Brasília Regional Office
-> **Language:** Natural 6.3.12 | Database: Adabas 7.4.3
+> **Classificação:** Documento interno, the organization / SUPDE / DESIF
+> **Versão do sistema:** 4.1.2
+> **Ambiente:** Produção, mainframe da the organization / Regional Brasília
+> **Linguagem:** Natural 6.3.12 | Banco de dados: Adabas 7.4.3
 
 ---
 
-## 1. System Purpose
+## 1. Finalidade do sistema
 
-**SIFAP—the Payment Inspection and Administration System** manages, controls, and inspects social-benefit payments administered by the Federal Government nationwide.
+O **SIFAP, Sistema de Fiscalização e Administração de Pagamentos**, gerencia, controla e fiscaliza pagamentos de benefícios sociais administrados pelo Governo Federal em todo o país.
 
-The system supports the following operational needs:
+O sistema atende às seguintes necessidades operacionais:
 
-- **Registration and maintenance** of federal social-program beneficiaries;
-- **Calculation and processing** of the monthly payroll;
-- **Inspection and auditing** of completed payments, including cross-checking registration data;
-- **Generation of remittance files** for paying financial institutions;
-- **Financial reconciliation** with SIAFI (the Federal Government's Integrated Financial Administration System);
-- **Issuance of management and operational reports** for governing agencies.
+- **Cadastro e manutenção** de beneficiários de programas sociais federais;
+- **Cálculo e processamento** da folha mensal;
+- **Fiscalização e auditoria** dos pagamentos realizados, incluindo cruzamento de dados cadastrais;
+- **Geração de arquivos de remessa** para as instituições financeiras pagadoras;
+- **Conciliação financeira** com o SIAFI (Sistema Integrado de Administração Financeira do Governo Federal);
+- **Emissão de relatórios gerenciais e operacionais** para os órgãos gestores.
 
-### 1.1. Agencies Served
+### 1.1. Órgãos atendidos
 
-| Acronym   | Agency                                             | Responsibility                                |
+| Sigla | Órgão | Responsabilidade |
 | --------- | -------------------------------------------------- | ---------------------------------------------- |
-| MDAS      | Ministry of Development and Social Assistance      | Management of income-transfer programs         |
-| SENARC    | National Secretariat of Citizenship Income         | Benefit regulation and monitoring              |
-| CGPB      | General Coordination for Benefit Processing        | Direct operation of monthly processing         |
-| DEFIS     | Inspection Department                              | Audit and control of improper payments         |
-| CGTI/MDAS | General Coordination for Information Technology    | Technical interface with the organization      |
+| MDAS | Ministério do Desenvolvimento e Assistência Social | Gestão dos programas de transferência de renda |
+| SENARC | Secretaria Nacional de Renda de Cidadania | Regulamentação e acompanhamento dos benefícios |
+| CGPB | Coordenação-Geral de Processamento de Benefícios | Operação direta do processamento mensal |
+| DEFIS | Departamento de Fiscalização | Auditoria e controle de pagamentos indevidos |
+| CGTI/MDAS | Coordenação-Geral de Tecnologia da Informação | Interface técnica com a the organization |
 
-SIFAP is a foundational system for the benefit-payment cycle and is classified as a **mission-critical system** by the MDAS IT Governance Committee.
+O SIFAP é um sistema fundamental para o ciclo de pagamento de benefícios e está classificado como **sistema de missão crítica** pelo Comitê de Governança de TI do MDAS.
 
 ---
 
-## 2. History
+## 2. Histórico
 
-### 2.1. Timeline
+### 2.1. Linha do tempo
 
-| Year     | Event                                          | Notes                                                                                                                                                                                                               |
+| Ano | Evento | Observações |
 | -------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1997** | Initial SIFAP development                      | Natural 4.2 / Adabas 6.1. Team of eight SUPDE/DESIF analysts coordinated by Roberto Meirelles. Original deadline: 14 months. Delivered in 18 months.                                                               |
-| **1998** | Production launch (v1.0)                      | CADBENEF, CADPROG, and CONSBENF modules. Initial registration of 1.2 million beneficiaries migrated from the previous system (SIPAG/DOS).                                                                         |
-| **1999** | First major update (v2.0)                     | Batch processing implemented for monthly payment cycles. BATCHPGT and BATCHREL programs. Integration with Banco do Brasil for CNAB 240 file remittance.                                                           |
-| **2002** | SIAFI integration (v2.5)                      | Financial reconciliation module. BATCHCON program for automatic reconciliation of bank orders. Approved by STN.                                                                                                  |
-| **2005** | Technology migration (v3.0)                   | Upgrade to Natural 6.3 / Adabas 7.4. New audit module (RELAUDIT). Creation of the AUDIT DDM. Partial refactoring of calculation programs.                                                                      |
-| **2008** | Technical documentation effort               | Documentation project led by Fernanda Oliveira (business analyst). **Partially completed**—covers only registration modules. Calculation and batch modules remain without formal documentation.                    |
-| **2012** | Attempt to document business rules            | CGTI/MDAS initiative. Discovery work stopped after three key analysts retired. Produced "RN-SIFAP-2012-parcial.doc" (47 pages, incomplete).                                                                        |
-| **2015** | Last significant feature (v4.0)               | CALCDSCT module—calculation of legal deductions. Implemented by Marcos Antônio Ferreira, the last Natural programmer with comprehensive system knowledge.                                                         |
-| **2018** | Last maintenance (v4.1.2)                     | Security fixes (Adabas patches). BATCHPGT timeout handling adjustment. Deduction-range tables updated. No new functionality added.                                                                                |
+| **1997** | Desenvolvimento inicial do SIFAP | Natural 4.2 / Adabas 6.1. Equipe de oito analistas da SUPDE/DESIF, coordenada por Roberto Meirelles. Prazo original: 14 meses. Entrega em 18 meses. |
+| **1998** | Entrada em produção (v1.0) | Módulos CADBENEF, CADPROG e CONSBENF. Carga inicial de 1,2 milhão de beneficiários migrados do sistema anterior (SIPAG/DOS). |
+| **1999** | Primeira grande atualização (v2.0) | Processamento batch implantado para os ciclos mensais de pagamento. Programas BATCHPGT e BATCHREL. Integração com o Banco do Brasil para remessa de arquivo CNAB 240. |
+| **2002** | Integração com o SIAFI (v2.5) | Módulo de conciliação financeira. Programa BATCHCON para conciliação automática de ordens bancárias. Homologado pela STN. |
+| **2005** | Migração tecnológica (v3.0) | Atualização para Natural 6.3 / Adabas 7.4. Novo módulo de auditoria (RELAUDIT). Criação do DDM AUDIT. Refatoração parcial dos programas de cálculo. |
+| **2008** | Esforço de documentação técnica | Projeto de documentação liderado por Fernanda Oliveira (analista de negócio). **Parcialmente concluído**, cobre apenas os módulos de cadastro. Os módulos de cálculo e batch continuam sem documentação formal. |
+| **2012** | Tentativa de documentar as regras de negócio | Iniciativa da CGTI/MDAS. O levantamento foi interrompido após a aposentadoria de três analistas-chave. Produziu "RN-SIFAP-2012-parcial.doc" (47 páginas, incompleto). |
+| **2015** | Última funcionalidade significativa (v4.0) | Módulo CALCDSCT, cálculo de descontos legais. Implementado por Marcos Antônio Ferreira, o último programador Natural com conhecimento abrangente do sistema. |
+| **2018** | Última manutenção (v4.1.2) | Correções de segurança (patches do Adabas). Ajuste no tratamento de timeout do BATCHPGT. Atualização das tabelas de faixas de desconto. Nenhuma nova funcionalidade. |
 
-### 2.2. Continuity Note
+### 2.2. Nota de continuidade
 
-Since 2018, SIFAP has operated in **minimal maintenance mode**. No new features are planned. The support contract covers only emergency fixes and parameter-table adjustments.
+Desde 2018, o SIFAP opera em **modo de manutenção mínima**. Não há novas funcionalidades planejadas. O contrato de suporte cobre apenas correções emergenciais e ajustes nas tabelas de parâmetros.
 
 ---
 
-## 3. Original Team
+## 3. Equipe original
 
-The team that developed and maintained SIFAP over the years is listed below. **Most members have retired or transferred to other units**, creating a significant risk of knowledge loss.
+A equipe que desenvolveu e manteve o SIFAP ao longo dos anos está listada abaixo. **A maioria das pessoas se aposentou ou foi transferida para outras unidades**, criando um risco significativo de perda de conhecimento.
 
-| Name                          | Role                                      | Period    | Current Status                                                                                                                                |
+| Nome | Papel | Período | Situação atual |
 | ----------------------------- | ----------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Roberto Carlos Meirelles      | Senior Systems Analyst (Coordinator)      | 1997–2010 | Retired (2010). Responsible for the original architecture and data-modeling decisions.                                                        |
-| Fernanda Cristina de Oliveira | Business Analyst                          | 1997–2012 | Retired (2012). The only person who partially documented the business rules. Author of "RN-SIFAP-2012-parcial.doc".                            |
-| Marcos Antônio Ferreira       | Senior Natural Programmer                 | 2001–2017 | Transferred to SUPDE/DESIN (2017). Last developer with comprehensive code knowledge. Implemented CALCDSCT and the 2005 refactorings.            |
-| Cláudia Regina dos Santos     | Adabas DBA                                | 1997–2008 | Retired (2008). Designed the four DDMs and the backup/recovery routines.                                                                       |
-| José Aparecido Lima           | Natural Programmer                        | 1997–2005 | Retired (2005). Responsible for the original batch modules.                                                                                    |
-| Patrícia Helena Moura         | Systems Analyst                           | 2003–2016 | Transferred to SUPDE/DEGED (2016). Worked on the SIAFI integration and audit module.                                                          |
-| Antônio Carlos Ribeiro        | Support / Operations Analyst              | 1999–2014 | Retired (2014). Held operational knowledge of batch scheduling and monitoring.                                                                |
-| Luciana Barbosa de Freitas    | Junior Natural Programmer                 | 2010–2018 | Active in SUPDE/DESIF. The only remaining team member with some system knowledge, although limited to query modules.                           |
+| Roberto Carlos Meirelles | Analista de Sistemas Sênior (coordenador) | 1997–2010 | Aposentado (2010). Responsável pela arquitetura original e pelas decisões de modelagem de dados. |
+| Fernanda Cristina de Oliveira | Analista de Negócio | 1997–2012 | Aposentada (2012). Única pessoa que documentou parcialmente as regras de negócio. Autora de "RN-SIFAP-2012-parcial.doc". |
+| Marcos Antônio Ferreira | Programador Natural Sênior | 2001–2017 | Transferido para SUPDE/DESIN (2017). Último desenvolvedor com conhecimento abrangente do código. Implementou o CALCDSCT e as refatorações de 2005. |
+| Cláudia Regina dos Santos | DBA Adabas | 1997–2008 | Aposentada (2008). Projetou os quatro DDMs e as rotinas de backup/recuperação. |
+| José Aparecido Lima | Programador Natural | 1997–2005 | Aposentado (2005). Responsável pelos módulos batch originais. |
+| Patrícia Helena Moura | Analista de Sistemas | 2003–2016 | Transferida para SUPDE/DEGED (2016). Trabalhou na integração com o SIAFI e no módulo de auditoria. |
+| Antônio Carlos Ribeiro | Analista de Suporte / Operações | 1999–2014 | Aposentado (2014). Detinha o conhecimento operacional sobre agendamento e monitoramento do batch. |
+| Luciana Barbosa de Freitas | Programadora Natural Júnior | 2010–2018 | Ativa na SUPDE/DESIF. Única integrante remanescente com algum conhecimento do sistema, embora limitado aos módulos de consulta. |
 
-> **WARNING:** Detailed technical knowledge of the calculation rules (CALCBENF, CALCCORR, CALCDSCT) exists **exclusively in the source code**. There is no current functional documentation for these modules.
+> [!WARNING]
+> O conhecimento técnico detalhado das regras de cálculo (CALCBENF, CALCCORR, CALCDSCT) existe **exclusivamente no código-fonte**. Não há documentação funcional atualizada para esses módulos.
 
 ---
 
-## 4. System Architecture
+## 4. Arquitetura do sistema
 
-### 4.1. Overview
+### 4.1. Visão geral
 
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
@@ -101,261 +102,261 @@ flowchart TB
     classDef result fill:#FFFFFF,stroke:#171717,color:#171717,stroke-width:2px
 
     subgraph MF["Mainframe — the organization"]
-        NAT["Natural 6.3<br/>Online Programs (8)<br/>Batch Programs (7)"]:::step
+        NAT["Natural 6.3<br/>Programas online (8)<br/>Programas batch (7)"]:::step
         ADA["Adabas 7.4<br/>DDMs (4)<br/>FDTs"]:::step
-        JES["Job Scheduler<br/>JES2/CICS<br/>Jobs Batch (7)"]:::muted
-        NAT <-->|"read/write"| ADA
-        NAT -->|"scheduling"| JES
-        NAT --> T3270["3270 Screens<br/>(Com*plete)"]:::alt
-        JES --> ARQ["Files<br/>CNAB / TXT"]:::alt
+        JES["Agendador de jobs<br/>JES2/CICS<br/>Jobs batch (7)"]:::muted
+        NAT <-->|"leitura/gravação"| ADA
+        NAT -->|"agendamento"| JES
+        NAT --> T3270["Telas 3270<br/>(Com*plete)"]:::alt
+        JES --> ARQ["Arquivos<br/>CNAB / TXT"]:::alt
     end
 
-    T3270 --> OP["Terminals<br/>3270 Emulation<br/>(CGPB Operators)"]:::muted
-    ARQ --> EXT["External Systems<br/>SIAFI (STN)<br/>Receita Federal (CPF)<br/>Banco do Brasil (CNAB)<br/>CAIXA (return)"]:::result
+    T3270 --> OP["Terminais<br/>Emulação 3270<br/>(Operadores da CGPB)"]:::muted
+    ARQ --> EXT["Sistemas externos<br/>SIAFI (STN)<br/>Receita Federal (CPF)<br/>Banco do Brasil (CNAB)<br/>CAIXA (retorno)"]:::result
 ```
 
-### 4.2. Natural Program Layer
+### 4.2. Camada de programas Natural
 
-SIFAP Natural programs are organized in the Natural **SIFAP** library and divided into:
+Os programas Natural do SIFAP estão organizados na biblioteca Natural **SIFAP** e divididos em:
 
-- **Online programs (interactive):** Run through 3270 terminal emulation using Natural maps (screens). Accessed by CGPB and DEFIS operators.
-- **Batch programs:** Run on a JES2 scheduler, monthly (payroll) or on demand (reports and reconciliation).
-- **Subprograms and copycode:** Shared utility routines (CPF validation, check-digit calculation, and value formatting).
+- **Programas online (interativos):** executados por emulação de terminal 3270 com maps (telas) Natural. Acessados por operadores da CGPB e da DEFIS.
+- **Programas batch:** executados pelo agendador JES2, mensalmente (folha) ou sob demanda (relatórios e conciliação).
+- **Subprogramas e copycode:** rotinas utilitárias compartilhadas (validação de CPF, cálculo de dígito verificador e formatação de valores).
 
-### 4.3. Database—Adabas DDMs
+### 4.3. Banco de dados, DDMs do Adabas
 
-SIFAP uses four DDMs (Data Definition Modules) in Adabas:
+O SIFAP usa quatro DDMs (Data Definition Modules) no Adabas:
 
-| DDM                 | Adabas File (FNR)    | Description                                                                                                 | Records (2018 est.)             |
+| DDM | Arquivo Adabas (FNR) | Descrição | Registros (estimativa de 2018) |
 | ------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| **BENEFICIARY**    | FNR 150              | Beneficiary records—personal data, documentation, address, registration status, status history             | ~4,200,000                     |
-| **SOCIAL-PROGRAM** | FNR 151              | Social-program records—eligibility rules, value ranges, calculation parameters                             | ~45 (parameter records)        |
-| **PAYMENT**       | FNR 152              | Payment records—gross amount, deductions, net amount, credit date, paying bank, status                      | ~180,000,000                   |
-| **AUDIT**       | FNR 153              | Audit log—user actions, registration changes, inspection events                                             | ~25,000,000                    |
+| **BENEFICIARY** | FNR 150 | Registros de beneficiários: dados pessoais, documentação, endereço, situação cadastral e histórico de situações | ~4.200.000 |
+| **SOCIAL-PROGRAM** | FNR 151 | Registros de programas sociais: regras de elegibilidade, faixas de valores e parâmetros de cálculo | ~45 (registros de parâmetros) |
+| **PAYMENT** | FNR 152 | Registros de pagamentos: valor bruto, descontos, valor líquido, data de crédito, banco pagador e situação | ~180.000.000 |
+| **AUDIT** | FNR 153 | Log de auditoria: ações de usuários, alterações cadastrais e eventos de fiscalização | ~25.000.000 |
 
-**Modeling notes:**
+**Observações de modelagem:**
 
-- Field names follow the **abbreviated 1990s convention** (for example, `BN-NM-BENEF` = beneficiary name, `PG-VL-BRUTO` = gross payment amount, `AU-DT-OCORR` = audit-event date).
-- Value fields use packed decimal format.
-- Adabas does not manage referential integrity—all validation occurs in Natural programs.
-- The SOCIAL-PROGRAM DDM contains MU (multiple value) and PE (periodic group) fields to store value ranges by fiscal year.
+- Os nomes de campos seguem a **convenção abreviada da década de 1990** (por exemplo, `BN-NM-BENEF` = nome do beneficiário, `PG-VL-BRUTO` = valor bruto do pagamento, `AU-DT-OCORR` = data do evento de auditoria).
+- Os campos de valor usam formato decimal packed.
+- O Adabas não gerencia integridade referencial. Toda validação ocorre nos programas Natural.
+- O DDM SOCIAL-PROGRAM contém campos MU (multiple value) e PE (periodic group) para armazenar faixas de valores por exercício fiscal.
 
-### 4.4. Batch Processing
+### 4.4. Processamento batch
 
-The monthly batch-processing cycle follows this sequence:
+O ciclo mensal de processamento batch segue esta sequência:
 
-1. **BATCHPGT**—Main payroll processing (runs on the first business day of the month; four-hour batch window)
-2. **BATCHCON**—Reconciliation with Banco do Brasil / CAIXA return files
-3. **BATCHREL**—Generation of post-processing management reports
+1. **BATCHPGT** — processamento principal da folha (executa no primeiro dia útil do mês; janela batch de quatro horas)
+2. **BATCHCON** — conciliação com os arquivos de retorno do Banco do Brasil / CAIXA
+3. **BATCHREL** — geração de relatórios gerenciais após o processamento
 
-**Batch window:** 22:00 to 06:00 (Brasília time)
-**Average BATCHPGT runtime:** 3h20min (reference: February 2018 cycle)
-**Monthly volume processed:** ~3,800,000 payments
+**Janela batch:** 22:00 às 06:00 (horário de Brasília)
+**Tempo médio de execução do BATCHPGT:** 3h20min (referência: ciclo de fevereiro de 2018)
+**Volume mensal processado:** ~3.800.000 pagamentos
 
-### 4.5. Operator Interface
+### 4.5. Interface do operador
 
-SIFAP screens use **Natural maps** in 3270 format (24 rows × 80 columns), accessed through a terminal emulator. Navigation uses transaction codes (for example, `SF01` = beneficiary registration, `SF05` = query, `SF10` = audit report).
+As telas do SIFAP usam **maps Natural** no formato 3270 (24 linhas × 80 colunas), acessadas por um emulador de terminal. A navegação usa códigos de transação (por exemplo, `SF01` = cadastro de beneficiário, `SF05` = consulta, `SF10` = relatório de auditoria).
 
 ---
 
-## 5. Program Inventory
+## 5. Inventário de programas
 
-### 5.1. Registration Module
+### 5.1. Módulo de cadastro
 
-| Program   | Description                                             | Author         | Year | Last Change    | Status     |
+| Programa | Descrição | Autor | Ano | Última alteração | Situação |
 | --------- | ------------------------------------------------------- | -------------- | ---- | -------------- | -------- |
-| CADBENEF  | Beneficiary registration—creation, update, deletion     | R. Meirelles   | 1997 | 2015           | Production |
-| CADDEPEN | Dependents linked to the primary beneficiary            | J. A. Lima     | 1998 | 2008           | Production |
-| CADPROG   | Social-program registration—parameters and value ranges | F. C. Oliveira | 1997 | 2015           | Production |
+| CADBENEF | Cadastro de beneficiário: inclusão, alteração e exclusão | R. Meirelles | 1997 | 2015 | Produção |
+| CADDEPEN | Dependentes vinculados ao beneficiário titular | J. A. Lima | 1998 | 2008 | Produção |
+| CADPROG | Cadastro de programa social: parâmetros e faixas de valores | F. C. Oliveira | 1997 | 2015 | Produção |
 
-### 5.2. Calculation Module
+### 5.2. Módulo de cálculo
 
-| Program | Description                                            | Author         | Year | Last Change    | Status     |
+| Programa | Descrição | Autor | Ano | Última alteração | Situação |
 | -------- | ---------------------------------------------------- | -------------- | ---- | -------------- | -------- |
-| CALCBENF | Benefit amount calculation—rules by program/range     | R. Meirelles   | 1998 | 2015           | Production |
-| CALCCORR | Corrections and adjustments—annual indexes           | M. A. Ferreira | 2005 | 2015           | Production |
-| CALCDSCT | Legal deduction calculation (payroll deductions, IR) | M. A. Ferreira | 2015 | 2018           | Production |
+| CALCBENF | Cálculo do valor do benefício: regras por programa/faixa | R. Meirelles | 1998 | 2015 | Produção |
+| CALCCORR | Correções e reajustes: índices anuais | M. A. Ferreira | 2005 | 2015 | Produção |
+| CALCDSCT | Cálculo de descontos legais (consignações, IR) | M. A. Ferreira | 2015 | 2018 | Produção |
 
-### 5.3. Validation Module
+### 5.3. Módulo de validação
 
-| Program | Description                                                | Author         | Year | Last Change    | Status     |
+| Programa | Descrição | Autor | Ano | Última alteração | Situação |
 | -------- | -------------------------------------------------------- | -------------- | ---- | -------------- | -------- |
-| VALBENEF | Beneficiary registration-data validation (CPF, NIS)       | R. Meirelles   | 1997 | 2005           | Production |
-| VALELEG  | Eligibility validation against program rules              | F. C. Oliveira | 1999 | 2012           | Production |
-| VALDOCS  | Supporting-document validation—checklist by type           | P. H. Moura    | 2003 | 2008           | Production |
+| VALBENEF | Validação dos dados cadastrais do beneficiário (CPF, NIS) | R. Meirelles | 1997 | 2005 | Produção |
+| VALELEG | Validação de elegibilidade segundo as regras do programa | F. C. Oliveira | 1999 | 2012 | Produção |
+| VALDOCS | Validação de documentos comprobatórios, checklist por tipo | P. H. Moura | 2003 | 2008 | Produção |
 
-### 5.4. Batch Module
+### 5.4. Módulo batch
 
-| Program | Description                                             | Author      | Year | Last Change    | Status     |
+| Programa | Descrição | Autor | Ano | Última alteração | Situação |
 | -------- | ----------------------------------------------------- | ----------- | ---- | -------------- | -------- |
-| BATCHPGT | Monthly payroll processing—credit generation          | J. A. Lima  | 1999 | 2018           | Production |
-| BATCHREL | Batch report generation (totals, summaries)           | J. A. Lima  | 1999 | 2008           | Production |
-| BATCHCON | Financial reconciliation—bank return vs. SIAFI        | P. H. Moura | 2002 | 2012           | Production |
+| BATCHPGT | Processamento mensal da folha: geração de créditos | J. A. Lima | 1999 | 2018 | Produção |
+| BATCHREL | Geração de relatórios batch (totalizadores, resumos) | J. A. Lima | 1999 | 2008 | Produção |
+| BATCHCON | Conciliação financeira: retorno bancário × SIAFI | P. H. Moura | 2002 | 2012 | Produção |
 
-### 5.5. Query and Reporting Module
+### 5.5. Módulo de consulta e relatórios
 
-| Program | Description                                           | Author         | Year | Last Change    | Status     |
+| Programa | Descrição | Autor | Ano | Última alteração | Situação |
 | -------- | --------------------------------------------------- | -------------- | ---- | -------------- | -------- |
-| CONSBENF | Beneficiary query—3270 screen with filters           | R. Meirelles   | 1997 | 2005           | Production |
-| RELPGT   | Payment report—by period/program/UF                   | P. H. Moura    | 2003 | 2012           | Production |
-| RELAUDIT | Audit report—events and discrepancies                | M. A. Ferreira | 2005 | 2015           | Production |
+| CONSBENF | Consulta de beneficiário: tela 3270 com filtros | R. Meirelles | 1997 | 2005 | Produção |
+| RELPGT | Relatório de pagamentos: por período/programa/UF | P. H. Moura | 2003 | 2012 | Produção |
+| RELAUDIT | Relatório de auditoria: eventos e divergências | M. A. Ferreira | 2005 | 2015 | Produção |
 
-### 5.6. Subprograms and Copycode (Partially Documented)
+### 5.6. Subprogramas e copycode (parcialmente documentados)
 
-| Component | Type        | Description                                        |
+| Componente | Tipo | Descrição |
 | ---------- | ----------- | ------------------------------------------------ |
-| VALCPF     | Subprogram  | CPF validation (check digit)                       |
-| VALNISN    | Subprogram  | NIS/NIT validation                                 |
-| FMTVLR     | Copycode    | Monetary-value formatting                          |
-| FMTDT      | Copycode    | Date formatting and validation                     |
-| LOGAUDIT   | Subprogram  | Writes an audit record                             |
-| CALCIDX    | Subprogram  | Applies a correction index (internal table)        |
+| VALCPF | Subprograma | Validação de CPF (dígito verificador) |
+| VALNISN | Subprograma | Validação de NIS/NIT |
+| FMTVLR | Copycode | Formatação de valores monetários |
+| FMTDT | Copycode | Formatação e validação de datas |
+| LOGAUDIT | Subprograma | Grava um registro de auditoria |
+| CALCIDX | Subprograma | Aplica um índice de correção (tabela interna) |
 
-> **Note:** Additional uncataloged subprograms may exist. The inventory above reflects the discovery work performed in 2008.
+> **Observação:** podem existir outros subprogramas não catalogados. O inventário acima reflete o levantamento realizado em 2008.
 
 ---
 
-## 6. Data Volumes
+## 6. Volumes de dados
 
-### 6.1. Current Data Volume (Reference: March 2018)
+### 6.1. Volume de dados atual (referência: março de 2018)
 
-| Metric                                        | Volume                 |
+| Métrica | Volume |
 | --------------------------------------------- | ---------------------- |
-| Registered beneficiaries (active + inactive)  | ~4,200,000 records     |
-| Active beneficiaries                          | ~3,850,000 records     |
-| Parameterized social programs                 | 45 programs            |
-| Payment records (complete history)            | ~180,000,000 records   |
-| Audit records                                 | ~25,000,000 records    |
-| Payments processed per monthly cycle          | ~3,800,000             |
-| Monthly CNAB remittance file                  | ~380 MB                |
-| Total Adabas disk space (ASSO + DATA)         | ~120 GB                |
+| Beneficiários cadastrados (ativos + inativos) | ~4.200.000 registros |
+| Beneficiários ativos | ~3.850.000 registros |
+| Programas sociais parametrizados | 45 programas |
+| Registros de pagamentos (histórico completo) | ~180.000.000 registros |
+| Registros de auditoria | ~25.000.000 registros |
+| Pagamentos processados por ciclo mensal | ~3.800.000 |
+| Arquivo mensal de remessa CNAB | ~380 MB |
+| Espaço total em disco do Adabas (ASSO + DATA) | ~120 GB |
 
-### 6.2. Processing Peaks
+### 6.2. Picos de processamento
 
-- **Monthly peak:** Payroll processing—the first business day of each month
-- **Annual peak:** Benefit adjustment (January)—complete reprocessing with new indexes
-- **Extraordinary peak:** Supplemental payments or 13th benefit (when authorized by decree)
+- **Pico mensal:** processamento da folha, no primeiro dia útil de cada mês
+- **Pico anual:** reajuste de benefícios (janeiro), reprocessamento completo com novos índices
+- **Pico extraordinário:** pagamentos complementares ou 13º benefício (quando autorizado por decreto)
 
-### 6.3. Growth
+### 6.3. Crescimento
 
-The volume of records in the PAYMENT table grows by approximately **46 million records/year** (3.8M × 12 months + reversals and supplemental payments). No purge policy is implemented. The oldest records date from **1998**.
+O volume de registros na tabela PAYMENT cresce aproximadamente **46 milhões de registros/ano** (3,8 milhões × 12 meses + estornos e pagamentos complementares). Não há política de expurgo implementada. Os registros mais antigos são de **1998**.
 
 ---
 
-## 7. Operational Criticality
+## 7. Criticidade operacional
 
-### 7.1. Classification
+### 7.1. Classificação
 
-| Attribute                  | Value                                                               |
+| Atributo | Valor |
 | -------------------------- | ------------------------------------------------------------------- |
-| **Criticality level**      | **Level 1—Mission Critical**                                        |
-| **Availability SLA**       | 99.5% (excluding the maintenance window)                            |
-| **Maintenance window**     | Sundays, 02:00–06:00                                                |
-| **Families affected**      | ~4,000,000 families nationwide                                     |
-| **Contingency plan**       | Manual spreadsheet processing (last resort, never activated)       |
+| **Nível de criticidade** | **Nível 1, missão crítica** |
+| **SLA de disponibilidade** | 99,5% (exceto a janela de manutenção) |
+| **Janela de manutenção** | Domingos, 02:00–06:00 |
+| **Famílias afetadas** | ~4.000.000 de famílias em todo o país |
+| **Plano de contingência** | Processamento manual por planilha (último recurso, nunca acionado) |
 
-### 7.2. Impact of Unavailability
+### 7.2. Impacto da indisponibilidade
 
-SIFAP unavailability directly causes:
+A indisponibilidade do SIFAP causa diretamente:
 
-- **Delayed benefit payments** to socially vulnerable families;
-- **Inability to perform queries** across the service network (CRAS, MDAS offices);
-- **Failure to meet legal deadlines** for account credits;
-- **Institutional repercussions** with the Ministry and the press.
+- **Atraso no pagamento de benefícios** a famílias em situação de vulnerabilidade social;
+- **Impossibilidade de realizar consultas** em toda a rede de atendimento (CRAS, unidades do MDAS);
+- **Descumprimento de prazos legais** para créditos em conta;
+- **Repercussões institucionais** junto ao Ministério e à imprensa.
 
-### 7.3. Significant Incident Log
+### 7.3. Registro de incidentes significativos
 
-| Date     | Incident                                                         | Impact                                     | Resolution                                                                                                              |
+| Data | Incidente | Impacto | Resolução |
 | -------- | ---------------------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| Mar/2016 | BATCHPGT timeout—cycle with unusual volume (4.1M payments)       | 18-hour payroll delay                      | Increased MAXTIME in JCL; optimized sequential reading on FNR 152. Permanent fix applied in v4.1.2 (2018).             |
-| Jan/2014 | SIAFI reconciliation failure—total discrepancy                  | 3,200 duplicate payments detected          | Manual correction + BATCHCON adjustment to validate the total hash.                                                    |
-| Sep/2009 | Partial Adabas index corruption (FNR 150)                       | System unavailable for 6 hours             | Recovery through ADASAV. Backup procedure reviewed by Cláudia Regina dos Santos.                                       |
+| Mar/2016 | Timeout do BATCHPGT, ciclo com volume atípico (4,1 milhões de pagamentos) | Atraso de 18 horas na folha | Aumento de MAXTIME no JCL; otimização da leitura sequencial no FNR 152. Correção definitiva aplicada na v4.1.2 (2018). |
+| Jan/2014 | Falha na conciliação com o SIAFI, divergência de totais | 3.200 pagamentos duplicados detectados | Correção manual + ajuste no BATCHCON para validar o hash totalizador. |
+| Set/2009 | Corrupção parcial de índice Adabas (FNR 150) | Sistema indisponível por 6 horas | Recuperação por ADASAV. Procedimento de backup revisado por Cláudia Regina dos Santos. |
 
 ---
 
-## 8. Integrated Systems
+## 8. Sistemas integrados
 
-| System                      | Agency/Entity                        | Integration Type           | Description                                                                                                                                      |
+| Sistema | Órgão/entidade | Tipo de integração | Descrição |
 | --------------------------- | ------------------------------------ | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **SIAFI**                   | National Treasury Secretariat (STN)  | Batch (TXT file)           | Sends bank orders and receives payment confirmations. Monthly reconciliation through BATCHCON.                                                |
-| **CPF / Receita Federal**   | Receita Federal do Brasil            | Online (query)             | CPF validation during registration creation and update. Query through a Natural transaction with a 30-second timeout.                         |
-| **Banco do Brasil**         | BB—Payment Hub                       | Batch (CNAB 240 file)      | Credit remittance for account payment. Return file with confirmations and rejections.                                                         |
-| **CAIXA Econômica Federal** | CAIXA—Social Payments                | Batch (CNAB 240 file)      | Alternative payment channel for beneficiaries with CAIXA accounts. Integration added in 2004.                                                |
-| **CadÚnico**                | MDAS / SENARC                        | Batch (positional file)    | Periodic receipt of registration updates from Cadastro Único. Processed through a specific job not cataloged in the main inventory.            |
+| **SIAFI** | Secretaria do Tesouro Nacional (STN) | Batch (arquivo TXT) | Envia ordens bancárias e recebe confirmações de pagamento. Conciliação mensal pelo BATCHCON. |
+| **CPF / Receita Federal** | Receita Federal do Brasil | Online (consulta) | Validação de CPF na inclusão e alteração cadastral. Consulta por transação Natural com timeout de 30 segundos. |
+| **Banco do Brasil** | BB, Central de Pagamentos | Batch (arquivo CNAB 240) | Remessa de créditos para pagamento em conta. Arquivo de retorno com confirmações e rejeições. |
+| **CAIXA Econômica Federal** | CAIXA, Pagamentos Sociais | Batch (arquivo CNAB 240) | Canal alternativo de pagamento para beneficiários com conta na CAIXA. Integração adicionada em 2004. |
+| **CadÚnico** | MDAS / SENARC | Batch (arquivo posicional) | Recebimento periódico de atualizações cadastrais do Cadastro Único. Processado por job específico não catalogado no inventário principal. |
 
-> **Note:** The CadÚnico integration was implemented as an emergency measure in 2006 and **does not follow the architectural pattern** of the other modules. The responsible program is not included in the official inventory.
+> **Observação:** a integração com o CadÚnico foi implementada em caráter emergencial em 2006 e **não segue o padrão arquitetural** dos demais módulos. O programa responsável não está no inventário oficial.
 
 ---
 
-## 9. Important Notes
+## 9. Observações importantes
 
-> **This document reflects the state of knowledge in March 2018. Much of the information below consists of recurring warnings from the support team.**
+> **Este documento reflete o estado do conhecimento em março de 2018. Muitas das informações abaixo são alertas recorrentes da equipe de suporte.**
 
-### 9.1. Partial and Outdated Documentation
+### 9.1. Documentação parcial e desatualizada
 
-- Functional documentation covers **only the registration modules** (2008 effort).
-- "RN-SIFAP-2012-parcial.doc" contains business rules discovered in 2012 but is **incomplete** (47 pages out of an estimated 200+).
-- No technical documentation exists for the calculation programs (CALCBENF, CALCCORR, CALCDSCT). The rules exist **exclusively in the source code**.
-- Source-code comments are in Portuguese but are **sparse and frequently outdated**.
+- A documentação funcional cobre **apenas os módulos de cadastro** (esforço de 2008).
+- "RN-SIFAP-2012-parcial.doc" contém regras de negócio levantadas em 2012, mas está **incompleto** (47 páginas de um total estimado em mais de 200).
+- Não existe documentação técnica dos programas de cálculo (CALCBENF, CALCCORR, CALCDSCT). As regras existem **exclusivamente no código-fonte**.
+- Os comentários no código-fonte estão em português, mas são **escassos e frequentemente desatualizados**.
 
-### 9.2. Business Rules in Code
+### 9.2. Regras de negócio no código
 
-- Several critical business rules were implemented directly in Natural programs **without corresponding documentation**.
-- The CALCBENF program contains approximately **4,800 lines** of code, with conditional logic nested up to seven levels deep.
-- Hardcoded constants represent calculation parameters whose meaning **is not evident** without knowledge of the regulatory context at the time.
+- Várias regras de negócio críticas foram implementadas diretamente nos programas Natural **sem documentação correspondente**.
+- O programa CALCBENF contém aproximadamente **4.800 linhas** de código, com lógica condicional aninhada em até sete níveis.
+- Constantes hardcoded representam parâmetros de cálculo cujo significado **não é evidente** sem conhecimento do contexto regulatório da época.
 
-### 9.3. Knowledge Loss
+### 9.3. Perda de conhecimento
 
-- Of the eight original team members, **only one remains** in DESIF (Luciana Barbosa de Freitas), with knowledge limited to query modules.
-- Marcos Antônio Ferreira (transferred in 2017) is the last professional with comprehensive system knowledge but is no longer assigned to the project.
-- **Recommendation recorded in 2016 (not implemented):** conduct knowledge-transfer sessions before the planned retirements.
+- Das oito pessoas da equipe original, **apenas uma permanece** na DESIF (Luciana Barbosa de Freitas), com conhecimento limitado aos módulos de consulta.
+- Marcos Antônio Ferreira (transferido em 2017) é o último profissional com conhecimento abrangente do sistema, mas não está mais alocado ao projeto.
+- **Recomendação registrada em 2016 (não implementada):** realizar sessões de transferência de conhecimento antes das aposentadorias previstas.
 
-### 9.4. Undocumented Interdependencies
+### 9.4. Interdependências não documentadas
 
-- Some programs use shared **Global Data Areas (GDAs)** whose dependencies are not mapped.
-- The LOGAUDIT subprogram is called by nearly every program, but its behavior varies according to undocumented parameters.
-- Batch-job execution order is **critical** and is recorded only in production JCL and the team's operational memory.
+- Alguns programas usam **Global Data Areas (GDAs)** compartilhadas cujas dependências não estão mapeadas.
+- O subprograma LOGAUDIT é chamado por quase todos os programas, mas seu comportamento varia conforme parâmetros não documentados.
+- A ordem de execução dos jobs batch é **crítica** e está registrada apenas nos JCLs de produção e na memória operacional da equipe.
 
-### 9.5. Naming Conventions
+### 9.5. Convenções de nomenclatura
 
-Field names in DDMs follow the abbreviated convention typical of the 1990s:
+Os nomes dos campos nos DDMs seguem a convenção abreviada típica da década de 1990:
 
-| Prefix | Entity          | Examples                                 |
+| Prefixo | Entidade | Exemplos |
 | ------- | --------------- | ---------------------------------------- |
-| `BN-`   | Beneficiary     | `BN-NM-BENEF`, `BN-NR-CPF`, `BN-CD-SIT`  |
-| `PS-`   | Social Program  | `PS-NM-PROG`, `PS-VL-MIN`, `PS-VL-MAX`   |
-| `PG-`   | Payment         | `PG-VL-BRUTO`, `PG-VL-LIQ`, `PG-DT-CRED` |
-| `AU-`   | Audit           | `AU-DT-OCORR`, `AU-CD-ACAO`, `AU-NR-USR` |
+| `BN-` | Beneficiário | `BN-NM-BENEF`, `BN-NR-CPF`, `BN-CD-SIT` |
+| `PS-` | Programa social | `PS-NM-PROG`, `PS-VL-MIN`, `PS-VL-MAX` |
+| `PG-` | Pagamento | `PG-VL-BRUTO`, `PG-VL-LIQ`, `PG-DT-CRED` |
+| `AU-` | Auditoria | `AU-DT-OCORR`, `AU-CD-ACAO`, `AU-NR-USR` |
 
-Field names are limited to **20 characters** and use standardized abbreviations: `NM` (name), `NR` (number), `CD` (code), `DT` (date), `VL` (value), `QT` (quantity), `SG` (acronym), `IN` (indicator).
+Os nomes de campos têm limite de **20 caracteres** e usam abreviações padronizadas: `NM` (nome), `NR` (número), `CD` (código), `DT` (data), `VL` (valor), `QT` (quantidade), `SG` (sigla), `IN` (indicador).
 
 ---
 
-## 10. Directory Structure for This Scenario
+## 10. Estrutura de diretórios deste cenário
 
 ```
 02-cenario-sifap-legado/
-├── README.md ← this document
-├── natural-programs/ ← Natural programs (.NSN) - source code
-├── adabas-ddms/ ← DDMs (Data Definition Modules) - data definitions
-├── legacy-docs/ ← Original partial documentation (2008/2012)
-└── demo/ ← Interactive terminal demo (Stage 1)
+├── README.md ← este documento
+├── natural-programs/ ← programas Natural (.NSN) - código-fonte
+├── adabas-ddms/ ← DDMs (Data Definition Modules) - definições de dados
+├── legacy-docs/ ← documentação parcial original (2008/2012)
+└── demo/ ← demonstração interativa no terminal (Estágio 1)
 ```
 
 ---
 
-## Related Documents
+## Documentos relacionados
 
-- [`01-archaeology/LEGACY-EXPLORATION-CHECKLIST.md`](../LEGACY-EXPLORATION-CHECKLIST.md)—mandatory gate before starting Stage 2.
-- [`01-archaeology/GUIDE.md`](../GUIDE.md)—timed walkthrough for reading this legacy system.
-- [`02-modern-spec/GUIDE.md`](../../02-modern-spec/GUIDE.md)—next step: modern specification (EARS) with `source_legacy:` pointing to files in this folder.
+- [`01-archaeology/LEGACY-EXPLORATION-CHECKLIST.md`](../LEGACY-EXPLORATION-CHECKLIST.md), gate obrigatório antes de iniciar o Estágio 2.
+- [`01-archaeology/GUIDE.md`](../GUIDE.md), roteiro cronometrado para ler este sistema legado.
+- [`02-modern-spec/GUIDE.md`](../../02-modern-spec/GUIDE.md), próximo passo: especificação moderna (EARS) com `source_legacy:` apontando para arquivos desta pasta.
 
 ---
 
-### Continue Reading
+### Continue lendo
 
-| Previous | Next |
+| Anterior | Próximo |
 |---|---|
-| [Stage 1 GUIDE](../GUIDE.md)<br/><sub>Timed 90-minute walkthrough.</sub> | [How to Read Natural](HOW-TO-READ-NATURAL.md)<br/><sub>Syntax tutorial for non-developers.</sub> |
+| [GUIDE do Estágio 1](../GUIDE.md)<br/><sub>Roteiro cronometrado de 90 minutos.</sub> | [Como ler Natural](HOW-TO-READ-NATURAL.md)<br/><sub>Tutorial de sintaxe para pessoas não desenvolvedoras.</sub> |
 
-<sub>[Back to the kit index](../../README.md)</sub>
+<sub>[Voltar ao índice do kit](../../README.md)</sub>
