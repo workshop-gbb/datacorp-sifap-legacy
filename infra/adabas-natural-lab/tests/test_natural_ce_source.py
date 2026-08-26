@@ -306,7 +306,7 @@ def test_should_derive_a_viewer_object_with_no_adabas_write_path(
     ):
         assert removed not in viewer
 
-    # Runtime derivation must never "fix" the workshop evidence.
+    # Runtime derivation must never "fix" the immersion evidence.
     assert "PERFORM WRITE-AUDIT" in source
     assert "INCLUDE CCAUDIT" in source
 

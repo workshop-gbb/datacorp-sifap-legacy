@@ -2,7 +2,7 @@ name: Validate Adabas/Natural Lab local deployment
 
 # This workflow does NOT deploy the lab.
 #
-# The Microsoft corporate tenant used by this workshop applies a management-group Modify
+# The Microsoft corporate tenant used by this immersion applies a management-group Modify
 # policy ("MCAPSGov Deploy and Modify Policies") that forces Storage Account
 # publicNetworkAccess=Disabled. That makes an azurerm blob backend unreachable from
 # GitHub-hosted runners. Local Terraform state is therefore the default and the facilitator's

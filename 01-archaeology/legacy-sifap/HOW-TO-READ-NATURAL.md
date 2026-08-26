@@ -284,7 +284,7 @@ An ambiguous condition should be recorded as an open question in [`mysteries-fou
 > [!IMPORTANT]
 > **In this lab, the decimal separator in a Natural source format specification is a period.** Natural Community Edition 9.3.3 compiles `(N9.2)` and `(P9.2)`. It rejects comma forms such as `(N9,2)` and `(P9,2)` with `NAT0165`.
 >
-> Natural installations can vary by decimal-character setting, and older mainframe installations commonly used a comma. This workshop follows the Natural CE 9.3.3 image. `DC=,` is not a workaround here because it collides with the `ID` delimiter and gives `NAT0385`.
+> Natural installations can vary by decimal-character setting, and older mainframe installations commonly used a comma. This immersion follows the Natural CE 9.3.3 image. `DC=,` is not a workaround here because it collides with the `ID` delimiter and gives `NAT0385`.
 >
 > This rule applies **only to source declarations**. In literal values within code, the separator remains a period: `MOVE 1.3500 TO #FACTOR-ADJUST` and `COMPUTE #VLR = #BRUTO * 0.30`. DDM listings still print decimal lengths with a comma, for example `P  9,2`.
 

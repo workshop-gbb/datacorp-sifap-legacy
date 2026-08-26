@@ -34,7 +34,7 @@ approval:
 ---
 
 > [!NOTE]
-> This is a reconstructed historical document for the SIFAP 2.0 workshop archaeology exercise. It simulates Technical Manual version 2.3.1 (2008), as it would have been produced by the SUPDE/DESIF team. Period language and the names of people, units, and procedures have been intentionally preserved. **This document must not be used as the system's current specification.** Sections marked `[TO BE COMPLETED]` and internal comments about outdated information are part of the exercise—they represent real documentation gaps the team must investigate.
+> This is a reconstructed historical document for the SIFAP 2.0 immersion archaeology exercise. It simulates Technical Manual version 2.3.1 (2008), as it would have been produced by the SUPDE/DESIF team. Period language and the names of people, units, and procedures have been intentionally preserved. **This document must not be used as the system's current specification.** Sections marked `[TO BE COMPLETED]` and internal comments about outdated information are part of the exercise—they represent real documentation gaps the team must investigate.
 
 <!-- ====================================================================== -->
 <!-- SIFAP TECHNICAL MANUAL - VERSION 2.3 -->

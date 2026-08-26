@@ -24,7 +24,7 @@ revision_history:
 ---
 
 > [!NOTE]
-> This is a reconstructed historical document for the SIFAP 2.0 workshop archaeology exercise. It simulates the partial business-rule survey conducted in 2012 by the SENARC/CGPB team. Period language, personal names, uncertainties, and documented gaps have been intentionally preserved. **This document must not be used as the system's current specification.** Rules marked `[PENDING]`, comments about inconsistencies, and unverified items are part of the exercise—they represent the real knowledge-extraction challenge the team must address during archaeology.
+> This is a reconstructed historical document for the SIFAP 2.0 immersion archaeology exercise. It simulates the partial business-rule survey conducted in 2012 by the SENARC/CGPB team. Period language, personal names, uncertainties, and documented gaps have been intentionally preserved. **This document must not be used as the system's current specification.** Rules marked `[PENDING]`, comments about inconsistencies, and unverified items are part of the exercise—they represent the real knowledge-extraction challenge the team must address during archaeology.
 
 <!-- ====================================================================== -->
 <!-- SIFAP BUSINESS RULES - PARTIAL SURVEY -->

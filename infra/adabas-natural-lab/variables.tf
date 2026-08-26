@@ -15,8 +15,8 @@ variable "environment" {
   default     = "lab"
 
   validation {
-    condition     = contains(["lab", "dev", "workshop"], var.environment)
-    error_message = "environment must be one of: lab, dev, workshop."
+    condition     = contains(["lab", "dev", "immersion"], var.environment)
+    error_message = "environment must be one of: lab, dev, immersion."
   }
 }
 
@@ -113,7 +113,7 @@ variable "allowed_source_cidrs" {
       for c in var.allowed_source_cidrs : c
       if contains(["0.0.0.0/0", "*", "::/0", "internet", "any"], lower(trimspace(c)))
     ]) == 0
-    error_message = "Open-to-the-internet sources are rejected: 0.0.0.0/0, *, ::/0, Internet, Any. List explicit workshop IPs or CIDRs."
+    error_message = "Open-to-the-internet sources are rejected: 0.0.0.0/0, *, ::/0, Internet, Any. List explicit immersion IPs or CIDRs."
   }
 
   # Backstop for the rule above: a well-formed IPv4 CIDR no wider than /8. This also catches
@@ -528,7 +528,7 @@ variable "auto_shutdown_enabled" {
   description = <<-EOT
     Whether the daily auto-shutdown schedule stops the VMs.
 
-    On by default, because an idle lab VM left running is the most common way a workshop
+    On by default, because an idle lab VM left running is the most common way an immersion
     bill escapes. Turn it off only for an environment that has to stay reachable between
     sessions - a shared lab whose URL is handed out in advance, for example. The schedule
     resource still exists when disabled, so the shutdown time stays recorded and turning it
@@ -562,7 +562,7 @@ variable "enable_vm_start_watchdog" {
 }
 
 variable "auto_shutdown_time" {
-  description = "Daily auto-shutdown time in HHmm, in auto_shutdown_timezone. Guards against a VM left running after the workshop. Ignored when auto_shutdown_enabled is false."
+  description = "Daily auto-shutdown time in HHmm, in auto_shutdown_timezone. Guards against a VM left running after the immersion. Ignored when auto_shutdown_enabled is false."
   type        = string
   default     = "2000"
 

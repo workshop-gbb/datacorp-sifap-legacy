@@ -719,7 +719,7 @@ moved {
   to   = random_string.unique
 }
 
-# Key Vault posture - deliberate choices for a DISPOSABLE workshop lab, not a template for prod:
+# Key Vault posture - deliberate choices for a DISPOSABLE immersion lab, not a template for prod:
 #
 #   soft_delete_retention_days = 7   Azure minimum. The vault holds one generated lab password
 #                                    with no recovery value; a long window only blocks name reuse.
@@ -729,7 +729,7 @@ moved {
 #                                    teardown for this lab is destroy-and-forget, so it stays off.
 #                                    In any non-lab environment this MUST be true.
 #   enable_rbac_authorization  = false  Access-policy model grants only the VM identity Get/Set
-#                                    and avoids role-assignment privileges in workshop tenants.
+#                                    and avoids role-assignment privileges in immersion tenants.
 #
 # The corporate management-group policy forces publicNetworkAccess=Disabled. The explicit
 # private endpoint and DNS zone below make that policy part of the design instead of allowing
@@ -1035,7 +1035,7 @@ resource "azurerm_virtual_machine_data_disk_attachment" "adabas_data" {
 # Cost control
 # ---------------------------------------------------------------------------
 
-# Cost guard: an idle lab VM is the most common way a workshop bill escapes. A shared lab
+# Cost guard: an idle lab VM is the most common way an immersion bill escapes. A shared lab
 # whose URL is handed out in advance has to stay reachable, so this can be switched off;
 # the budget then becomes the only automatic guard.
 resource "azurerm_dev_test_global_vm_shutdown_schedule" "lab" {
@@ -1334,7 +1334,7 @@ resource "azurerm_dev_test_global_vm_shutdown_schedule" "workstation" {
 # External-governance VM start watchdog
 # ---------------------------------------------------------------------------
 #
-# Some workshop subscriptions run a tenant-level automation that deallocates VMs even when
+# Some immersion subscriptions run a tenant-level automation that deallocates VMs even when
 # the DevTestLab shutdown schedules above are Disabled. The actor is outside this resource
 # group, so the lab cannot turn it off. Azure Automation is deliberately used instead of a
 # GitHub schedule: GitHub-hosted schedules are best-effort, run only from the default branch,

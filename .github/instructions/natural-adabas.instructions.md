@@ -27,7 +27,7 @@ END
 
 > **In this lab, the decimal separator in a format specification is a period.**
 > Natural Community Edition 9.3.3 compiles `(P9.2)` and `(N3.4)`. It rejects `(P9,2)` with `NAT0165`.
-> Natural installations can vary by decimal-character setting; this workshop follows the Community Edition image.
+> Natural installations can vary by decimal-character setting; this immersion follows the Community Edition image.
 > This rule applies only to the *declaration* — **literals still use a period**: `MOVE 1.3500 TO #FATOR`.
 > In arrays, the range is part of the notation: `(A60/1:10)`, `(N3.4/1:27)`, `(N3.6/1:10,1:12)`.
 

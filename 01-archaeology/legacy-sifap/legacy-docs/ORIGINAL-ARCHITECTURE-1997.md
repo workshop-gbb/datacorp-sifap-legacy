@@ -11,7 +11,7 @@ client: "SAS/MPAS - Social Assistance Secretariat"
 ---
 
 > [!NOTE]
-> This is a historical document reconstituted for the purposes of the archaeology exercise of the SIFAP 2.0 workshop. The document simulates the original technical documentation from 1997 as it would have been produced by the SUPDE/DESIF team. The period language, the names of people and organizational units were intentionally preserved. **This document should not be used as a current system specification.** The gaps and inconsistencies noted in the comments are part of the exercise — they represent the real archaeology challenges that the team must investigate.
+> This is a historical document reconstituted for the purposes of the archaeology exercise of the SIFAP 2.0 immersion. The document simulates the original technical documentation from 1997 as it would have been produced by the SUPDE/DESIF team. The period language, the names of people and organizational units were intentionally preserved. **This document should not be used as a current system specification.** The gaps and inconsistencies noted in the comments are part of the exercise — they represent the real archaeology challenges that the team must investigate.
 
 <!-- ====================================================================== -->
 <!-- PROJECT SIFAP - TECHNICAL ARCHITECTURE DOCUMENT -->

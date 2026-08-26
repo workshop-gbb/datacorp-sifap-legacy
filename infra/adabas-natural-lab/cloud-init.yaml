@@ -308,7 +308,7 @@ ${caddy_viewer_routes}
         # which is root-equivalent control of the host. It is how `docker exec`
         # reaches into natural-ce, and the alternative - a second Natural
         # container sharing the FUSER volume - risks corrupting the very library
-        # the workshop just compiled. What contains it: no published port, basic
+        # the immersion just compiled. What contains it: no published port, basic
         # auth at the origin, and 80/443 restricted to allowed_source_cidrs
         # unless enable_public_acme is on. Destroy the lab after the demo.
         ttyd:

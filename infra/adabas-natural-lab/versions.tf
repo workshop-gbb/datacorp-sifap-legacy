@@ -9,7 +9,7 @@ terraform {
   #   .github/workflows/deploy-lab.yml -> env.TERRAFORM_VERSION
   required_version = "~> 1.14.0"
 
-  # Local state is the default. Some workshop tenants enforce storage
+  # Local state is the default. Some immersion tenants enforce storage
   # publicNetworkAccess = Disabled at management-group scope, which makes an Azure Blob
   # backend unreachable from facilitator laptops and GitHub-hosted runners even when Entra
   # RBAC is correct. Keep terraform.tfstate local, back it up, and run destroy from the same

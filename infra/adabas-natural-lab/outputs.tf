@@ -25,7 +25,7 @@ output "demo_fqdn" {
 }
 
 # One origin, four routes. They are separate outputs rather than one blob of text because a
-# workshop facilitator pastes them individually into chat, and a CI job can consume them.
+# immersion facilitator pastes them individually into chat, and a CI job can consume them.
 output "terminal_url" {
   description = "The legacy green screen: a Natural session in the browser, served by ttyd over the TLS proxy. Natural itself speaks a character protocol on 2700 that no browser can open, which is why this route exists."
   value       = "https://${azurerm_public_ip.lab.fqdn}/terminal/"
@@ -60,7 +60,7 @@ output "admin_console_tunnel_command" {
 # Demo authentication
 # ---------------------------------------------------------------------------
 
-# Basic auth over TLS. Modest by design: this is a disposable workshop lab with no production
+# Basic auth over TLS. Modest by design: this is a disposable immersion lab with no production
 # data, and the alternative - an unauthenticated public origin serving an interactive shell
 # into the database host - is not a trade worth making. The NSG still gates 80/443 unless
 # enable_public_acme is on.
@@ -277,7 +277,7 @@ output "ddm_workstation_password_command" {
 }
 
 # The workstation reaches Natural over the VNet, so this is the address to register in
-# NaturalONE - not the public endpoint, whose NSG rule allows the workshop CIDRs and not the
+# NaturalONE - not the public endpoint, whose NSG rule allows the immersion CIDRs and not the
 # workstation's own egress address.
 output "ddm_workstation_ndv_endpoint" {
   description = "Private Natural Development Server endpoint to register in NaturalONE from the workstation. Use this, not natural_development_server, when connecting from inside the VNet."

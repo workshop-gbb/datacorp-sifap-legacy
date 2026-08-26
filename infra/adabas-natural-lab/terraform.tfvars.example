@@ -191,7 +191,7 @@ allowed_source_cidrs = [
 # ---------------------------------------------------------------------------
 
 # Whether the daily shutdown schedule actually stops the VMs. On by default: an idle lab VM
-# left running is the most common way a workshop bill escapes.
+# left running is the most common way an immersion bill escapes.
 #
 # Set false only for a shared lab whose URL is handed out in advance, where a participant
 # opening the link must not find a deallocated VM. The budget below then becomes the ONLY

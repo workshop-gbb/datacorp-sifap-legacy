@@ -47,19 +47,19 @@ The goal is a legacy system that actually runs: sources on the VM, data in Adaba
 
 ### When you do not need this lab
 
-The workshop's main path does not depend on this environment. In Stages 1 through 4, the SIFAP legacy system is reading material: the Natural programs and DDMs in [`01-archaeology/legacy-sifap/`](../../01-archaeology/legacy-sifap/) are text files, and the traceability required in Stage 2 (`source_legacy:`) points to those files, not to an execution.
+The immersion's main path does not depend on this environment. In Stages 1 through 4, the SIFAP legacy system is reading material: the Natural programs and DDMs in [`01-archaeology/legacy-sifap/`](../../01-archaeology/legacy-sifap/) are text files, and the traceability required in Stage 2 (`source_legacy:`) points to those files, not to an execution.
 
 | Situation | Do you need the lab? |
 |---|---|
 | Read the programs, catalog rules, and write EARS requirements | No |
 | Implement SIFAP 2.0 with Java 21 + Next.js 15 | No |
-| Pass the workshop CI gates | No |
+| Pass the immersion CI gates | No |
 | See Natural syntax actually compiled and executed | Yes |
 | Confirm the behavior of a program whose code was ambiguous during reading | Yes |
 | Demonstrate the difference between the legacy runtime and the modern architecture | Yes |
 
 > [!NOTE]
-> Treat this lab as an optional advanced track. No required workshop artifact depends on it.
+> Treat this lab as an optional advanced track. No required immersion artifact depends on it.
 
 ---
 
@@ -150,7 +150,7 @@ terraform output demo_url terminal_url modern_app_url admin_console_url healthz_
 
 **`/app/` returns 502 on purpose.** The route is provisioned before the application exists so the URL never has to change once the team builds it. Point it at whatever Stage 3 produces with `modern_app_upstream` (default `sifap-app:8080`) and attach that container to the `sifap-lab` Docker network.
 
-**The `ttyd` trade-off, stated plainly.** The terminal container mounts the Docker socket, which is root-equivalent control of the host. It is how `docker exec` reaches into `natural-ce`; the alternative — a second Natural container sharing the FUSER volume — risks corrupting the library the workshop just compiled. What contains it: `ttyd` publishes no host port, so it is reachable only through Caddy; Caddy requires authentication; and the NSG still gates 80/443 unless `enable_public_acme` is on. This is a disposable lab holding no production data. Destroy it after the demo.
+**The `ttyd` trade-off, stated plainly.** The terminal container mounts the Docker socket, which is root-equivalent control of the host. It is how `docker exec` reaches into `natural-ce`; the alternative — a second Natural container sharing the FUSER volume — risks corrupting the library the immersion just compiled. What contains it: `ttyd` publishes no host port, so it is reachable only through Caddy; Caddy requires authentication; and the NSG still gates 80/443 unless `enable_public_acme` is on. This is a disposable lab holding no production data. Destroy it after the demo.
 
 ### Authentication on the public origin
 
@@ -198,7 +198,7 @@ The viewer's green screen is a **different upstream**, not a different path: tty
 Its session script also has no shell fallback, unlike the operator's. Dropping a viewer at a prompt inside `natural-ce` would hand it more than the account it signed in with.
 
 > [!IMPORTANT]
-> **The other half is the program itself.** Frozen `CONSBENF` appends an AUDIT record after every query, so the build derives `VIEWBENF` as a staged runtime object with the AUDIT view, fields, action block and copycode removed. The generator fails if any `STORE`, `UPDATE`, `DELETE`, transaction, work-file or audit statement remains, and allows only the read-only `SUBVALCP` validator call. The frozen workshop evidence stays unchanged.
+> **The other half is the program itself.** Frozen `CONSBENF` appends an AUDIT record after every query, so the build derives `VIEWBENF` as a staged runtime object with the AUDIT view, fields, action block and copycode removed. The generator fails if any `STORE`, `UPDATE`, `DELETE`, transaction, work-file or audit statement remains, and allows only the read-only `SUBVALCP` validator call. The frozen immersion evidence stays unchanged.
 >
 > This makes the viewer application-level read-only, not a separate Adabas principal or tenant. Both accounts still share one Natural runtime and one database.
 
@@ -378,7 +378,7 @@ Everything is renamed. The `-brs` suffix is derived from `var.location` now, so 
 
 ## Step-by-step deployment
 
-- [ ] **Step 0 — Select the workshop subscription.**
+- [ ] **Step 0 — Select the immersion subscription.**
 
 ```bash
 az account set --subscription bf39c110-94c5-4bfa-959d-216b1f971d81
@@ -465,7 +465,7 @@ The lab is a working mainframe only once `/opt/sifap/PROVISIONED` exists. See [C
 
 Local state is the source of truth for the lab. Losing `terraform.tfstate` does not delete Azure resources; it only makes Terraform forget them. `deploy-local.sh apply` and `destroy` automatically copy it to `.local-state-backups/adabas-natural-lab/` with mode `0600`; the intended cleanup is always the same script from the same working copy.
 
-- `*.tfstate*`, `.terraform/`, `*.tfvars`, `*.tfplan`, `plan.txt`, `backend.hcl`, `override.tf`, and `.local-state-backups/` are ignored; verify before every workshop with `git check-ignore`.
+- `*.tfstate*`, `.terraform/`, `*.tfvars`, `*.tfplan`, `plan.txt`, `backend.hcl`, `override.tf`, and `.local-state-backups/` are ignored; verify before every immersion with `git check-ignore`.
 - Back up `infra/adabas-natural-lab/terraform.tfstate` after every successful `apply` or `destroy` to an encrypted drive or private, access-controlled store.
 - If state is lost, either restore the newest backup or import each resource back with `terraform import` before running `destroy`. The lab resource group defaults to `sifap-lab-rg-eus2`; use `az resource list -g sifap-lab-rg-eus2 -o table` to inventory what must be imported.
 - If recovery is not worth the time, delete the lab resource group manually in Azure. That is the last-resort cleanup for orphaned local state, not the normal path.
@@ -649,7 +649,7 @@ eval "$(terraform output -raw ddm_workstation_password_command)"
 ```
 
 - [ ] **Install NaturalONE** on the workstation from the TECHcommunity download above. Its outbound path is a NAT gateway: without one it would have no internet at all, since Azure has retired default outbound access for subnets and this VM has no public IP of its own. The gateway is outbound-only, so RDP stays unreachable from the internet.
-- [ ] **Register the development server** using the **private** endpoint. The public one is allow-listed to the workshop CIDRs, which do not include the workstation's NAT egress address.
+- [ ] **Register the development server** using the **private** endpoint. The public one is allow-listed to the immersion CIDRs, which do not include the workstation's NAT egress address.
 
 ```bash
 terraform output -raw ddm_workstation_ndv_endpoint
@@ -692,7 +692,7 @@ The rules are in `main.tf`, in the `azurerm_network_security_group.lab` resource
 |---|---|---|---|---|
 | 443 | `AllowHttpsDemo` | 150 | Allow-list, or `Internet` with ACME | The demo URL: landing page, green screen, modern app, Adabas console. TLS terminated by Caddy, all of it behind basic auth except `/healthz` |
 | 80 | `AllowHttpRedirectAndAcme` | 140 | Allow-list, or `Internet` with ACME | Redirect to HTTPS, and the ACME HTTP-01 challenge |
-| 22 | `AllowSshFromWorkshop` | 100 | Allow-list only | SSH. Key authentication; passwords disabled |
+| 22 | `AllowSshFromImmersion` | 100 | Allow-list only | SSH. Key authentication; passwords disabled |
 | 2700 | `AllowNaturalDevelopmentServer` | 110 | Allow-list only | Natural Development Server, for NaturalONE |
 | 60001 | `AllowAdabasAdatcp` | 120 | Allow-list only | Adabas ADATCP, only for clients outside the VM |
 | 8190 | `AllowAdabasRestAdmin` | 130 | Allow-list only | **Disabled by default.** Plaintext admin console, superseded by the HTTPS proxy |
@@ -719,7 +719,7 @@ Only two variables are required. The others have defaults defined in `variables.
 | `owner` | Yes | — | Owner tag: GitHub handle or e-mail |
 | `allowed_source_cidrs` | Yes | — | CIDRs allowed on the lab ports. Validation rejects `0.0.0.0/0` |
 | `project` | No | `sifap` | Name and tag prefix. From 2 to 12 lowercase alphanumeric characters |
-| `environment` | No | `lab` | Accepts `lab`, `dev`, or `workshop` |
+| `environment` | No | `lab` | Accepts `lab`, `dev`, or `immersion` |
 | `cost_center` | No | `workshop-legacy-modernization` | Cost allocation tag |
 | `location` | No | `eastus2` | Azure region. Also drives the name suffix |
 | `location_short` | No | `""` | Name suffix. Empty derives it from `location` — leave it empty |
@@ -786,7 +786,7 @@ The budget is scoped to the resource group and is deliberately independent of th
 
 ### Tenant governance can still stop the VMs
 
-Disabling the two DevTestLab schedules controls only resources in this module. A subscription may have a tenant-level automation with permission above the resource group. In the workshop subscription, `MCAPSGov-AutomationApp` deallocated both VMs even while both schedules reported `Disabled`.
+Disabling the two DevTestLab schedules controls only resources in this module. A subscription may have a tenant-level automation with permission above the resource group. In the immersion subscription, `MCAPSGov-AutomationApp` deallocated both VMs even while both schedules reported `Disabled`.
 
 `enable_vm_start_watchdog = true` is the compensating control. Terraform creates:
 
@@ -1192,8 +1192,8 @@ Note the `--location` argument: it is the region the vault was deleted *from*. W
 | How to read Natural code | [`01-archaeology/legacy-sifap/HOW-TO-READ-NATURAL.md`](../../01-archaeology/legacy-sifap/HOW-TO-READ-NATURAL.md) |
 | Caddy `basic_auth` directive | <https://caddyserver.com/docs/caddyfile/directives/basic_auth> |
 | `ttyd` web terminal | <https://github.com/tsl0922/ttyd> |
-| Workshop operations runbook | [`docs/runbook.md`](../../docs/runbook.md) |
-| Workshop troubleshooting | [`docs/troubleshooting.md`](../../docs/troubleshooting.md) |
+| Immersion operations runbook | [`docs/runbook.md`](../../docs/runbook.md) |
+| Immersion troubleshooting | [`docs/troubleshooting.md`](../../docs/troubleshooting.md) |
 
 ---
 
