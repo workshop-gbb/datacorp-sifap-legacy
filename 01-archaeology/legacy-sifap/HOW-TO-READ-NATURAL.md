@@ -259,9 +259,9 @@ Use Ctrl+F no VS Code e digite `IF`. Cada `IF` é uma regra candidata.
 
 Use Ctrl+F com `0.` para localizar `0.30`, `0.075` e valores semelhantes. Cada constante sem explicação provavelmente é uma alíquota ou um percentual de regra. Pesquise também `INIT <`: as tabelas de parâmetros carregam faixas e fatores inteiros de uma só vez.
 
-### Passo 5 — Confirme com o Copilot Chat (2 min)
+### Passo 5 — Confirme com o modo Ask do GitHub Copilot (2 min)
 
-Selecione um bloco de código no VS Code, abra o Copilot Chat (modo Ask) e envie:
+Selecione um bloco de código no VS Code, abra o GitHub Copilot, selecione o modo Ask e envie:
 
 > "Explique este código Natural em português. Concentre-se na regra de negócio. Ignore entrada e saída."
 
@@ -389,17 +389,17 @@ A legenda completa das colunas está no rodapé de cada `.ddm` e no [README dos 
 ## 8. Atalhos do VS Code para economizar tempo
 
 <details>
-<summary><strong>Tabela de atalhos e dicas de uso do Copilot Chat</strong></summary>
+<summary><strong>Tabela de atalhos e dicas de uso do modo Ask do GitHub Copilot</strong></summary>
 
 | Atalho | O que faz |
 |---|---|
 | Ctrl+F | Pesquisa dentro do arquivo |
 | Ctrl+Shift+F | Pesquisa em todos os arquivos |
 | Ctrl+G + número | Vai para a linha N |
-| Selecionar + Copilot Chat | Envia um trecho diretamente para análise |
+| Selecionar + modo Ask do GitHub Copilot | Envia um trecho diretamente para análise |
 
 > [!TIP]
-> Selecione o programa Natural inteiro, abra o Copilot Chat e envie: "Liste todas as regras de negócio deste programa Natural. Para cada uma, informe o intervalo de linhas, a condição em português e o nível de risco (CRÍTICO/ALTO/MÉDIO/BAIXO)". Em 30 segundos, 80% do trabalho está feito. Sempre confirme examinando o `IF` original.
+> Selecione o programa Natural inteiro, abra o painel do GitHub Copilot, selecione o modo Ask e envie: "Liste todas as regras de negócio deste programa Natural. Para cada uma, informe o intervalo de linhas, a condição em português e o nível de risco (CRÍTICO/ALTO/MÉDIO/BAIXO)". Em 30 segundos, 80% do trabalho está feito. Sempre confirme examinando o `IF` original.
 
 </details>
 
@@ -451,4 +451,4 @@ Se você não conseguir extrair pelo menos uma regra de um programa em 45 minuto
 |---|---|
 | [Legado SIFAP, visão geral](README.md)<br/><sub>Contexto do sistema e inventário completo.</sub> | [GUIDE do Estágio 1](../GUIDE.md)<br/><sub>Roteiro cronometrado de 90 minutos.</sub> |
 
-<sub>[Voltar ao índice do kit](../README.md)</sub>
+<sub>[Voltar ao índice do kit](../../README.md)</sub>

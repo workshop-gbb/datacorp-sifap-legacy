@@ -27,10 +27,10 @@ revision_history:
 > Este é um documento histórico reconstituído para o exercício de arqueologia da imersão SIFAP 2.0. Ele simula o levantamento parcial de regras de negócio realizado em 2012 pela equipe da SENARC/CGPB. A linguagem da época, os nomes de pessoas, as incertezas e as lacunas documentadas foram preservados intencionalmente. **Este documento não deve ser usado como especificação atual do sistema.** Regras marcadas como `[PENDENTE]`, comentários sobre inconsistências e itens não verificados fazem parte do exercício: representam o desafio real de extração de conhecimento que a equipe deve enfrentar durante a arqueologia.
 
 <!-- ====================================================================== -->
-<!-- SIFAP BUSINESS RULES - PARTIAL SURVEY -->
-<!-- Payment Inspection and Administration System -->
-<!-- SENARC - National Secretariat for Citizenship Income -->
-<!-- In collaboration with SUPDE/DESIF (the organization) -->
+<!-- REGRAS DE NEGÓCIO DO SIFAP - LEVANTAMENTO PARCIAL -->
+<!-- Sistema de Fiscalização e Administração de Pagamentos -->
+<!-- SENARC - Secretaria Nacional de Renda de Cidadania -->
+<!-- Em colaboração com a SUPDE/DESIF (a organização) -->
 <!-- ====================================================================== -->
 
 # REGRAS DE NEGÓCIO DO SIFAP - LEVANTAMENTO PARCIAL
@@ -77,16 +77,16 @@ revision_history:
 
 **RN-004** - O número máximo de dependentes por beneficiário é **3** (campo BN-QT-DEPEND, valores de 0 a 3). Para programas que exijam número maior, solicite autorização à CGPB pelo formulário FR-SIFAP-012.
 
-<!-- NOTE: Check with Marcos Antônio—there is evidence in the code that the
- limit was changed to 5 during a recent maintenance update, but we could
- not confirm it. The Technical Manual v2.3 (2008) also records 3. -->
+<!-- NOTA: Verificar com Marcos Antônio. Há indícios no código de que o
+ limite foi alterado para 5 durante uma atualização de manutenção recente,
+ mas não foi possível confirmar. O Manual Técnico v2.3 (2008) também registra 3. -->
 
 **RN-005** - O campo de região (BN-CD-REGIAO) deve corresponder a uma região válida segundo a tabela interna do SIFAP (valores 01 a 27, correspondentes aos estados brasileiros e ao Distrito Federal). O valor 99 é reservado para uso interno.
 
-<!-- NOTE: The value 99 in the BN-CD-REGIAO field appears in several records
- in the production base, but we were unable to identify its purpose.
- Marcos Antônio said that "it is Roberto's bypass" but could not provide
- details. Review the CADBENEF code. -->
+<!-- NOTA: O valor 99 no campo BN-CD-REGIAO aparece em diversos registros
+ na base de produção, mas não foi possível identificar sua finalidade.
+ Marcos Antônio disse que "é o bypass do Roberto", mas não soube fornecer
+ detalhes. Revisar o código do CADBENEF. -->
 
 **RN-006** - A data de nascimento (BN-DT-NASC) é obrigatória. Beneficiários com menos de 16 anos na data da inclusão não são aceitos, exceto como dependentes.
 
@@ -126,14 +126,14 @@ Onde:
 
 **RN-014** - O valor do benefício é sempre arredondado para baixo nos centavos (truncamento, não arredondamento matemático). Exemplo: R$ 125,567 → R$ 125,56.
 
-<!-- NOTE: The above formula is the BASIC formula. Marcos Antônio mentioned that
- there are "at least 3 more variations" in the CALCBENF code, including
- a special calculation for December (13th benefit / year-end bonus)
- and a multiplier called "FACTOR-K" that he could not explain. It was
- not possible to validate this with the team.
+<!-- NOTA: A fórmula acima é a fórmula BÁSICA. Marcos Antônio mencionou que
+ existem "pelo menos mais 3 variações" no código do CALCBENF, incluindo
+ um cálculo especial para dezembro (13º benefício / abono de fim de ano)
+ e um multiplicador chamado "FACTOR-K" que ele não soube explicar. Não foi
+ possível validar essas informações com a equipe.
 
- The proportional calculation rule for benefits starting mid-month
- (pro rata) is also undocumented. -->
+ A regra de cálculo proporcional para benefícios iniciados no meio do mês
+ (pro rata) também não está documentada. -->
 
 ### 2.2. Faixas de valores
 
@@ -155,11 +155,11 @@ Onde:
 
 **RN-021** - O total de descontos aplicável a um benefício não pode exceder **30% do valor bruto**. Descontos acima desse limite são rejeitados, e o benefício é processado sem descontos, com geração de auditoria.
 
-<!-- NOTE: Marcos Antônio mentioned that there is an exception for withholdings
- ordered by a court (garnishment or freezing orders), which may
- exceed the 30% limit. This could not be confirmed in the code
- because access to the CALCDSCT program is restricted and the analysis was not
- completed during the survey. -->
+<!-- NOTA: Marcos Antônio mencionou que existe uma exceção para retenções
+ determinadas judicialmente (ordens de penhora ou bloqueio), que podem
+ ultrapassar o limite de 30%. Não foi possível confirmar isso no código,
+ pois o acesso ao programa CALCDSCT é restrito e a análise não foi
+ concluída durante o levantamento. -->
 
 **RN-022** - Os tipos de desconto previstos são:
 
@@ -196,12 +196,12 @@ As seguintes regras de elegibilidade foram identificadas no código do programa 
 
 > **Observação:** as regras acima foram extraídas pela leitura do código-fonte de VALELEG e podem não representar todas as verificações realizadas. O programa tem aproximadamente 1.200 linhas de código com lógica condicional complexa.
 
-<!-- NOTE: The region 99 bypass rule is not documented.
- During the analysis of VALELEG, a code snippet was identified
- which bypasses all eligibility validation when BN-CD-REGIAO = 99.
- Marcos Antônio was unable to explain the origin of this rule. It is suspected
- that is an implemented testing mechanism or administrative bypass
- by Mr. Roberto Carlos. Needs investigation. -->
+<!-- NOTA: A regra de bypass da região 99 não está documentada.
+ Durante a análise de VALELEG, foi identificado um trecho de código
+ que ignora toda a validação de elegibilidade quando BN-CD-REGIAO = 99.
+ Marcos Antônio não soube explicar a origem dessa regra. Suspeita-se
+ que seja um mecanismo de teste implementado ou um bypass administrativo
+ criado pelo Sr. Roberto Carlos. Requer investigação. -->
 
 ---
 
@@ -219,13 +219,13 @@ O processamento batch mensal (programa BATCHPGT) segue estas regras:
 - O registro de pagamento é gravado no DDM PAYMENT com situação 'P' (pendente);
 - Ao fim do processamento, o arquivo de remessa CNAB 240 é gerado.
 
-<!-- NOTE: The "default ordering" mentioned above is, in practice, the
- alphabetically by the name of the beneficiary (field BN-NM-BENEF), which is the
- main descriptor of the file Adabas FNR 150. This ordering is a
- artifact of the original 1997 modeling and has no functional significance.
- However, changing the processing order could cause discrepancies
- in the control totalizers, as the program uses accumulators
- partial alphabetical range. -->
+<!-- NOTA: A "ordenação padrão" mencionada acima é, na prática, a ordenação
+ alfabética pelo nome do beneficiário (campo BN-NM-BENEF), que é o
+ descritor principal do arquivo Adabas FNR 150. Essa ordenação é um
+ artefato da modelagem original de 1997 e não tem significado funcional.
+ No entanto, alterar a ordem de processamento pode causar divergências
+ nos totalizadores de controle, pois o programa usa acumuladores por
+ faixa alfabética parcial. -->
 
 ### 5.2. Tratamento de erros
 
@@ -299,8 +299,8 @@ A continuidade deste trabalho depende de:
 
 **Recomendação:** caso este levantamento não seja retomado em curto prazo, recomenda-se investigar diretamente no código-fonte pelo menos as regras marcadas como "Alta prioridade" na seção 6, antes que o Sr. Marcos Antônio Ferreira seja transferido ou se aposente.
 
-<!-- This recommendation was not met. Marcos Antônio was transferred
- for SUPDE/DESIN in 2017. -->
+<!-- Esta recomendação não foi atendida. Marcos Antônio foi transferido
+ para a SUPDE/DESIN em 2017. -->
 
 ---
 

@@ -77,13 +77,13 @@ write_files:
     owner: root:root
     permissions: "0644"
     content: |
-      <!doctype html><html lang="en"><meta charset="utf-8"><title>SIFAP lab</title><body style="font-family:system-ui;margin:2rem;max-width:44rem"><h1>SIFAP legacy lab</h1><p>The lab is still provisioning, or the payload download failed. Check <code>/var/log/sifap-bootstrap.log</code> and <code>/var/log/sifap-provisioning.log</code>.</p><p><a href="/terminal/">Terminal</a> · <a href="/healthz">Health</a></p><div id="status"></div><script>fetch('/status.html',{cache:'no-store'}).then(r=>r.text()).then(h=>status.innerHTML=h).catch(()=>{})</script></body></html>
+      <!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Lab do SIFAP</title><body style="font-family:system-ui;margin:2rem;max-width:44rem"><h1>Lab legado do SIFAP</h1><p>O lab ainda está sendo provisionado ou o download do payload falhou. Consulte <code>/var/log/sifap-bootstrap.log</code> e <code>/var/log/sifap-provisioning.log</code>.</p><p><a href="/terminal/">Terminal</a> · <a href="/healthz">Saúde</a></p><div id="status"></div><script>fetch('/status.html',{cache:'no-store'}).then(r=>r.text()).then(h=>status.innerHTML=h).catch(()=>{})</script></body></html>
 
   - path: /opt/sifap/www/status.html
     owner: root:root
     permissions: "0644"
     content: |
-      <p>Bootstrap has not generated runtime status yet. Batch jobs run through provisioning-generated Natural drivers that assign work files under <code>/work</code>.</p>
+      <p>O bootstrap ainda não gerou o status de execução. Os jobs batch usam drivers Natural gerados pelo provisionamento, que atribuem os arquivos de trabalho em <code>/work</code>.</p>
 
   # Caddy reverse proxy configuration: the whole reason the demo has an https:// URL.
   #
@@ -673,7 +673,7 @@ ${compose_viewer_service}
       final="pending"; [ -f /opt/sifap/PROVISIONED ] && final="complete"
       payload="ok"; [ -f /opt/sifap/PAYLOAD-FAILED ] && payload="failed"
       cat > /opt/sifap/www/status.html <<EOF
-      <ul><li>Requested phase: <code>$${SIFAP_PHASE:-$phase}</code></li><li>Payload: <code>$payload</code></li><li>DDMs: <code>$ddms</code></li><li>Final provisioning: <code>$final</code></li><li>Terminal: <a href="/terminal/">/terminal/</a></li></ul>
+      <ul><li>Fase solicitada: <code>$${SIFAP_PHASE:-$phase}</code></li><li>Payload: <code>$payload</code></li><li>DDMs: <code>$ddms</code></li><li>Provisionamento final: <code>$final</code></li><li>Terminal: <a href="/terminal/">/terminal/</a></li></ul>
       EOF
 
   - path: /etc/sifap/provisioning.env

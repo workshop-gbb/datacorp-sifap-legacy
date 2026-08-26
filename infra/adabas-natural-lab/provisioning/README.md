@@ -12,7 +12,7 @@ Os scripts registram logs em stdout e em `/var/log/sifap-provisioning.log`.
 
 `SIFAP_PHASE` controla o `run-all.sh`:
 
-- `auto` (padrão) — executa a fase base e verifica se todos os DDMs obrigatórios já existem. Se existirem, continua por finalize. Caso contrário, imprime uma mensagem de espera pelos DDMs e encerra com **0**. Uma implantação nova ainda não tem DDMs do Natural, portanto esse estado não pode parecer uma falha de provisionamento.
+- `auto` (padrão) — executa a fase base e verifica se todos os DDMs obrigatórios já existem. Se existirem, continua na fase `finalize`. Caso contrário, imprime uma mensagem de espera pelos DDMs e encerra com **0**. Uma implantação nova ainda não tem DDMs do Natural, portanto esse estado não pode parecer uma falha de provisionamento.
 - `base` — carrega o Adabas, verifica os quatro arquivos e cataloga somente as três áreas de dados. Não executa smoke tests nem exige DDMs.
 - `finalize` — exige os quatro DDMs, cataloga subprogramas e programas, executa smoke tests e grava `/opt/sifap/PROVISIONED` somente depois que tudo isso termina com sucesso.
 
@@ -22,7 +22,7 @@ Depois de criar os DDMs manualmente, execute:
 sudo SIFAP_PHASE=finalize /opt/sifap/provisioning/run-all.sh
 ```
 
-Reiniciar o serviço systemd também funciona quando ele invoca `run-all.sh` sem sobrescrever `SIFAP_PHASE`, pois `auto` detecta os DDMs e continua em finalize.
+Reiniciar o serviço systemd também funciona quando ele invoca `run-all.sh` sem sobrescrever `SIFAP_PHASE`, pois `auto` detecta os DDMs e continua na fase `finalize`.
 
 ## Scripts
 
@@ -55,7 +55,7 @@ Os nomes curtos são obrigatórios por causa do limite de oito caracteres do Nat
 ## Marcadores
 
 - `/opt/sifap/state/DDMS-READY` — gravado quando o provisionamento detecta os quatro arquivos `.NGD` em `SIFAPPRD/GP`. Indica que a etapa manual dos DDMs foi concluída.
-- `/opt/sifap/PROVISIONED` — gravado somente depois que finalize termina com sucesso, incluindo a detecção dos DDMs, a catalogação dos subprogramas/programas no Natural e os smoke tests.
+- `/opt/sifap/PROVISIONED` — gravado somente depois que a fase `finalize` termina com sucesso, incluindo a detecção dos DDMs, a catalogação dos subprogramas/programas no Natural e os smoke tests.
 
 ## Mecanismo de build do Natural
 
@@ -91,4 +91,4 @@ Resolvido:
 Ainda em aberto até uma execução completa da VM depois da criação manual dos DDMs:
 
 - Se todos os cinco subprogramas e 12 programas são catalogados sem erros depois da aplicação das correções nas fontes.
-- Se os dois caminhos de smoke test passam com os DDMs finais gerados manualmente e os dados carregados.
+- Se os dois fluxos de smoke test são aprovados com os DDMs finais gerados manualmente e os dados carregados.

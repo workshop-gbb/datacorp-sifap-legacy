@@ -6,7 +6,7 @@ date: "1997-05-20"
 version: "1.0.0"
 classification: "CONFIDENCIAL"
 project: "SIFAP - Sistema de Fiscalização e Administração de Pagamentos"
-sponsor: "SUPDE/DESIF - the organization"
+sponsor: "SUPDE/DESIF - a organização"
 client: "SAS/MPAS - Secretaria de Assistência Social"
 ---
 
@@ -14,11 +14,11 @@ client: "SAS/MPAS - Secretaria de Assistência Social"
 > Este é um documento histórico reconstituído para o exercício de arqueologia da imersão SIFAP 2.0. O documento simula a documentação técnica original de 1997, como teria sido produzida pela equipe SUPDE/DESIF. A linguagem da época e os nomes de pessoas e unidades organizacionais foram preservados intencionalmente. **Este documento não deve ser usado como especificação atual do sistema.** As lacunas e inconsistências registradas nos comentários fazem parte do exercício: representam os desafios reais de arqueologia que a equipe deve investigar.
 
 <!-- ====================================================================== -->
-<!-- PROJECT SIFAP - TECHNICAL ARCHITECTURE DOCUMENT -->
-<!-- Version 1.0.0 - May 1997 -->
-<!-- the organization - the federal data processing organization -->
-<!-- Development Superintendence - SUPDE -->
-<!-- Fiscal Systems Development Division - DESIF -->
+<!-- PROJETO SIFAP - DOCUMENTO DE ARQUITETURA TÉCNICA -->
+<!-- Versão 1.0.0 - maio de 1997 -->
+<!-- a organização - a organização federal de processamento de dados -->
+<!-- Superintendência de Desenvolvimento - SUPDE -->
+<!-- Divisão de Desenvolvimento de Sistemas de Fiscalização - DESIF -->
 <!-- ====================================================================== -->
 
 # PROJETO SIFAP - DOCUMENTO DE ARQUITETURA TÉCNICA
@@ -156,7 +156,7 @@ Responsável pelo registro e pela consulta de trilhas de auditoria e ocorrência
 
 ### 3.1. DDMs previstos
 
-O SIFAP usará **3 DDMs** (Data Definition Modules) no Adabas:
+O SIFAP usará **3 DDMs** (Módulos de Definição de Dados) no Adabas:
 
 ```mermaid
 %%{init: {'theme':'neutral','themeVariables':{'fontFamily':'ui-sans-serif, system-ui, sans-serif','primaryColor':'#F5F5F5','primaryTextColor':'#171717','primaryBorderColor':'#171717','lineColor':'#525252','secondaryColor':'#FFFFFF','tertiaryColor':'#FAFAFA','background':'#FFFFFF'}}}%%
@@ -206,11 +206,11 @@ erDiagram
 
 Legenda: PK = chave primária (superdescritor) · DE = descritor (índice Adabas) · PE = grupo periódico · MU = campo multivalorado
 
-<!-- The DDM AUDIT (FNR 153) was not included in the original project.
- It was added in 2005, during the migration to Natural 6.3/Adabas 7.4,
- upon request from the Inspection Department (DEFIS).
- The audit programs (AUDCONSUL, AUDRELAT) provided for in this
- document were replaced by the program RELAUDIT in 2005. -->
+<!-- O DDM AUDIT (FNR 153) não estava incluído no projeto original.
+ Ele foi adicionado em 2005, durante a migração para Natural 6.3/Adabas 7.4,
+ por solicitação do Departamento de Fiscalização (DEFIS).
+ Os programas de auditoria (AUDCONSUL, AUDRELAT) previstos neste
+ documento foram substituídos pelo programa RELAUDIT em 2005. -->
 
 ### 3.2. Convenção de nomes de campos
 
@@ -241,9 +241,9 @@ Os sufixos indicam o tipo de dado:
 
 | DDM | Volume inicial | Crescimento estimado/ano | Projeção para 5 anos |
 | --------------- | -------------------------- | ------------------------ | --------------- |
-| BENEFICIARY | 1,200,000 (SIPAG migration) | 300,000 | 2,700,000 |
+| BENEFICIARY | 1,200,000 (migração do SIPAG) | 300,000 | 2,700,000 |
 | SOCIAL-PROGRAM | 15 | 5 | 40 |
-| PAYMENT | 0 (new) | 14,400,000 (1.2M x 12) | 72,000,000 |
+| PAYMENT | 0 (novo) | 14,400,000 (1.2M x 12) | 72,000,000 |
 
 > **Observação sobre a projeção:** consideramos crescimento linear de 25% ao ano no cadastro de beneficiários, compatível com a expansão prevista dos programas sociais do Governo Federal. A projeção pode variar conforme novas políticas públicas.
 
@@ -278,15 +278,15 @@ TB flowchart
 
 | Job | Frequência | Horário | Janela | Dependência |
 | --------- | -------------- | ------- | ------ | ---------------------- |
-| SIFAP-PGT | Monthly (1st DU) | 22:00 | 4h | None |
-| SIFAP-REL | Monthly (2nd DU) | 06:00 | 1h | SIFAP-PGT (RC=0) |
-| SIFAP-CON | Monthly (5th DU) | 22:00 | 2h | Receipt return BB |
+| SIFAP-PGT | Mensal (1º dia útil) | 22:00 | 4h | Nenhuma |
+| SIFAP-REL | Mensal (2º dia útil) | 06:00 | 1h | SIFAP-PGT (RC=0) |
+| SIFAP-CON | Mensal (5º dia útil) | 22:00 | 2h | Recebimento do retorno do BB |
 
-<!-- In practice, the scheduling differed from what was planned. The BATCHREL became
- be executed both before (previous mode, D-1) and after (D+5) the
- BATCHPGT. BATCHCON has been brought forward to D+4. Furthermore, the program
- VALELEG started to be executed in batch mode (D-2), which was not
- foreseen in this original project. -->
+<!-- Na prática, o agendamento diferiu do planejado. O BATCHREL passou a
+ ser executado tanto antes (modo prévio, D-1) quanto depois (D+5) do
+ BATCHPGT. O BATCHCON foi antecipado para D+4. Além disso, o programa
+ VALELEG passou a ser executado em modo batch (D-2), o que não estava
+ previsto neste projeto original. -->
 
 ### 4.3. Estimativa de tempo de processamento
 
@@ -294,16 +294,16 @@ Com base em benchmarks realizados no ambiente de homologação da organização 
 
 | Job | Volume-base | Tempo estimado | Observação |
 | --------- | -------------------- | -------------- | --------------------------------------- |
-| SIFAP-PGT | 1,200,000 records | 1h30min | Sequential processing with I/O Adabas |
-| SIFAP-REL | N/A | 20min | Totalizer reading |
-| SIFAP-CON | ~1,200,000 records | 45min | Match between CNAB and PAYMENT |
+| SIFAP-PGT | 1,200,000 registros | 1h30min | Processamento sequencial com E/S no Adabas |
+| SIFAP-REL | N/A | 20min | Leitura de totalizadores |
+| SIFAP-CON | ~1,200,000 registros | 45min | Correspondência entre CNAB e PAYMENT |
 
 > **Premissa:** estes tempos são estimativas baseadas no volume inicial. O crescimento da base de beneficiários implicará aumento proporcional do tempo de processamento. Recomenda-se revisar o dimensionamento quando o volume atingir 2.500.000 registros.
 
-<!-- Volume reached 4,200,000 in 2018. BATCHPGT processing time
- reached 3h20min (reference Feb/2018), with a timeout incident in
- March/2016 when it processed 4.1M records. The sizing review
- recommended in this document has never been formally carried out. -->
+<!-- O volume atingiu 4,200,000 em 2018. O tempo de processamento do BATCHPGT
+ chegou a 3h20min (referência fev/2018), com um incidente de tempo limite em
+ março/2016, quando processou 4.1M registros. A revisão de dimensionamento
+ recomendada neste documento nunca foi realizada formalmente. -->
 
 ---
 
@@ -333,24 +333,24 @@ sequenceDiagram
 
 | Posição | Tamanho | Campo | Formato |
 | ------- | ------- | ---------------------------------------------------- | ------- |
-| 001-002 | 02 | Record Type (01=Header, 02=Detail, 99=Trailer) | N |
-| 003-016 | 14 | Beneficiary's CPF | N |
-| 017-056 | 40 | Name of beneficiary | A |
-| 057-069 | 13 | Bank order value (11 integers + 2 decimals) | N |
-| 070-077 | 08 | Credit date (YYYMMDD) | N |
-| 078-080 | 03 | Paying bank code | N |
-| 081-084 | 04 | Agency code | N |
-| 085-094 | 10 | Account number | N |
-| 095-100 | 06 | Reference year/month (YYYYMM) | N |
-| 101-110 | 10 | Bank order code SIAFI | N |
-| 111-130 | 20 | Reserve for future use | A |
+| 001-002 | 02 | Tipo de registro (01=Cabeçalho, 02=Detalhe, 99=Rodapé) | N |
+| 003-016 | 14 | CPF do beneficiário | N |
+| 017-056 | 40 | Nome do beneficiário | A |
+| 057-069 | 13 | Valor da ordem bancária (11 inteiros + 2 decimais) | N |
+| 070-077 | 08 | Data de crédito (AAAAMMDD) | N |
+| 078-080 | 03 | Código do banco pagador | N |
+| 081-084 | 04 | Código da agência | N |
+| 085-094 | 10 | Número da conta | N |
+| 095-100 | 06 | Ano/mês de referência (AAAAMM) | N |
+| 101-110 | 10 | Código da ordem bancária no SIAFI | N |
+| 111-130 | 20 | Reserva para uso futuro | A |
 
-<!-- Integration with SIAFI has not been implemented according to this layout.
- In 2002, when the integration was effectively carried out (version 2.5),
- the layout was redefined in conjunction with the STN, with additional fields
- for hash totalizer and social program code. The program
- BATCHCON implemented reconciliation based on the revised layout.
- This original document does not reflect the implemented version. -->
+<!-- A integração com o SIAFI não foi implementada conforme este leiaute.
+ Em 2002, quando a integração foi efetivamente realizada (versão 2.5),
+ o leiaute foi redefinido em conjunto com a STN, com campos adicionais
+ para totalizador hash e código do programa social. O programa
+ BATCHCON implementou a conciliação com base no leiaute revisado.
+ Este documento original não reflete a versão implementada. -->
 
 ---
 
@@ -366,7 +366,7 @@ O controle de acesso ao SIFAP será implementado em dois níveis:
 - SUPERVISOR: acesso completo, incluindo exclusão e parametrização;
 - AUDITOR: acesso somente leitura a todos os módulos + relatórios de auditoria.
 
-1. **Nível da aplicação:** verificação adicional pela GDA de sessão (Global Data Area), contendo código do usuário, perfil e regional de origem.
+1. **Nível da aplicação:** verificação adicional pela GDA de sessão (área global de dados), contendo código do usuário, perfil e regional de origem.
 
 ### 6.2. Trilha de auditoria
 
@@ -379,14 +379,14 @@ Toda operação que alterar dados no sistema (inclusão, alteração, exclusão)
 - Identificação do registro afetado;
 - Valores anterior e posterior (para alterações).
 
-> **Nota de projeto:** na fase inicial, os registros de auditoria serão gravados em campos do tipo MU (multiple value) no DDM BENEFIC, o arquivo de Beneficiários, usando um grupo periódico (PE) para o histórico. Essa abordagem simplifica a implementação e evita a criação de um DDM adicional.
+> **Nota de projeto:** na fase inicial, os registros de auditoria serão gravados em campos do tipo MU (valor múltiplo) no DDM BENEFIC, o arquivo de Beneficiários, usando um grupo periódico (PE) para o histórico. Essa abordagem simplifica a implementação e evita a criação de um DDM adicional.
 
-<!-- This decision was reversed in 2005, when the volume of
- audit on PE of DDM BENEFIC caused severe degradation of
- performance. DDM AUDIT (FNR 153) was then created as an entity
- separately, and the subprogram LOGAUDIT was refactored to write to this
- new DDM. DBA Cláudia Regina dos Santos led the migration of
- existing audit records for the new file Adabas. -->
+<!-- Essa decisão foi revertida em 2005, quando o volume de
+ auditoria no PE do DDM BENEFIC causou degradação grave de
+ desempenho. O DDM AUDIT (FNR 153) foi então criado como uma entidade
+ separada, e o subprograma LOGAUDIT foi refatorado para gravar nesse
+ novo DDM. A DBA Cláudia Regina dos Santos liderou a migração dos
+ registros de auditoria existentes para o novo arquivo Adabas. -->
 
 ---
 
@@ -406,48 +406,48 @@ A evolução do SIFAP está planejada nas seguintes fases, sujeitas à aprovaç�
 | **Fase 6** | 1º semestre/2000 | **Módulo web**, interface de consulta via intranet para órgãos gestores (SENARC, SAS). Tecnologia prevista: Natural Web Interface + servidor HTTP da organização. | Opcional |
 | **Fase 7** | 2º semestre/2000 | Integração online com a Receita Federal para validar CPF em tempo real | Opcional |
 
-<!-- Balance of real evolution (retrospective annotation):
+<!-- Balanço da evolução real (anotação retrospectiva):
 
- Phase 1: COMPLETED (Dec/1997) - as planned, with a delay of 2 months.
+ Fase 1: CONCLUÍDA (dez/1997) - conforme planejado, com atraso de 2 meses.
 
- Phase 2: COMPLETED (Jul/1998) - as planned. Entry into production
- from v1.0 with modules CADBENEF, CADDEPEN, CADPROG, CONSBENF, BATCHPGT,
+ Fase 2: CONCLUÍDA (jul/1998) - conforme planejado. Entrada em produção
+ a partir da v1.0 com os módulos CADBENEF, CADDEPEN, CADPROG, CONSBENF, BATCHPGT,
  BATCHREL.
 
- Phase 3: PARTIALLY COMPLETED (2002/2005) - BATCHCON has been implemented
- in 2002 (version 2.5), with a different SIAFI layout than planned. You
- audit programs AUDCONSUL and AUDRELAT were NEVER implemented
- as designed. In 2005, they were replaced by the RELAUDIT program,
- with reduced scope.
+ Fase 3: PARCIALMENTE CONCLUÍDA (2002/2005) - o BATCHCON foi implementado
+ em 2002 (versão 2.5), com um leiaute SIAFI diferente do planejado. Os
+ programas de auditoria AUDCONSUL e AUDRELAT NUNCA foram implementados
+ conforme projetados. Em 2005, foram substituídos pelo programa RELAUDIT,
+ com escopo reduzido.
 
- Phase 4: COMPLETED WITH CHANGES (1999/2003) - VALBENEF has been implemented
- in 1999 (Phase 2 of v2.0). VALDOCS was implemented in 2003 by Patrícia
- Helena Moura. Program VALELEG (validation of
- eligibility), which was NOT included in the original project.
+ Fase 4: CONCLUÍDA COM ALTERAÇÕES (1999/2003) - o VALBENEF foi implementado
+ em 1999 (Fase 2 da v2.0). O VALDOCS foi implementado em 2003 por Patrícia
+ Helena Moura. Foi acrescentado o programa VALELEG (validação de
+ elegibilidade), que NÃO estava incluído no projeto original.
 
- Phase 5: NEVER IMPLEMENTED - Advanced reporting has never been
- developed. SIFAP reports remain in text format 132
- columns for dot matrix printer.
+ Fase 5: NUNCA IMPLEMENTADA - a geração de relatórios avançados nunca foi
+ desenvolvida. Os relatórios do SIFAP permanecem em formato de texto com 132
+ colunas para impressora matricial.
 
- Phase 6: NEVER IMPLEMENTED - The "web module" planned for 2000 never
- left the paper. The Natural Web Interface technology has not been adopted by
- the organization. Access to the SIFAP remains exclusively via 3270 emulation.
+ Fase 6: NUNCA IMPLEMENTADA - o "módulo web" planejado para 2000 nunca
+ saiu do papel. A tecnologia Natural Web Interface não foi adotada pela
+ organização. O acesso ao SIFAP permanece exclusivamente via emulação 3270.
 
- Phase 7: IMPLEMENTED DIFFERENTLY (2002) - The query of CPF in
- Federal Revenue was implemented in 2002, but via transaction CICS and not
- via direct online integration as planned.
+ Fase 7: IMPLEMENTADA DE FORMA DIFERENTE (2002) - a consulta de CPF na
+ Receita Federal foi implementada em 2002, mas via transação CICS, e não
+ por integração online direta, conforme planejado.
 
- UNSPECIFIED FEATURES:
- - CALCCORR (calculation of corrections/adjustments) - implemented in 2005
- by Marcos Antônio Ferreira during the migration to Natural 6.3.
- - CALCDSCT (discount calculation) - implemented in 2015 on demand
- from SENARC. This module was NOT included in any previous planning.
- - RELPGT (payment report) - implemented in 2003 by Patrícia
- Helena Moura. Replaced partial functionality of the BATCHREL.
- - DDM AUDIT (FNR 153) - created in 2005. The original project provided
- audit as PE in DDM BENEFIC.
- - CadÚnico Integration - implemented as an emergency in 2006, without
- program cataloged in the official inventory. -->
+ FUNCIONALIDADES NÃO ESPECIFICADAS:
+ - CALCCORR (cálculo de correções/ajustes) - implementado em 2005
+ por Marcos Antônio Ferreira durante a migração para Natural 6.3.
+ - CALCDSCT (cálculo de descontos) - implementado em 2015 por solicitação
+ da SENARC. Esse módulo NÃO estava incluído em nenhum planejamento anterior.
+ - RELPGT (relatório de pagamentos) - implementado em 2003 por Patrícia
+ Helena Moura. Substituiu parte da funcionalidade do BATCHREL.
+ - DDM AUDIT (FNR 153) - criado em 2005. O projeto original previa a
+ auditoria como PE no DDM BENEFIC.
+ - Integração com o CadÚnico - implementada em caráter emergencial em 2006, sem
+ programa catalogado no inventário oficial. -->
 
 ### 7.2. Premissas para evolução
 
@@ -507,16 +507,16 @@ gantt
     dateFormat YYYY-MM
     axisFormat %b/%y
 
-    section Analysis
-    Specification BATCHPGT :b1, 1998-01, 1M
+    section Análise
+    Especificação do BATCHPGT :b1, 1998-01, 1M
 
-    section Coding
-    Coding BATCHPGT :b2, 1998-02, 2M
-    CNAB layout and tests BB :b3, 1998-04, 1M
-    BATCHREL and tests :b4, 1998-05, 1M
+    section Codificação
+    Codificação do BATCHPGT :b2, 1998-02, 2M
+    Leiaute CNAB e testes com o BB :b3, 1998-04, 1M
+    BATCHREL e testes :b4, 1998-05, 1M
 
-    section Quality
-    Homologation and entry into production:b5, 1998-06, 1M
+    section Qualidade
+    Homologação e entrada em produção:b5, 1998-06, 1M
 ```
 
 ---
@@ -549,7 +549,7 @@ gantt
 | R5 | Limitação de desempenho do Adabas com volumes acima de 2 milhões de registros | Baixa | Alto | Monitorar e otimizar descritores |
 | R6 | Descontinuação de Natural/Adabas pela organização | Baixa | Crítico | Seguir as diretrizes técnicas da SUPDE |
 
-> **Note on R4:** This risk partially materialized with the departure of Mário Sérgio and Sandra Lúcia in December/1997. Mitigation through documentation and knowledge sharing was partially implemented, but the practice was not maintained throughout the life of the system.
+> **Observação sobre o R4:** esse risco se concretizou parcialmente com a saída de Mário Sérgio e Sandra Lúcia em dezembro/1997. A mitigação por meio de documentação e compartilhamento de conhecimento foi implementada parcialmente, mas a prática não foi mantida durante toda a vida útil do sistema.
 
 ---
 
@@ -560,22 +560,22 @@ Este documento foi revisado e aprovado para o início do desenvolvimento conform
 ---
 
 **Roberto Carlos Ferreira**
-Senior Systems Analyst - SUPDE/DESIF
-Technical Coordinator of Project SIFAP
-Brasilia, May 20, 1997
+Analista de Sistemas Sênior - SUPDE/DESIF
+Coordenador técnico do Projeto SIFAP
+Brasília, 20 de maio de 1997
 
 ---
 
 **Maria Helena Costa**
-Coordinator - DESIF/SUPDE
-Brasília, May 22, 1997
+Coordenadora - DESIF/SUPDE
+Brasília, 22 de maio de 1997
 
 ---
 
 **Antônio Marcos Silva**
-Manager - SUPDE
-Development Superintendence
-Brasília, May 26, 1997
+Gerente - SUPDE
+Superintendência de Desenvolvimento
+Brasília, 26 de maio de 1997
 
 ---
 
@@ -583,30 +583,30 @@ Brasília, May 26, 1997
 
 | Termo | Definição |
 | ---------- | --------------------------------------------------------------------------------------- |
-| Adabas | Adaptable Database System - Software AG's DBMS used on the organization's mainframe |
-| CNAB | National Center for Banking Automation - file standard for banking transactions |
-| Com\*plete | Software AG Teleprocessing Monitor for 3270 Displays |
-| DDM | Data Definition Module - logical definition of file access Adabas in Natural |
-| FROM | Descriptor - field indexed in Adabas, used as search criteria |
-| FDT | Field Definition Table - physical definition of fields in a file Adabas |
-| FNR | File Number - number that identifies a file in Adabas |
-| GDA | Global Data Area - data area shared between Natural programs in the session |
-| INFOVIA | Federal Government data communication network |
-| JES2 | Job Entry Subsystem - batch job management subsystem in MVS |
-| LDA | Local Data Area - local data area of ​​a program Natural |
-| MU | Multiple Value - field that can contain multiple values ​​in Adabas |
-| Natural | Software AG's 4GL programming language for mainframe environment |
-| NWI | Natural Web Interface - technology for displaying Natural screens as HTML |
-| PE | Periodic Group - group of fields that are repeated in Adabas (history) |
-| SIAFI | Integrated Financial Administration System of the Federal Government |
-| SIPAG/DOS | Payment System - Clipper application prior to SIFAP |
-| SNA | Systems Network Architecture - IBM communication protocol |
-| STN | National Treasury Secretariat |
-| VTAM | Virtual Telecommunications Access Method - IBM communications software |
+| Adabas | Sistema de Banco de Dados Adaptável - SGBD da Software AG usado no mainframe da organização |
+| CNAB | Centro Nacional de Automação Bancária - padrão de arquivo para transações bancárias |
+| Com\*plete | Monitor de teleprocessamento da Software AG para terminais 3270 |
+| DDM | Módulo de Definição de Dados - definição lógica de acesso a arquivos Adabas no Natural |
+| FROM | Descritor - campo indexado no Adabas, usado como critério de pesquisa |
+| FDT | Tabela de Definição de Campos - definição física dos campos de um arquivo Adabas |
+| FNR | Número do Arquivo - número que identifica um arquivo no Adabas |
+| GDA | Área Global de Dados - área de dados compartilhada entre programas Natural na sessão |
+| INFOVIA | Rede de comunicação de dados do Governo Federal |
+| JES2 | Subsistema de Entrada de Jobs - subsistema de gerenciamento de jobs batch no MVS |
+| LDA | Área Local de Dados - área de dados local de um programa Natural |
+| MU | Valor Múltiplo - campo que pode conter vários valores no Adabas |
+| Natural | Linguagem de programação 4GL da Software AG para ambiente mainframe |
+| NWI | Interface Web do Natural - tecnologia para exibir telas Natural como HTML |
+| PE | Grupo Periódico - grupo de campos que se repetem no Adabas (histórico) |
+| SIAFI | Sistema Integrado de Administração Financeira do Governo Federal |
+| SIPAG/DOS | Sistema de Pagamentos - aplicação Clipper anterior ao SIFAP |
+| SNA | Arquitetura de Rede de Sistemas - protocolo de comunicação da IBM |
+| STN | Secretaria do Tesouro Nacional |
+| VTAM | Método de Acesso a Telecomunicações Virtuais - software de comunicação da IBM |
 
 ---
 
-**the organization - the federal data processing organization**
+**a organização - a organização federal de processamento de dados**
 **Documento confidencial**
 **Reprodução e distribuição restritas ao âmbito do projeto SIFAP**
 

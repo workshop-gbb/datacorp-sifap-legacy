@@ -4,7 +4,7 @@
 
 **Provisiona uma VM do Azure em East US 2 que executa o Adabas Community Edition e o Natural Community Edition em contêineres, publicados por uma URL HTTPS estável de demonstração, para participantes que desejam executar os programas legados do SIFAP (Sistema de Fiscalização e Administração de Pagamentos), em vez de apenas lê-los.**
 
-![Tipo runbook](https://img.shields.io/badge/Type-Runbook-171717?style=flat-square) ![Trilha opcional](https://img.shields.io/badge/Track-Optional-737373?style=flat-square) ![Custo da assinatura Azure](https://img.shields.io/badge/Cost-Azure%20Subscription-A3A3A3?style=flat-square)
+![Tipo runbook](https://img.shields.io/badge/Tipo-Manual%20operacional-171717?style=flat-square) ![Trilha opcional](https://img.shields.io/badge/Trilha-Opcional-737373?style=flat-square) ![Custo da assinatura Azure](https://img.shields.io/badge/Custo-Assinatura%20Azure-A3A3A3?style=flat-square)
 
 | Campo | Valor |
 |---|---|
@@ -198,7 +198,7 @@ A tela verde do viewer usa um **upstream diferente**, não um caminho diferente:
 Ao contrário do script do operador, o script dessa sessão também não oferece fallback para um shell. Deixar um viewer em um prompt dentro de `natural-ce` concederia mais acesso do que a conta usada no login.
 
 > [!IMPORTANT]
-> **A outra metade é o próprio programa.** O `CONSBENF` congelado adiciona um registro AUDIT depois de cada consulta. Por isso, o build deriva `VIEWBENF` como um objeto de runtime preparado sem a view, os campos, o bloco de ação e o copycode de AUDIT. O gerador falha se restar qualquer instrução `STORE`, `UPDATE`, `DELETE`, transação, work-file ou auditoria, e permite somente a chamada ao validador somente leitura `SUBVALCP`. A evidência congelada da imersão permanece inalterada.
+> **A outra metade é o próprio programa.** O `CONSBENF` congelado adiciona um registro AUDIT depois de cada consulta. Por isso, o build deriva `VIEWBENF` como um objeto de runtime preparado sem a view, os campos, o bloco de ação e o copycode de AUDIT. O gerador falha se restar qualquer instrução `STORE`, `UPDATE`, `DELETE`, transação, work-file ou auditoria, e permite apenas a chamada ao validador somente leitura `SUBVALCP`. A evidência congelada da imersão permanece inalterada.
 >
 > Isso torna o viewer somente leitura no nível da aplicação, não um principal ou tenant separado do Adabas. As duas contas ainda compartilham um runtime Natural e um banco de dados.
 
@@ -485,7 +485,7 @@ O `apply` termina enquanto a VM ainda executa o bootstrap: instala o Docker, for
 | **Aplicação moderna** | `modern_app_url` | 502 até o Estágio 3 responder em `modern_app_upstream` |
 | Somente o hostname | `demo_fqdn` | Para verificações de DNS e `ssh` |
 | Administração REST do Adabas | `admin_console_url` | `/admin/` na origem da demonstração, com proxy por TLS. Entre no console como `admin` |
-| Console do Adabas sem o proxy | `admin_console_tunnel_command` | Túnel `ssh -L`, caso o prefixo `/admin/` quebre os assets do console |
+| Console do Adabas sem o proxy | `admin_console_tunnel_command` | Túnel `ssh -L`, caso o prefixo `/admin/` quebre os recursos estáticos do console |
 | **Usuário da URL de demonstração** | `demo_basic_auth_username` | Obrigatório em todas as rotas, exceto `/healthz` |
 | **Senha da URL de demonstração** | `demo_basic_auth_password_command` | Imprime um comando SSH que lê o vault privado pela identidade da VM |
 | Login não administrativo | `viewer_account` | O que o viewer pode ou não acessar e como ler sua senha |
@@ -581,7 +581,7 @@ Enviar as fontes não é o mesmo que executá-las. Os scripts em `infra/adabas-n
 | `02-build-natural.sh` | Base cataloga as áreas de dados; finalize cataloga subprogramas/programas depois da criação dos DDMs |
 | `03-smoke-test.sh` | Verifica se `CONSBENF` e um programa batch realmente são executados |
 
-**A execução ocorre como unidade systemd, não como etapa do cloud-init.** O Adabas precisa de vários minutos para criar seu banco de demonstração antes que `ADALOD` funcione, e um `CATALL` completo demora ainda mais. Um `runcmd` bloqueante arrisca atingir o timeout do cloud-init, interromper a carga e deixar um arquivo parcialmente preenchido. A unidade inicia depois que o Docker e o disco de dados persistente estão prontos, sobrevive ao fim do cloud-init e às reinicializações e informa o estado por `systemctl`.
+**A execução ocorre como unidade systemd, não como etapa do cloud-init.** O Adabas precisa de vários minutos para criar seu banco de demonstração antes que `ADALOD` funcione, e um `CATALL` completo demora ainda mais. Um `runcmd` bloqueante arrisca atingir o tempo limite do cloud-init, interromper a carga e deixar um arquivo parcialmente preenchido. A unidade inicia depois que o Docker e o disco de dados persistente estão prontos, sobrevive ao fim do cloud-init e às reinicializações e informa o estado por `systemctl`.
 
 **O provisionamento tem duas fases porque o Natural CE 9.3.3 não cria DDMs.**
 
@@ -627,7 +627,7 @@ Esta é a única etapa que o módulo não automatiza. Entenda o motivo antes de 
 | Catalogar uma listagem `.ddm` como fonte | `NAT4225 Invalid level`: um relatório `LISTDDM` não é código-fonte Natural compilável |
 | Forjar o `.NGD` compilado byte a byte | 15 × `NAT0002`; tentativa abandonada, consulte a [falha 8](../../docs/failures/README.md) |
 
-A solução da Software AG é o NaturalONE, a IDE Eclipse que se conecta ao Natural Development Server. A [página de `natural-ce` no Docker Hub](https://hub.docker.com/r/softwareag/natural-ce) informa que a imagem "will be used together with the NaturalONE development environment", e o [NaturalONE Community Edition](https://tech.forums.softwareag.com/t/adabas-natural-community-edition-for-docker-download/235228) pode ser baixado gratuitamente com uma conta TECHcommunity.
+A solução da Software AG é o NaturalONE, a IDE Eclipse que se conecta ao Natural Development Server. A [página de `natural-ce` no Docker Hub](https://hub.docker.com/r/softwareag/natural-ce) informa que a imagem deve ser usada com o ambiente de desenvolvimento NaturalONE, e o [NaturalONE Community Edition](https://tech.forums.softwareag.com/t/adabas-natural-community-edition-for-docker-download/235228) pode ser baixado gratuitamente com uma conta TECHcommunity.
 
 **O NaturalONE é fornecido para Windows. Não há build para macOS nem para arm64.** Por isso existe `enable_ddm_workstation`.
 
@@ -1014,20 +1014,20 @@ Este módulo exige `~> 1.14.0`. Todos os workflows que executam Terraform fixam 
 |---|---|---|
 | A URL de demonstração não resolve | O rótulo DNS ainda não foi propagado ou o apply não terminou | Aguarde um minuto e execute `dig +short "$(terraform output -raw demo_fqdn)"` |
 | O navegador avisa sobre o certificado | Modo de CA interna, que é o padrão | Esperado. Confie na CA com `terraform output -raw trust_demo_ca_command` ou defina `enable_public_acme = true` |
-| A URL de demonstração atinge timeout | Seu IP não está em `allowed_source_cidrs` | Use a mesma correção do SSH abaixo; a regra 443 usa a mesma lista de permissões |
+| A URL de demonstração atinge o tempo limite | Seu IP não está em `allowed_source_cidrs` | Use a mesma correção do SSH abaixo; a regra 443 usa a mesma lista de permissões |
 | O navegador solicita senha | Comportamento esperado: tudo, exceto `/healthz`, exige autenticação | `terraform output -raw demo_basic_auth_username` e `-raw demo_basic_auth_password_command` |
 | A senha do Key Vault é rejeitada na URL | A VM não leu o segredo e usou um hash aleatório que ninguém possui | Procure `could not build the basic-auth hash` em `/var/log/sifap-bootstrap.log`, corrija o acesso ao vault e execute `sudo /opt/sifap/bootstrap.sh` novamente |
 | `/terminal/` retorna 502 | `ttyd` não iniciou | `sudo docker compose logs ttyd`; uma causa comum é a ausência de `/opt/sifap/bin/docker`, corrigida executando `sudo /opt/sifap/bootstrap.sh` novamente |
 | O terminal conecta e cai imediatamente | `--check-origin` rejeita o upgrade de WebSocket | Remova `--check-origin` do comando `ttyd` em `/opt/sifap/docker-compose.yml` e execute `sudo docker compose up -d ttyd` |
 | O terminal abre um shell em vez do Natural | O caminho de inicialização do Natural não foi encontrado | Siga as instruções exibidas e defina `terminal_natural_command` |
 | `/app/` retorna 502 | Nada responde em `modern_app_upstream` | Esperado até o Estágio 3. Conecte o contêiner da aplicação à rede `sifap-lab` |
-| `/admin/` renderiza parcialmente | Os assets do console pressupõem um caminho raiz | Use `terraform output -raw admin_console_tunnel_command` |
+| `/admin/` renderiza parcialmente | Os recursos estáticos do console pressupõem um caminho raiz | Use `terraform output -raw admin_console_tunnel_command` |
 | `/corpus` está vazio em `natural-ce` | O upload ou a verificação do payload SSH falhou | Execute `infra/adabas-natural-lab/deploy-local.sh upload` a partir do repositório |
 | `sifap-provisioning` está `failed` com saída 3 | `provisioning/run-all.sh` não foi entregue | Execute `infra/adabas-natural-lab/deploy-local.sh upload` a partir do repositório |
 | `https://` recusado depois do bootstrap | O contêiner Caddy não iniciou | Execute `sudo docker compose logs caddy` na VM |
 | O certificado Let's Encrypt não é emitido | O desafio ACME não alcança a porta 80 | Confirme `enable_public_acme = true` e que o rótulo DNS resolve publicamente |
 | `terraform plan` falha ao ler a chave SSH | O arquivo em `ssh_public_key_path` não existe | Gere o par de chaves ou defina a variável com o caminho correto |
-| SSH atinge timeout | Seu IP público mudou e não está mais em `allowed_source_cidrs` | Atualize `terraform.tfvars` e aplique novamente |
+| SSH atinge o tempo limite | Seu IP público mudou e não está mais em `allowed_source_cidrs` | Atualize `terraform.tfvars` e aplique novamente |
 | `Permission denied (publickey)` | A chave privada não corresponde à chave pública enviada | Conecte com `ssh -i ~/.ssh/id_rsa sifapadmin@<FQDN>` |
 | As portas 2700 ou 60001 não respondem | O bootstrap ainda executa ou um contêiner parou | Acompanhe o log de bootstrap e verifique os contêineres |
 | O Adabas rejeita a senha do Key Vault | A extensão privada de seed ou a leitura do bootstrap falhou | Verifique `azurerm_virtual_machine_extension.seed_key_vault` e `/var/log/sifap-bootstrap.log`; execute `SIFAP_TERRAFORM_EXTRA_ARGS='-replace=azurerm_virtual_machine_extension.seed_key_vault' ./deploy-local.sh apply` |

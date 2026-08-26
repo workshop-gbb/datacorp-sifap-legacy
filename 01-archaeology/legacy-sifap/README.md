@@ -13,9 +13,9 @@
 
 ![Legado SIFAP 1.0](https://img.shields.io/badge/Legado-SIFAP%201.0-171717?style=flat-square) ![29 anos em operação](https://img.shields.io/badge/Opera%C3%A7%C3%A3o-29%20anos-404040?style=flat-square) ![Linguagem Natural e Adabas](https://img.shields.io/badge/Linguagem-Natural%2BAdabas-737373?style=flat-square)
 
-> **Classificação:** Documento interno, the organization / SUPDE / DESIF
+> **Classificação:** Documento interno, a organização / SUPDE / DESIF
 > **Versão do sistema:** 4.1.2
-> **Ambiente:** Produção, mainframe da the organization / Regional Brasília
+> **Ambiente:** Produção, mainframe da organização / Regional Brasília
 > **Linguagem:** Natural 6.3.12 | Banco de dados: Adabas 7.4.3
 
 ---
@@ -41,7 +41,7 @@ O sistema atende às seguintes necessidades operacionais:
 | SENARC | Secretaria Nacional de Renda de Cidadania | Regulamentação e acompanhamento dos benefícios |
 | CGPB | Coordenação-Geral de Processamento de Benefícios | Operação direta do processamento mensal |
 | DEFIS | Departamento de Fiscalização | Auditoria e controle de pagamentos indevidos |
-| CGTI/MDAS | Coordenação-Geral de Tecnologia da Informação | Interface técnica com a the organization |
+| CGTI/MDAS | Coordenação-Geral de Tecnologia da Informação | Interface técnica com a organização |
 
 O SIFAP é um sistema fundamental para o ciclo de pagamento de benefícios e está classificado como **sistema de missão crítica** pelo Comitê de Governança de TI do MDAS.
 
@@ -101,7 +101,7 @@ flowchart TB
     classDef muted fill:#FAFAFA,stroke:#A3A3A3,color:#404040
     classDef result fill:#FFFFFF,stroke:#171717,color:#171717,stroke-width:2px
 
-    subgraph MF["Mainframe — the organization"]
+    subgraph MF["Mainframe — a organização"]
         NAT["Natural 6.3<br/>Programas online (8)<br/>Programas batch (7)"]:::step
         ADA["Adabas 7.4<br/>DDMs (4)<br/>FDTs"]:::step
         JES["Agendador de jobs<br/>JES2/CICS<br/>Jobs batch (7)"]:::muted
