@@ -26,13 +26,6 @@
 # Logs
 *.log
 
-# Facilitator materials — answer keys and solutions must NEVER enter this repository (it is public).
-# Keep your local copy; distribute it to facilitators through a private channel.
-docs/FACILITATOR-MYSTERY-ANSWER-KEY.md
-**/*GABARITO*.md
-**/*-RESPOSTAS.md
-**/*-ANSWER-KEY.md
-
 # Terraform — repo-wide, not just infra/adabas-natural-lab.
 # State is the single most dangerous file here: it stores every attribute Terraform ever read
 # back, in cleartext, including generated passwords and Key Vault secret values. Terraform
