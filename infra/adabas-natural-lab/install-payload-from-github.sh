@@ -2,7 +2,10 @@
 set -Eeuo pipefail
 
 COMMIT="${1:-}"
-REPOSITORY="${SIFAP_GITHUB_REPOSITORY:-paulasilvatech/datacorp-sifap-team-kit-pt-br}"
+# Positional $2 carries the token when Azure Run Command passes it as a
+# protected parameter, so it never appears in Run Command logs.
+GITHUB_TOKEN_VALUE="${SIFAP_GITHUB_TOKEN:-${2:-}}"
+REPOSITORY="${SIFAP_GITHUB_REPOSITORY:-workshop-gbb/datacorp-sifap-legacy}"
 WORK_DIR="$(mktemp -d)"
 SOURCE_DIR="$WORK_DIR/source"
 STAGE_DIR="$WORK_DIR/stage"
@@ -17,9 +20,18 @@ trap cleanup EXIT
 }
 
 mkdir -p "$SOURCE_DIR" "$STAGE_DIR/corpus" "$STAGE_DIR/provisioning" "$STAGE_DIR/www"
-curl -fsSL --retry 5 --retry-delay 3 --retry-connrefused \
-  "https://codeload.github.com/${REPOSITORY}/tar.gz/${COMMIT}" \
-  -o "$WORK_DIR/source.tar.gz"
+if [ -n "$GITHUB_TOKEN_VALUE" ]; then
+  curl -fsSL --retry 5 --retry-delay 3 --retry-connrefused \
+    -H "Authorization: Bearer ${GITHUB_TOKEN_VALUE}" \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com/repos/${REPOSITORY}/tarball/${COMMIT}" \
+    -o "$WORK_DIR/source.tar.gz"
+else
+  curl -fsSL --retry 5 --retry-delay 3 --retry-connrefused \
+    "https://codeload.github.com/${REPOSITORY}/tar.gz/${COMMIT}" \
+    -o "$WORK_DIR/source.tar.gz"
+fi
 tar -xzf "$WORK_DIR/source.tar.gz" -C "$SOURCE_DIR" --strip-components=1
 
 CORPUS_ROOT="$SOURCE_DIR/01-archaeology/legacy-sifap"

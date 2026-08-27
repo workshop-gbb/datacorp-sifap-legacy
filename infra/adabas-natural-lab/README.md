@@ -968,13 +968,13 @@ The workflow will fail at login with `AADSTS70021` unless this subject exists on
 
 | Subject | Used by |
 |---|---|
-| `repo:paulasilvatech/datacorp-mm-team-kit:ref:refs/heads/english-version` | manual preflight and ephemeral plan runs from this branch |
+| `repo:workshop-gbb/datacorp-sifap-legacy:ref:refs/heads/main` | manual preflight and ephemeral plan runs from `main` |
 
 ```bash
 az ad app federated-credential create --id "<APP-OBJECT-ID>" --parameters '{
-  "name": "deploy-lab-manual-english-version",
+  "name": "deploy-lab-manual-main",
   "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:paulasilvatech/datacorp-mm-team-kit:ref:refs/heads/english-version",
+  "subject": "repo:workshop-gbb/datacorp-sifap-legacy:ref:refs/heads/main",
   "audiences": ["api://AzureADTokenExchange"]
 }'
 ```

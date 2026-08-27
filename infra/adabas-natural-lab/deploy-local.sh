@@ -8,7 +8,7 @@ PLAN_FILE="$SCRIPT_DIR/lab.tfplan"
 STATE_FILE="$SCRIPT_DIR/terraform.tfstate"
 BACKUP_DIR="${SIFAP_STATE_BACKUP_DIR:-$REPO_ROOT/.local-state-backups/adabas-natural-lab}"
 ENABLE_DDM_WORKSTATION="${SIFAP_ENABLE_DDM_WORKSTATION:-true}"
-GITHUB_REPOSITORY="${SIFAP_GITHUB_REPOSITORY:-paulasilvatech/datacorp-sifap-team-kit-pt-br}"
+GITHUB_REPOSITORY="${SIFAP_GITHUB_REPOSITORY:-workshop-gbb/datacorp-sifap-legacy}"
 
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
@@ -127,14 +127,37 @@ run_vm_command() {
 
 upload_payload() {
   [ -f "$STATE_FILE" ] || fail "Terraform state is missing; run apply first."
-  local commit raw_url archive_url
+  local commit token installer raw_url archive_url
   commit="${SIFAP_PAYLOAD_COMMIT:-$(git -C "$REPO_ROOT" rev-parse HEAD)}"
   [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || fail "SIFAP_PAYLOAD_COMMIT must be a full commit SHA."
-  raw_url="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${commit}/infra/adabas-natural-lab/install-payload-from-github.sh"
-  archive_url="https://codeload.github.com/${GITHUB_REPOSITORY}/tar.gz/${commit}"
-  curl -fsSI --max-time 30 "$archive_url" >/dev/null \
-    || fail "Commit ${commit} is not publicly downloadable; commit and push it before upload."
-  run_vm_command "curl -fsSL --retry 5 --retry-delay 3 '$raw_url' | bash -s -- '$commit'"
+  token="${SIFAP_GITHUB_TOKEN:-}"
+  installer="$SCRIPT_DIR/install-payload-from-github.sh"
+
+  if [ -n "$token" ]; then
+    # Private repository: the installer is sent from this checkout and the token
+    # travels as a protected parameter, so neither is fetched anonymously.
+    [ -f "$installer" ] || fail "Installer script is missing: $installer"
+    curl -fsS -o /dev/null \
+      -H "Authorization: Bearer ${token}" \
+      -H "Accept: application/vnd.github+json" \
+      "https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/${commit}" \
+      || fail "Commit ${commit} is not readable in ${GITHUB_REPOSITORY} with the supplied token."
+    az vm run-command invoke \
+      --resource-group "$(terraform -chdir="$SCRIPT_DIR" output -raw resource_group_name)" \
+      --name "$(terraform -chdir="$SCRIPT_DIR" output -raw vm_name)" \
+      --command-id RunShellScript \
+      --scripts "@$installer" \
+      --parameters "$commit" \
+      --protected-parameters "$token" \
+      --query 'value[0].message' \
+      --output tsv
+  else
+    raw_url="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${commit}/infra/adabas-natural-lab/install-payload-from-github.sh"
+    archive_url="https://codeload.github.com/${GITHUB_REPOSITORY}/tar.gz/${commit}"
+    curl -fsSI --max-time 30 "$archive_url" >/dev/null \
+      || fail "Commit ${commit} is not publicly downloadable; set SIFAP_GITHUB_TOKEN to install from a private repository."
+    run_vm_command "curl -fsSL --retry 5 --retry-delay 3 '$raw_url' | bash -s -- '$commit'"
+  fi
   printf 'Payload installed from %s@%s through Azure Run Command\n' "$GITHUB_REPOSITORY" "$commit"
 }
 
