@@ -21,3 +21,28 @@ Requires Docker and `softwareag/adabas-ce:7.4.0`. The test starts `sifap-ada-tes
 ## Why this exists
 
 A load can appear successful while silently damaging keyed access or shifting packed fields. These tests catch regressions such as positional loss of optional DDM `S`/`D` columns, use of obsolete `FDT-150-BENEFICIARY.txt`, two-byte MU/PE counts, field-major PE encoding, invalid ADACMP keywords, or accidentally returning to an unavailable `adalod`-centric flow.
+
+## Deployed viewer access
+
+The independent HTTP probe checks the existing Azure environment without loading
+records, executing business programs, or changing infrastructure:
+
+```bash
+bash infra/adabas-natural-lab/verify-viewer-access.sh
+```
+
+Supply `SIFAP_VIEWER_PASSWORD` through a protected environment, not a command-line
+literal. `SIFAP_VIEWER_USERNAME` defaults to `viewer`; `SIFAP_LAB_URL` defaults to
+the documented lab HTTPS origin. TLS verification is mandatory, and redirects
+are not followed with the credential.
+
+The probe verifies public health, anonymous denial, authenticated landing and
+terminal access, and denial of both administration URL variants. Passwords are
+passed to curl through standard input and are never printed. A missing credential,
+network error, or unexpected status fails the probe.
+
+This proves the HTTP viewer boundary, not every Natural business workflow. The
+offline `test_viewer_account.py` separately protects the `VIEWBENF;FIN` terminal
+pin and the absence of a shell fallback. The modern application lives in the
+existing [SIFAP Modern repository](https://github.com/workshop-gbb/datacorp-sifap-modern);
+the legacy `/app/` placeholder is not proof that modernization is deployed.
