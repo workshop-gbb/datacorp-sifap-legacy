@@ -1,103 +1,66 @@
-"""Guard the Azure Automation VM start watchdog.
-
-Tenant governance deallocates this lab outside the resource group, so disabling
-the two DevTestLab shutdown schedules is not sufficient. The compensating
-control has a narrow contract: use managed identity, read/start only the VMs
-passed by Terraform, and never carry a cloud credential.
-"""
-
+"""Regression gates for morning-only startup, replacing the always-on watchdog."""
 from __future__ import annotations
 
-import re
+from conftest import LAB
 
-from conftest import LAB, PROVISIONING
-
-MAIN_TF = (LAB / "main.tf").read_text(encoding="utf-8")
-RUNBOOK = (PROVISIONING / "vm-start-watchdog.ps1").read_text(
-    encoding="utf-8"
-)
+AUTOMATION = LAB.parent / "morning-start"
+MAIN = (AUTOMATION / "main.tf").read_text(encoding="utf-8")
+RUNBOOK = (AUTOMATION / "morning-start.ps1").read_text(encoding="utf-8")
+VALIDATOR = (LAB / "provisioning" / "verify-startup.sh").read_text(encoding="utf-8")
 
 
-def test_should_create_four_offset_hourly_schedules() -> None:
-    schedule = MAIN_TF.split(
-        'resource "azurerm_automation_schedule" "vm_watchdog"',
-        1,
-    )[1].split(
-        'resource "azurerm_automation_job_schedule" "vm_watchdog"',
-        1,
-    )[0]
-
-    assert schedule.count('"leg-') == 4
-    assert 'frequency               = "Hour"' in schedule
-    assert "interval                = 1" in schedule
-    assert "ignore_changes = [start_time]" in schedule
+def test_should_run_daily_at_seven_brasilia_instead_of_hourly():
+    # REQ-113 (modern): todos os dias, respeitando o desligamento noturno.
+    assert 'frequency               = "Day"' in MAIN
+    assert 'timezone                = "America/Sao_Paulo"' in MAIN
+    assert "T07:00:00-03:00" in MAIN
+    assert 'frequency               = "Hour"' not in MAIN
+    assert 'resource "azurerm_automation_schedule"' not in (LAB / "main.tf").read_text()
 
 
-def test_should_use_a_system_assigned_identity_without_local_auth() -> None:
-    account = MAIN_TF.split(
-        'resource "azurerm_automation_account" "vm_watchdog"',
-        1,
-    )[1].split(
-        'resource "azurerm_automation_runbook" "vm_watchdog"',
-        1,
-    )[0]
-
-    assert 'type = "SystemAssigned"' in account
-    assert "local_authentication_enabled  = false" in account
-    assert "password" not in account.lower()
-    assert "secret" not in account.lower()
+def test_should_target_only_the_two_application_vms():
+    assert 'name          = "sifap-lab-vm-eus2"' in MAIN
+    assert 'name          = "sifap-modern-vm"' in MAIN
+    assert "ddmws" not in MAIN
+    assert 'if ($targets.Count -ne 2)' in RUNBOOK
+    assert "Duplicate target kind" in RUNBOOK
 
 
-def test_should_pass_vm_names_as_parameters_not_hardcode_them() -> None:
-    assert "[Parameter(Mandatory = $true)]" in RUNBOOK
-    assert "[string] $SubscriptionId" in RUNBOOK
-    assert "[string] $ResourceGroup" in RUNBOOK
-    assert "[string] $VirtualMachineNames" in RUNBOOK
-    assert "sifap-lab-vm-" not in RUNBOOK
-    assert "bf39c110-" not in RUNBOOK
+def test_should_gate_starts_and_bound_every_operation():
+    # REQ-113: uma execucao atrasada nunca religa as VMs a noite.
+    assert '$local.Hour -eq 7' in RUNBOOK
+    assert '$Mode -eq "Scheduled" -and -not (Test-MorningWindow)' in RUNBOOK
+    assert "AddMinutes(25)" in RUNBOOK
+    assert "TimeoutSec = 45" in RUNBOOK
+    assert "timeout 600 bash" in RUNBOOK
+    assert 'Mode -eq "ValidateOnly"' in RUNBOOK
 
 
-def test_should_call_only_read_and_start_vm_operations() -> None:
-    lower = RUNBOOK.lower()
-
-    assert "instanceview?api-version=" in lower
-    assert "start?api-version=" in lower
-    for destructive in (
-        "deallocate",
-        "poweroff",
-        "delete",
-        "stop-azvm",
-        "remove-az",
-    ):
-        assert destructive not in lower
-
-
-def test_should_get_an_arm_token_from_managed_identity() -> None:
+def test_should_use_managed_identity_and_minimal_scoped_actions():
     assert "$env:IDENTITY_ENDPOINT" in RUNBOOK
     assert "$env:IDENTITY_HEADER" in RUNBOOK
-    assert '"X-IDENTITY-HEADER" = $env:IDENTITY_HEADER' in RUNBOOK
-    assert "client_secret" not in RUNBOOK.lower()
-    assert "clientsecret" not in RUNBOOK.lower()
+    assert "client_secret" not in RUNBOOK
+    for action in ("start/action", "instanceView/read", "runCommand/action"):
+        assert action in MAIN
+    for action in ("/delete", "/powerOff", "/deallocate", "Virtual Machine Contributor"):
+        assert action not in MAIN
+    assert 'scope              = each.value' in MAIN
 
 
-def test_should_keep_role_assignments_out_of_the_plan() -> None:
-    # The policy auditor rejects role assignments in this lab. Terraform prints
-    # one-time CLI commands instead, scoped to the individual VM IDs.
-    assert 'resource "azurerm_role_assignment"' not in MAIN_TF
-    assert "vm_start_watchdog_role_commands" in (
-        LAB / "outputs.tf"
-    ).read_text(encoding="utf-8")
+def test_should_require_application_and_database_readiness():
+    # REQ-114: VM running ou um systemd active nao bastam.
+    assert "SIFAP_STARTUP_VALIDATION=OK" in RUNBOOK
+    assert "/actuator/health" in RUNBOOK
+    assert "Invoke-Validation $target" in RUNBOOK
+    assert "adabas-db natural-ce ttyd-viewer caddy" in VALIDATOR
+    assert "/usr/local/bin/healthcheck.sh" in VALIDATOR
+    assert '[[ "$health" == missing ]]' in VALIDATOR
 
 
-def test_should_verify_both_vms_reach_running() -> None:
-    assert '$expectedState = "PowerState/running"' in RUNBOOK
-    assert "$maxAttempts = 40" in RUNBOOK
-    assert "$pollSeconds = 15" in RUNBOOK
-    assert re.search(r"if \(\$allRunning\) \{.*?return", RUNBOOK, re.DOTALL)
-    assert "throw \"One or more SIFAP lab VMs did not reach" in RUNBOOK
-
-
-def test_should_poll_when_instance_view_temporarily_has_no_power_state() -> None:
-    # Azure can omit PowerState while a VM is transitioning to running. The GET
-    # succeeded, so this is not an authorization or missing-resource failure.
-    assert 'return "PowerState/unknown"' in RUNBOOK
+def test_should_never_reseed_or_run_financial_batches_during_validation():
+    assert "BATCHPGT" not in VALIDATOR
+    assert "01-load" not in VALIDATOR
+    assert "docker start" in VALIDATOR
+    assert "--check-only" in VALIDATOR
+    assert "docker rm" not in VALIDATOR
+    assert "docker compose down" not in VALIDATOR

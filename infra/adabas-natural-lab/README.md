@@ -752,7 +752,7 @@ Only two variables are required. The others have defaults defined in `variables.
 | `ddm_workstation_image_version` | No | `20348.5499.260809` | Windows Server 2022 Gen2 image version, pinned |
 | `adabas_dbid` | No | `12` | Adabas DBID mapped by Natural |
 | `auto_shutdown_enabled` | No | `true` | Whether the daily shutdown schedule stops the VMs. Set `false` for a shared lab whose URL is handed out in advance; the budget then becomes the only automatic cost guard |
-| `enable_vm_start_watchdog` | No | `false` | Azure Automation checks the VMs every 15 minutes and starts either one that external governance deallocated. Use only when tenant automation overrides the disabled shutdown schedules |
+| `enable_vm_start_watchdog` | No | `false` | Compatibility flag preserving the Automation account. Daily 07:00 Brasilia startup is managed by `infra/morning-start`; the always-on watchdog is retired |
 | `auto_shutdown_time` | No | `2000` | Daily shutdown time in HHmm format. Ignored when `auto_shutdown_enabled` is `false` |
 | `auto_shutdown_timezone` | No | `Eastern Standard Time` | Shutdown schedule time zone |
 | `auto_shutdown_notification_email` | No | `""` | **Strongly recommended.** Notified 30 minutes before shutdown, and the target for the availability and bootstrap alerts. Empty disables all three |
@@ -788,28 +788,28 @@ The budget is scoped to the resource group and is deliberately independent of th
 
 Disabling the two DevTestLab schedules controls only resources in this module. A subscription may have a tenant-level automation with permission above the resource group. In the immersion subscription, `MCAPSGov-AutomationApp` deallocated both VMs even while both schedules reported `Disabled`.
 
-`enable_vm_start_watchdog = true` is the compensating control. Terraform creates:
+The nightly MCAPS shutdown remains in force. The replacement control is a
+**daily 07:00 America/Sao_Paulo startup**, including weekends, followed by
+database/application readiness validation. It starts only the legacy and modern
+application VMs, not the optional DDM workstation.
 
-- one Azure Automation account with a system-assigned identity;
-- one PowerShell runbook that calls the Azure Resource Manager API directly, using that identity rather than a password or an Az module;
-- four hourly schedules, offset by 15 minutes, so the runbook executes every 15 minutes.
+`enable_vm_start_watchdog` now preserves only the existing Automation account and
+managed identity. The independently deployed [morning-start module](../morning-start/README.md)
+owns its runbook, daily schedule and minimal VM-scoped permissions. Former hourly
+and five-minute polling schedules must be disabled; they must not override the
+nightly shutdown.
 
 A GitHub Actions schedule is deliberately not the control here. Scheduled workflows are
 best-effort, run only from the repository's default branch, and can be disabled by an
 unrelated account-level billing lock. That exact failure was reproduced while building this
-watchdog: the OIDC workflow was accepted by GitHub but the job never started because Actions
-was locked. Azure Automation keeps the remediation in the same control plane as the VMs.
-
-After the first apply, run the commands Terraform prints:
-
-```bash
-terraform output -raw vm_start_watchdog_role_commands
-```
-
-They grant `Virtual Machine Contributor` to the Automation identity on the **two individual VM resource IDs**, not on the resource group. Role assignments are intentionally not in this plan: this lab's policy auditor rejects `azurerm_role_assignment`, and the signed-in operator needs sufficient Azure RBAC rights to make the one-time assignments.
+original watchdog: the OIDC workflow was accepted by GitHub but the job never
+started because Actions was locked. Azure Automation keeps the morning trigger
+outside the VMs and independent of GitHub Actions billing.
 
 > [!IMPORTANT]
-> This is remediation, not high availability. The governance stop still creates an outage, normally bounded to about 15 minutes plus VM boot time. A governance exemption or a subscription without the external stop is the only way to make "always running" literal.
+> The trigger runs at 07:00; readiness follows after VM and database startup.
+> This is not an always-on or high-availability guarantee. Failures and timeouts
+> fail the Automation job rather than silently reporting the environment ready.
 
 > [!NOTE]
 > Budget notifications need `auto_shutdown_notification_email`. Left empty, the budget still exists and still enforces its thresholds in the portal, but nobody gets an e-mail. Set it.
