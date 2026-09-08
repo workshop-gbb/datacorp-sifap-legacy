@@ -1,7 +1,7 @@
 # SIFAP legacy lab — private operations repository
 
 > [!CAUTION]
-> **PRIVATE. THIS REPOSITORY OPERATES LIVE INFRASTRUCTURE.** It is the authoritative source for the running Natural/Adabas SIFAP lab and its Azure environment. A change merged here can reach a live VM. Do not make it public, use it as a template, or grant access beyond lab operators.
+> **PRIVATE. THIS REPOSITORY OPERATES LIVE INFRASTRUCTURE.** It is the authoritative source for the running Natural/Adabas SIFAP lab and its Azure environment. A change merged here can reach a live VM. Do not make the repository public, use it as a template, or grant source access beyond lab operators. The public GitHub Pages landing is a separate, explicitly allowlisted presentation artifact; it contains no operational source or runtime data.
 
 This repository holds the **legacy system that actually runs**: the frozen Natural/Adabas corpus, the Terraform that builds the Azure lab, the provisioning chain that catalogs the programs and loads the Adabas files, and the payload delivery path. It is deliberately separated from the teaching material so that operations and curriculum can change independently.
 
@@ -47,6 +47,7 @@ The lab runs as one shared environment. Nobody redeploys it per team.
 
 | What | Where |
 |---|---|
+| **Public introduction** | <https://workshop-gbb.github.io/datacorp-sifap-legacy/> |
 | **Live system** | <https://sifap-lab-438k30.eastus2.cloudapp.azure.com> |
 | **Natural session** | `/terminal/` |
 | **Adabas administration** | `/admin/` |
@@ -55,6 +56,67 @@ The lab runs as one shared environment. Nobody redeploys it per team.
 | **Virtual machine** | `sifap-lab-vm-eus2` |
 
 Credentials are shared out of band by the facilitator and are never committed here.
+
+### Public landing, authenticated Azure system
+
+The [static landing page](infra/adabas-natural-lab/payload-static/www/index.html)
+introduces SIFAP in Brazilian Portuguese before the visitor enters the Natural
+terminal. It shares the documentation portal and modern application's editorial
+layout, typography and four-color identity, with a dark phosphor-green terminal
+treatment. The terminal illustration is not an interactive session.
+
+The landing is **public on GitHub Pages**. **Acessar SIFAP legado** follows an
+absolute HTTPS link to the existing
+[Azure terminal](https://sifap-lab-438k30.eastus2.cloudapp.azure.com/terminal/),
+where HTTP Basic authentication takes place. The page never collects credentials
+and does not fetch runtime status across origins. Azure authentication, Caddy
+routes and the viewer/operator boundaries are unchanged. The `/app/` placeholder
+is not advertised as the modern product.
+
+The page uses plain HTML, CSS and local fonts: no JavaScript, CDN, analytics or
+frontend dependencies. Relative asset URLs work both under the GitHub Pages
+project path and at the root of the existing checksummed `www/` runtime payload.
+Keyboard focus, a skip link, small-screen layouts and reduced-motion preferences
+are supported.
+
+The local Inter and JetBrains Mono variable fonts match the portal's Fontsource
+5.3.0 assets. Their unmodified SIL Open Font License notices are included in
+[`www/fonts/`](infra/adabas-natural-lab/payload-static/www/fonts/).
+
+For a **local static preview only**, serve the payload directory:
+
+```bash
+python3 -m http.server 8080 --bind 127.0.0.1 \
+  --directory infra/adabas-natural-lab/payload-static/www
+```
+
+This preview does not start Natural or provide authentication. Its access links
+still open the real Azure terminal; do not enter credentials in the preview.
+
+#### Publishing only the public presentation
+
+The Pages source is the **`gh-pages` branch, root directory**, not `main`, `docs/`
+or the repository root. That dedicated artifact branch has no private source
+history. GitHub's built-in Pages build publishes it; no Azure deployment runs.
+
+Export the approved public assets into a new or empty directory outside this
+private source checkout:
+
+```bash
+python3 scripts/build-public-landing.py /tmp/sifap-public-landing
+```
+
+The exporter copies exactly the HTML, CSS, favicon, two fonts and their license
+notices, then adds `.nojekyll`. It rejects missing assets, symlinks, nonempty
+destinations and destinations inside this checkout. Nothing in the corpus,
+Terraform, provisioning, `/app/`, runtime status or credentials is included.
+Commit **only this export** to the artifact branch for subsequent publications;
+never copy the repository or the complete `www/` payload into Pages.
+
+Keep GitHub Pages access **public** and repository visibility **private**. Review
+source changes through the normal `impl/` → `develop` → `main` process. Publishing
+the static presentation does not merge `main`, upload a runtime payload, restart
+the VM or modify Terraform and `cloud-init.yaml`.
 
 ---
 
