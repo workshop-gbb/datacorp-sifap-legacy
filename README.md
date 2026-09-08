@@ -65,13 +65,21 @@ terminal. It shares the documentation portal and modern application's editorial
 layout, typography and four-color identity, with a dark phosphor-green terminal
 treatment. The terminal illustration is not an interactive session.
 
-The landing is **public on GitHub Pages**. **Acessar SIFAP legado** follows an
-absolute HTTPS link to the existing
-[Azure terminal](https://sifap-lab-438k30.eastus2.cloudapp.azure.com/terminal/),
-where HTTP Basic authentication takes place. The page never collects credentials
-and does not fetch runtime status across origins. Azure authentication, Caddy
-routes and the viewer/operator boundaries are unchanged. The `/app/` placeholder
-is not advertised as the modern product.
+The landing is **public on GitHub Pages**. **Acessar SIFAP legado** opens the
+[Azure session entry](https://sifap-lab-438k30.eastus2.cloudapp.azure.com/login?locale=pt-BR)
+in the same tab. On Azure, the visitor explicitly starts a passwordless, read-only
+viewer session through the gateway's same-origin form. Session cookies never
+travel through Pages. The page does not collect credentials, submit cross-origin
+login requests or fetch private runtime status. Administration remains restricted
+to operators; the viewer is for the workshop's synthetic data only.
+
+Do not link an unauthenticated visitor directly to `/terminal/`: the raw ttyd
+route requires a session, and the previous Basic Auth gateway returned an empty
+401 document instead of a visible sign-in page in embedded browsers. GET of the
+session entry must show the access screen, not silently create a session. Publish
+the handoff only after the approved viewer gateway is live and the real browser
+flow reaches a rendered Natural terminal. An HTTP 200, an intercepted navigation,
+or a 401 challenge alone is not evidence of a working terminal.
 
 The page uses plain HTML, CSS and local fonts: no JavaScript, CDN, analytics or
 frontend dependencies. Relative asset URLs work both under the GitHub Pages
@@ -90,8 +98,8 @@ python3 -m http.server 8080 --bind 127.0.0.1 \
   --directory infra/adabas-natural-lab/payload-static/www
 ```
 
-This preview does not start Natural or provide authentication. Its access links
-still open the real Azure terminal; do not enter credentials in the preview.
+This preview does not start Natural or create sessions. Its access links still
+open the real Azure session entry; do not enter credentials in the preview.
 
 #### Publishing only the public presentation
 

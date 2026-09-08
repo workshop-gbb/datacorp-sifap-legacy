@@ -16,7 +16,7 @@ import pytest
 from conftest import LAB
 
 WWW = LAB / "payload-static" / "www"
-TERMINAL_URL = "https://sifap-lab-438k30.eastus2.cloudapp.azure.com/terminal/"
+ENTRY_URL = "https://sifap-lab-438k30.eastus2.cloudapp.azure.com/login?locale=pt-BR"
 
 
 class LandingDocument(HTMLParser):
@@ -78,7 +78,7 @@ def test_should_present_sifap_in_portuguese_with_accessible_page_structure(
     assert "Adabas" in text
 
 
-def test_should_open_the_existing_terminal_without_javascript(
+def test_should_open_the_azure_session_entry_without_javascript(
     document: LandingDocument,
 ) -> None:
     actions = [
@@ -89,8 +89,8 @@ def test_should_open_the_existing_terminal_without_javascript(
 
     assert len(actions) >= 2, "Both the hero and closing section need real access links."
     for action in actions:
-        assert action["href"] == TERMINAL_URL
-        assert action.get("target") in (None, "_self")
+        assert action["href"] == ENTRY_URL
+        assert action.get("target") == "_self"
         assert action.get("referrerpolicy") == "no-referrer"
         assert "onclick" not in action
 
@@ -127,7 +127,11 @@ def test_should_keep_authentication_and_operations_out_of_the_public_site(
         for href in hrefs
     )
     external = {href for href in hrefs if urlsplit(href).netloc}
-    assert external == {TERMINAL_URL}
+    assert external == {ENTRY_URL}
+    assert all(urlsplit(href).path != "/terminal/" for href in external)
+    text = " ".join(document.text)
+    assert "Sem senha" in text
+    assert "credenciais" not in text.lower()
 
 
 def test_should_ship_all_runtime_assets_inside_the_existing_payload(
@@ -179,8 +183,8 @@ def test_should_resolve_home_assets_and_azure_login_from_each_host(
     for tag, attrs in document.elements:
         if tag == "a" and attrs.get("href") == "./":
             assert urljoin(base, attrs["href"]) == base
-        if tag == "a" and attrs.get("href") == TERMINAL_URL:
-            assert urljoin(base, attrs["href"]) == TERMINAL_URL
+        if tag == "a" and attrs.get("href") == ENTRY_URL:
+            assert urljoin(base, attrs["href"]) == ENTRY_URL
         if tag == "link":
             assert urljoin(base, attrs["href"]).startswith(base)
 

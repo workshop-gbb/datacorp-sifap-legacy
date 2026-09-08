@@ -11,11 +11,14 @@ python3 -m pytest infra/adabas-natural-lab/tests -m "not live"
 Covers DDM parsing, FDT emission, descriptor counts, derived descriptor syntax, the `N`→`U` FDT mapping, packed field width arithmetic, fixed-width seed layout, E4 framing, one-byte MU/PE occurrence counts, and occurrence-major periodic group encoding. It also locks the loader contract: `adafdu` gets the FDT through `FDUFDT`, `adacmp` receives parameters only and reads data from `CMPIN`, and the default load path is `adamup db=<DBID> update=<FNR>,add`.
 
 The static landing contracts in `test_landing_contract.py` check the Portuguese
-page structure, absolute HTTPS Azure terminal links, keyboard landmarks, assets
+page structure, same-tab HTTPS Azure session-entry links, keyboard landmarks, assets
 under the Pages project path, reduced-motion support and unchanged Caddy
 authentication. `test_public_landing_export.py` verifies the exact public file
 allowlist and rejects unsafe output paths, symlinks and missing assets. Neither
-suite starts or modifies the live lab.
+suite starts or modifies the live lab. These offline checks do not prove that the
+Natural terminal renders: a release also needs an anonymous browser journey
+through the real Azure viewer form, visible xterm output and its live WebSocket.
+Do not accept a mocked terminal navigation or a bare 401 response as success.
 
 ```bash
 python3 -m pytest infra/adabas-natural-lab/tests/test_landing_contract.py \
