@@ -30,11 +30,11 @@ check_status() {
   local audience="$1" route="$2" expected="$3" actual
   if [[ "$audience" == viewer ]]; then
     actual="$(printf 'header = "Authorization: Basic %s"\n' "$authorization" |
-      curl --config - --proto '=https' --silent --show-error \
+      curl -q --config - --proto '=https' --silent --show-error \
         --connect-timeout 5 --max-time 15 --output /dev/null \
         --write-out '%{http_code}' "$base_url$route")"
   else
-    actual="$(curl --proto '=https' --silent --show-error \
+    actual="$(curl -q --proto '=https' --silent --show-error \
       --connect-timeout 5 --max-time 15 --output /dev/null \
       --write-out '%{http_code}' "$base_url$route")"
   fi

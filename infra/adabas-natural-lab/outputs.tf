@@ -237,21 +237,8 @@ output "estimated_cost_note" {
 }
 
 output "vm_start_watchdog_role_commands" {
-  description = "One-time least-privilege RBAC commands for the Azure Automation VM start watchdog."
-  value = var.enable_vm_start_watchdog ? join("\n", concat(
-    [
-      "# Run these once after the first apply. This tenant rejects role assignments in Terraform.",
-      "# The identity gets Virtual Machine Contributor on the individual VMs, not the resource group.",
-      "WATCHDOG_PRINCIPAL='${azurerm_automation_account.vm_watchdog[0].identity[0].principal_id}'",
-      "az role assignment create --assignee-object-id \"$WATCHDOG_PRINCIPAL\" --assignee-principal-type ServicePrincipal --role 'Virtual Machine Contributor' --scope '${azurerm_linux_virtual_machine.lab.id}'",
-    ],
-    var.enable_ddm_workstation ? [
-      "az role assignment create --assignee-object-id \"$WATCHDOG_PRINCIPAL\" --assignee-principal-type ServicePrincipal --role 'Virtual Machine Contributor' --scope '${azurerm_windows_virtual_machine.workstation[0].id}'",
-    ] : [],
-    [
-      "# Four hourly schedules are offset by 15 minutes, so a governance deallocation is normally remediated within about 15 minutes.",
-    ],
-  )) : "disabled (set enable_vm_start_watchdog = true)"
+  description = "Compatibility notice: old contributor grants and hourly watchdog schedules are retired."
+  value       = "Use infra/morning-start for VM-scoped read/start/validation permissions and the daily 07:00 Brasilia schedule. Do not recreate the overnight watchdog."
 }
 
 # ---------------------------------------------------------------------------
