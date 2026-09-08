@@ -1331,14 +1331,12 @@ resource "azurerm_dev_test_global_vm_shutdown_schedule" "workstation" {
 }
 
 # ---------------------------------------------------------------------------
-# External-governance VM start watchdog
+# Shared morning-start Automation account
 # ---------------------------------------------------------------------------
 #
-# Some immersion subscriptions run a tenant-level automation that deallocates VMs even when
-# the DevTestLab shutdown schedules above are Disabled. The actor is outside this resource
-# group, so the lab cannot turn it off. Azure Automation is deliberately used instead of a
-# GitHub schedule: GitHub-hosted schedules are best-effort, run only from the default branch,
-# and this repository's Actions account can be locked independently by a billing issue.
+# The account remains here to preserve its existing managed identity. The daily
+# runbook, schedule and scoped roles are managed independently in ../morning-start.
+# No recurring overnight restart is created by this lab module.
 resource "azurerm_automation_account" "vm_watchdog" {
   count = var.enable_vm_start_watchdog ? 1 : 0
 
@@ -1352,64 +1350,5 @@ resource "azurerm_automation_account" "vm_watchdog" {
 
   identity {
     type = "SystemAssigned"
-  }
-}
-
-resource "azurerm_automation_runbook" "vm_watchdog" {
-  count = var.enable_vm_start_watchdog ? 1 : 0
-
-  name                    = "Keep-SifapLabVmsRunning"
-  location                = azurerm_resource_group.lab.location
-  resource_group_name     = azurerm_resource_group.lab.name
-  automation_account_name = azurerm_automation_account.vm_watchdog[0].name
-  log_verbose             = true
-  log_progress            = true
-  runbook_type            = "PowerShell"
-  description             = "Starts SIFAP lab VMs that tenant-level governance deallocated."
-  content                 = file("${path.module}/provisioning/vm-start-watchdog.ps1")
-  tags                    = local.tags
-}
-
-# Azure Automation supports an hourly recurrence but not a 15-minute one. Four hourly
-# schedules at different offsets produce the required cadence without another service.
-resource "azurerm_automation_schedule" "vm_watchdog" {
-  for_each = var.enable_vm_start_watchdog ? {
-    "leg-1" = "15m"
-    "leg-2" = "30m"
-    "leg-3" = "45m"
-    "leg-4" = "60m"
-  } : {}
-
-  name                    = "vm-watchdog-${each.key}"
-  resource_group_name     = azurerm_resource_group.lab.name
-  automation_account_name = azurerm_automation_account.vm_watchdog[0].name
-  frequency               = "Hour"
-  interval                = 1
-  timezone                = "Etc/UTC"
-  start_time              = timeadd(timestamp(), each.value)
-  description             = "One leg of the 15-minute SIFAP VM start watchdog."
-
-  lifecycle {
-    # The start time chooses the minute of the hour at creation. Recomputing
-    # timestamp() later would otherwise move every schedule on every plan.
-    ignore_changes = [start_time]
-  }
-}
-
-resource "azurerm_automation_job_schedule" "vm_watchdog" {
-  for_each = azurerm_automation_schedule.vm_watchdog
-
-  resource_group_name     = azurerm_resource_group.lab.name
-  automation_account_name = azurerm_automation_account.vm_watchdog[0].name
-  schedule_name           = each.value.name
-  runbook_name            = azurerm_automation_runbook.vm_watchdog[0].name
-
-  parameters = {
-    subscriptionid = data.azurerm_client_config.current.subscription_id
-    resourcegroup  = azurerm_resource_group.lab.name
-    virtualmachinenames = join(",", concat(
-      [azurerm_linux_virtual_machine.lab.name],
-      var.enable_ddm_workstation ? [azurerm_windows_virtual_machine.workstation[0].name] : [],
-    ))
   }
 }

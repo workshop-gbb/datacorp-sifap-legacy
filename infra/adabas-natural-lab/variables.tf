@@ -543,19 +543,11 @@ variable "auto_shutdown_enabled" {
 
 variable "enable_vm_start_watchdog" {
   description = <<-EOT
-    Create an Azure Automation runbook that checks the lab VMs every 15 minutes and starts
-    any VM an external governance process deallocated.
-
-    This is for subscriptions where a tenant-level automation (for example
-    MCAPSGov-AutomationApp) overrides the disabled DevTestLab shutdown schedules. Four
-    hourly Automation schedules, offset by 15 minutes, bound normal remediation time to
-    roughly 15 minutes. It is not high availability: the governance stop still creates a
-    short outage, and Azure Automation itself is a control-plane dependency.
-
-    Terraform creates the Automation account, system-assigned identity, runbook and
-    schedules. This tenant rejects azurerm_role_assignment in the plan, so after the first
-    apply run the vm_start_watchdog_role_commands output once to give that identity Virtual
-    Machine Contributor on only the VMs it watches.
+    Retained for compatibility: create/preserve the shared Automation account and its
+    managed identity. The former always-on watchdog has been retired. Daily 07:00
+    America/Sao_Paulo startup and database/application readiness are configured by
+    the separate infra/morning-start module, without changing the MCAPS nightly policy.
+    The optional DDM workstation is not a morning-start target.
   EOT
   type        = bool
   default     = false

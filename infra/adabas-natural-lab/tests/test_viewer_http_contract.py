@@ -38,7 +38,7 @@ def test_should_reject_plaintext_and_credential_bearing_origins():
     # REQ-112 (modern): nunca enviar a credencial a uma URL insegura.
     for origin in (
         "http://localhost",
-        "https://viewer:password@localhost",
+        "https://example-user:example-invalid@localhost",
         "https://localhost/terminal/",
         'https://localhost\nheader = "Injected: true"',
     ):
@@ -59,7 +59,8 @@ def test_should_keep_the_probe_read_only_and_authentication_out_of_arguments():
     # REQ-104 (modern): testa limites HTTP sem executar operacoes de negocio.
     source = SCRIPT.read_text(encoding="utf-8")
 
-    assert "curl --config -" in source
+    assert "curl -q --config -" in source
+    assert "curl -q --proto" in source
     assert "--proto '=https'" in source
     assert "--insecure" not in source
     assert "--location" not in source

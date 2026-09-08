@@ -216,6 +216,9 @@ jobs:
             infra/adabas-natural-lab/deploy-local.sh \
             infra/adabas-natural-lab/install-payload-from-github.sh \
             infra/adabas-natural-lab/provisioning/*.sh
+      - name: Verify the Brasilia morning window and target boundaries
+        shell: pwsh
+        run: ./infra/morning-start/tests/runbook.tests.ps1
       - name: Build and verify the SSH payload archive
         run: |
           set -euo pipefail
