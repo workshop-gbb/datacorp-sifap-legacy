@@ -37,6 +37,10 @@ starts a stopped VM and passes `--check-only` to guest validators.
 
 ## Deployment order
 
+Set `AZURE_SUBSCRIPTION_ID` explicitly before invoking the Node.js operator tools;
+they never fall back to an embedded subscription. Their output buffers remain
+bounded and no cloud credential is copied into a runbook.
+
 1. Install the two versioned guest validators on their existing VMs using an
    authenticated Azure Run Command, without passwords or inbound SSH.
 2. Initialize/validate this module, review its plan and apply using protected

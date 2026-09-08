@@ -23,4 +23,16 @@ $TargetsBase64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($inval
 $rejected = $false
 try { Get-Targets | Out-Null } catch { $rejected = $true }
 if (-not $rejected) { throw "Duplicate targets were accepted." }
-Write-Output "8 runbook time-window and target tests passed."
+foreach ($code in @("ProvisioningState/succeeded", "ComponentStatus/StdOut/succeeded")) {
+    $result = [pscustomobject]@{ value = @([pscustomobject]@{
+        code = $code
+        message = "Enable succeeded:`n[stdout]`nSIFAP_STARTUP_VALIDATION=OK`n[stderr]`n"
+    }) }
+    if (-not (Test-GuestReadiness $result)) { throw "REQ-114: valid guest result was rejected." }
+}
+$failed = [pscustomobject]@{ value = @([pscustomobject]@{
+    code = "ProvisioningState/succeeded"
+    message = "Enable succeeded:`n[stderr]`nDatabase health failed."
+}) }
+if (Test-GuestReadiness $failed) { throw "REQ-114: guest failure was accepted." }
+Write-Output "11 runbook time-window, target and guest-result tests passed."

@@ -4,7 +4,7 @@ variable "subscription_id" {
 }
 variable "automation_resource_group" {
   type        = string
-  description = "Resource group of the existing shared Automation account."
+  description = "Resource group shared by the existing Automation account and legacy application VM."
   default     = "sifap-lab-rg-eus2"
 }
 variable "automation_account_name" {

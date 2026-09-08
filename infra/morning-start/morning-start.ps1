@@ -30,7 +30,9 @@ function Test-MorningWindow {
 
 function Get-Targets {
     $json = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($TargetsBase64))
-    $targets = @($json | ConvertFrom-Json)
+    # PowerShell 5.1 preserva o array JSON como um unico objeto no pipeline.
+    $parsed = ConvertFrom-Json -InputObject $json
+    $targets = @($parsed | ForEach-Object { $_ })
     if ($targets.Count -ne 2) { throw "Exactly two application targets are required." }
     $kinds = @{}
     foreach ($target in $targets) {
@@ -85,6 +87,15 @@ function Get-PowerState {
     return $power[0].code
 }
 
+function Test-GuestReadiness {
+    param($Result)
+    # Azure retorna tanto envelopes ProvisioningState quanto streams StdOut.
+    $stdout = ($Result.value | Where-Object {
+        $_.code -eq "ProvisioningState/succeeded" -or $_.code -like "*/StdOut/*"
+    } | ForEach-Object { $_.message }) -join "`n"
+    return $stdout -match "(?m)^SIFAP_STARTUP_VALIDATION=OK\s*$"
+}
+
 function Invoke-Validation {
     param($Target)
     $scriptPath = if ($Target.kind -eq "legacy") {
@@ -110,9 +121,7 @@ function Invoke-Validation {
         $response = Invoke-Arm -Method Get -Uri $location
     }
     $result = $response.Content | ConvertFrom-Json
-    $stdout = ($result.value | Where-Object { $_.code -like "*/StdOut/*" } |
-        ForEach-Object { $_.message }) -join "`n"
-    if ($stdout -notmatch "(?m)^SIFAP_STARTUP_VALIDATION=OK\s*$") {
+    if (-not (Test-GuestReadiness $result)) {
         throw "Application/database readiness failed for $($Target.name); inspect its Run Command."
     }
     foreach ($path in @("/healthz", $(if ($Target.kind -eq "modern") { "/actuator/health" } else { "/healthz" })) | Select-Object -Unique) {

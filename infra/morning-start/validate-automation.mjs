@@ -1,10 +1,13 @@
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
-const subscription = process.env.AZURE_SUBSCRIPTION_ID ?? "bf39c110-94c5-4bfa-959d-216b1f971d81";
+const subscription = process.env.AZURE_SUBSCRIPTION_ID;
+if (!subscription || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subscription)) {
+  throw new Error("Set AZURE_SUBSCRIPTION_ID explicitly before validating the environment.");
+}
 const base = `https://management.azure.com/subscriptions/${subscription}/resourceGroups/sifap-lab-rg-eus2/providers/Microsoft.Automation/automationAccounts/sifap-lab-aa-watchdog-eus2`;
 function az(args) {
-  const result = spawnSync("az", args, { encoding: "utf8", maxBuffer: 65536 });
+  const result = spawnSync("az", args, { encoding: "utf8", maxBuffer: 1024 * 1024 });
   if (result.status !== 0) throw new Error(`Azure operation failed: ${result.stderr}`);
   return result.stdout.trim();
 }

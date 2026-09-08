@@ -5,6 +5,10 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const [kind, modernRepository] = process.argv.slice(2);
+const subscription = process.env.AZURE_SUBSCRIPTION_ID;
+if (!subscription || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subscription)) {
+  throw new Error("Set AZURE_SUBSCRIPTION_ID explicitly before installing validators.");
+}
 if (!["legacy", "modern"].includes(kind) || (kind === "modern" && !modernRepository)) {
   throw new Error("Usage: node install-validator.mjs legacy|modern [modern-repository-path]");
 }
@@ -29,10 +33,10 @@ const script = [
   `timeout 600 bash '${target.destination}' --check-only`,
 ].join("\n");
 const result = spawnSync("az", [
-  "vm", "run-command", "invoke", "--subscription", "bf39c110-94c5-4bfa-959d-216b1f971d81",
+  "vm", "run-command", "invoke", "--subscription", subscription,
   "--resource-group", target.group, "--name", target.vm, "--command-id", "RunShellScript",
   "--scripts", script, "--query", "value[].message", "--output", "json",
-], { encoding: "utf8", maxBuffer: 65536, timeout: 720000 });
+], { encoding: "utf8", maxBuffer: 1024 * 1024, timeout: 720000 });
 if (result.status !== 0) throw new Error(`Validator installation failed for ${kind}: ${result.stderr}`);
 const messages = JSON.parse(result.stdout).join("\n");
 if (!messages.includes("SIFAP_STARTUP_VALIDATION=OK")) {

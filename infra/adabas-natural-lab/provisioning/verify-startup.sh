@@ -10,7 +10,10 @@ esac
 if ! $check_only; then systemctl start docker; fi
 deadline=$((SECONDS + 480))
 for container in adabas-db natural-ce ttyd-viewer caddy; do
-  state="$(docker inspect --format '{{.State.Running}}' "$container")"
+  if ! state="$(docker inspect --format '{{.State.Running}}' "$container")"; then
+    printf 'ERROR: cannot inspect required container %s; verify Docker and the runtime installation.\n' "$container" >&2
+    exit 1
+  fi
   if [[ "$state" != true ]]; then
     if $check_only; then printf 'ERROR: %s is not running.\n' "$container" >&2; exit 1; fi
     docker start "$container" > /dev/null
