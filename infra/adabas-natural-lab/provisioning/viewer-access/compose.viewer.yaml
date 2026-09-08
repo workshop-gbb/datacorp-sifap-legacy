@@ -1,0 +1,14 @@
+services:
+  viewer-access:
+    image: sifap-legacy-viewer:workshop-v1
+    container_name: sifap-viewer-access
+    environment:
+      SIFAP_ORIGIN: https://${SIFAP_HOST:?Provide legacy public hostname}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [sifap-lab]
+  caddy:
+    environment:
+      SIFAP_HOST: ${SIFAP_HOST:?Provide legacy public hostname}

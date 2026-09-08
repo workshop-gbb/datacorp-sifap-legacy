@@ -1,0 +1,11 @@
+{
+  "name": "sifap-legacy-viewer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node --check server.mjs && node --check session-store.mjs && node --check messages.mjs",
+    "test": "node --test test/*.test.mjs",
+    "start": "node server.mjs"
+  },
+  "engines": { "node": ">=24 <25" }
+}

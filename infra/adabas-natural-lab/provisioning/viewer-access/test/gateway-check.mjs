@@ -1,0 +1,30 @@
+import assert from "node:assert/strict";
+const base = process.env.SIFAP_TEST_ORIGIN ?? "http://127.0.0.1:4389";
+const check = (path, init = {}) => fetch(base + path, { redirect:"manual", ...init });
+assert.equal((await check("/")).status, 200);
+assert.equal((await check("/admin/")).status, 401);
+assert.equal((await check("/terminal/")).status, 303);
+const login = await check("/auth/viewer", { method:"POST",
+  headers:{ Origin:base, "Content-Type":"application/x-www-form-urlencoded" }, body:"locale=en" });
+assert.equal(login.status, 303);
+const cookie = login.headers.get("set-cookie").split(";")[0];
+const guest = { headers: { Cookie:cookie, "X-Sifap-Role":"ADMIN", "X-Forwarded-User":"operator" } };
+assert.equal(await (await check("/terminal/", guest)).text(), "restricted-viewer");
+assert.equal((await check("/admin/", guest)).status, 403);
+assert.equal((await check("/admin", guest)).status, 403);
+const operator = { headers:{ Authorization:"Basic " + Buffer.from("operator:local-test-only").toString("base64") } };
+const cachedOperator = { headers:{...operator.headers, Cookie:cookie} };
+assert.equal(await (await check("/terminal/", cachedOperator)).text(), "restricted-viewer");
+assert.equal((await check("/admin/", cachedOperator)).status, 403);
+assert.equal((await check("/status.html", cachedOperator)).status, 403);
+assert.equal(await (await check("/terminal/", operator)).text(), "operator-terminal");
+assert.equal(await (await check("/admin/", operator)).text(), "operator-admin");
+const basicViewer = { headers:{ Authorization:"Basic " + Buffer.from("viewer:local-test-only").toString("base64") } };
+assert.equal(await (await check("/terminal/", basicViewer)).text(), "restricted-viewer");
+assert.equal((await check("/admin/", basicViewer)).status, 403);
+assert.equal((await check("/auth/check")).status, 401);
+const logout = await check("/auth/logout", { method:"POST", headers: {
+  Origin:base, Cookie:cookie, "Content-Type":"application/x-www-form-urlencoded" }, body:"locale=en" });
+assert.equal(logout.status, 303);
+assert.equal((await check("/terminal/", guest)).status, 303);
+console.log("Gateway contract: public landing, one-click viewer, admin denial, operator compatibility and logout passed.");

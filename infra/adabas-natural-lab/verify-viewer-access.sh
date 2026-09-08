@@ -48,8 +48,8 @@ check_status() {
 
 # REQ-112 (SIFAP Modern): verificar os dois ambientes publicados sem alterar dados.
 check_status anonymous /healthz 200
-check_status anonymous / 401
-check_status anonymous /terminal/ 401
+check_status anonymous / 200
+check_status anonymous /terminal/ 303
 check_status anonymous /admin/ 401
 check_status viewer / 200
 check_status viewer /terminal/ 200

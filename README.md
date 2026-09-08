@@ -56,6 +56,19 @@ The lab runs as one shared environment. Nobody redeploys it per team.
 
 Credentials are shared out of band by the facilitator and are never committed here.
 
+### Public landing and viewer access
+
+The public origin now presents the retro SIFAP story in EN, ES and PT-BR.
+Select **Enter as viewer** to open a read-only session without a shared password.
+This is explicitly public access to the synthetic classroom environment; it is
+not identity verification or a production financial service.
+
+The actual Natural session remains pinned to `VIEWBENF;FIN`. Guest access never
+reaches the operator terminal or Adabas administration. Operator credentials
+remain private and the existing credential-based operator paths are preserved.
+The [viewer gateway](infra/adabas-natural-lab/provisioning/viewer-access/README.md)
+documents session limits, testing, deployment and rollback.
+
 ---
 
 ## Operating the lab

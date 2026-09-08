@@ -1,8 +1,66 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SIFAP legacy lab</title><style>body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#10151c;color:#e6edf3;margin:0;padding:2rem 1rem}main{max-width:48rem;margin:auto}.card{display:block;color:inherit;text-decoration:none;border:1px solid #2b3946;border-radius:10px;padding:1rem;margin:1rem 0;background:#161d26}.card h2{margin:.1rem 0;color:#7fb2e5;font-size:1.1rem}a:hover{border-color:#4f8cc9}code{background:#0c1117;padding:.1rem .3rem;border-radius:4px}.muted{color:#93a1b1}</style></head><body><main>
-<h1>SIFAP — legacy and modern, side by side</h1><p class="muted">Adabas + Natural on Azure, operated as a durable legacy lab.</p>
-<section class="card"><h2>Current state</h2><div id="status"><p>Loading status…</p></div></section>
-<a class="card" href="/terminal/"><h2>Green screen → /terminal</h2><p>Browser terminal for a Natural session in library SIFAPPRD.</p></a>
-<a class="card" href="/app/"><h2>Modern application → /app</h2><p>Placeholder until the Stage 3 Java + Next.js app starts; then this route proxies it automatically.</p></a>
-<a class="card" href="/admin/"><h2>Adabas console → /admin</h2><p>Administration UI; sign in as <code>admin</code> with the Key Vault password.</p></a>
-<p class="muted">Everything except <code>/healthz</code> requires HTTP basic authentication.</p>
-</main><script>fetch('/status.html',{cache:'no-store'}).then(r=>r.text()).then(h=>status.innerHTML=h).catch(()=>status.textContent='Status not generated yet; check /var/log/sifap-bootstrap.log.')</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Conheça o SIFAP legado: 29 anos de história em Natural e Adabas. Explore o sistema original com acesso somente leitura."><meta name="theme-color" content="#0a0d0b">
+  <title>SIFAP Legado — a origem da evolução</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/jetbrains-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/landing.css"><script src="/landing.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Ir para o conteúdo</a>
+  <header class="site-header container">
+    <a class="brand" href="/pt-BR/" aria-label="SIFAP — Página inicial"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>SIFAP<span class="brand-dot">.</span></span><span class="brand-edition">LEGADO</span></a>
+    <nav class="site-nav" aria-label="Navegação principal"><a href="#sobre">O sistema</a><a href="#acesso">A experiência</a></nav>
+    <nav class="locale-switch" aria-label="Idioma"><a href="/en/" hreflang="en">EN</a><a href="/es/" hreflang="es">ES</a><a href="/pt-BR/" hreflang="pt-BR">PT-BR</a></nav>
+    <form method="post" action="/auth/viewer" class="nav-login"><input type="hidden" name="locale" value="pt-BR"><button class="nav-terminal" type="submit">Entrar como viewer <span aria-hidden="true">↗</span></button></form>
+  </header>
+  <main id="main" tabindex="-1">
+    <section class="hero container" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="square-dot" aria-hidden="true"></span>ARQUIVO VIVO / SIFAP ORIGINAL</p>
+        <h1 id="hero-title">O futuro começa<span>na tela preta.</span></h1><p class="hero-description">Antes das novas interfaces, já existiam as regras que fazem tudo funcionar. Conheça o SIFAP legado: 29 anos de história, escritos em Natural e guardados no Adabas.</p>
+        <div class="hero-actions"><form method="post" action="/auth/viewer"><input type="hidden" name="locale" value="pt-BR"><button class="button button-primary" type="submit">Acessar SIFAP legado <span aria-hidden="true">↗</span></button></form><a class="text-link" href="#sobre">Conheça a história <span aria-hidden="true">↓</span></a></div>
+        <p class="access-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z"/><path d="m8 12 3 3 5-6"/></svg>Um clique. Sem senha. Somente leitura, com dados sintéticos.</p>
+      </div>
+      <figure class="terminal-figure">
+        <div class="terminal-label" aria-hidden="true"><span>01 / THE ORIGINAL</span><span>NATURAL + ADABAS</span></div>
+        <div class="terminal-frame"><div class="terminal-screen" aria-hidden="true">
+          <div class="terminal-topline"><span>SIFAPPRD</span><span>TERMINAL / 001</span></div><div class="terminal-wordmark">SIFAP<span>_</span></div>
+          <p class="terminal-subtitle">Sistema de Fiscalização e Administração de Pagamentos</p>
+          <div class="terminal-menu"><div class="terminal-row terminal-row-selected"><span>01</span><span>Beneficiários</span><span>&lt;</span></div><div class="terminal-row"><span>02</span><span>Programas sociais</span></div><div class="terminal-row"><span>03</span><span>Pagamentos</span></div><div class="terminal-row"><span>04</span><span>Auditoria</span></div></div>
+          <div class="terminal-prompt"><span>&gt; SIFAPPRD</span><span class="cursor"></span></div><div class="terminal-bottomline"><span>LEGACY SYSTEM</span><span>VOL. 01</span></div>
+        </div><div class="monitor-chin" aria-hidden="true"><span>SIFAP / ORIGINAL EDITION</span><span class="monitor-grille"></span></div></div>
+        <figcaption><span class="caption-cross" aria-hidden="true">+</span> A estética de uma era. O ponto de partida da próxima.<span class="illustration-note">Ilustração não interativa</span></figcaption>
+      </figure>
+    </section>
+    <div class="heritage container"><p class="heritage-intro"><span class="eyebrow">O LEGADO EM PERSPECTIVA</span>Não é uma simulação.<br>É a nossa origem.</p><dl class="heritage-facts"><div><dt>Anos de história</dt><dd>29<span>anos</span></dd></div><div><dt>Membros Natural</dt><dd>24<span>fontes</span></dd></div><div><dt>DDMs Adabas</dt><dd>04<span>mapas</span></dd></div></dl></div>
+    <section class="about-section container" id="sobre" aria-labelledby="about-title">
+      <div class="section-heading"><p class="eyebrow">01 — POR TRÁS DA TELA</p><div><h2 id="about-title">Uma tela simples.<br>Um universo de regras.</h2><p>O SIFAP reúne cadastros, programas sociais, pagamentos e auditoria. Cada rotina conta um pedaço da história que a modernização precisa entender e preservar.</p></div></div>
+      <div class="capability-grid">
+        <article class="capability"><div class="capability-top"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="10" r="5"/><path d="M6 28v-3a10 10 0 0 1 20 0v3M5 28h22"/></svg><span>01</span></div><h3>Beneficiários</h3><p>Cadastros e consultas que conectam pessoas aos programas sociais.</p><span class="capability-code" aria-hidden="true">[ NATURAL / 01 ]</span></article>
+        <article class="capability"><div class="capability-top"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="m16 3 13 7-13 7L3 10l13-7ZM3 17l13 7 13-7M3 24l13 7 13-7"/></svg><span>02</span></div><h3>Programas sociais</h3><p>Informações e regras que organizam os programas administrados pelo sistema.</p><span class="capability-code" aria-hidden="true">[ NATURAL / 02 ]</span></article>
+        <article class="capability"><div class="capability-top"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="7" width="26" height="19" rx="2"/><path d="M3 13h26M8 21h6M21 3v4"/></svg><span>03</span></div><h3>Pagamentos</h3><p>Rotinas históricas de cálculo, processamento e acompanhamento de pagamentos.</p><span class="capability-code" aria-hidden="true">[ NATURAL / 03 ]</span></article>
+        <article class="capability"><div class="capability-top"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 4h17v25H8zM4 9h7M4 16h7M4 23h7m3-13 2 2 5-5M15 19h6M15 24h6"/></svg><span>04</span></div><h3>Auditoria</h3><p>Registros das operações que ajudam a entender a trajetória do sistema.</p><span class="capability-code" aria-hidden="true">[ NATURAL / 04 ]</span></article>
+      </div><p class="section-footnote"><span aria-hidden="true">↳</span>Capacidades do sistema original. O acesso viewer desta página permite apenas a consulta de beneficiários; não executa cadastros ou pagamentos.</p>
+    </section>
+    <section class="journey-section" aria-labelledby="journey-title"><div class="container journey-layout">
+      <div class="journey-copy"><p class="eyebrow">02 — A MESMA HISTÓRIA. UM NOVO CAPÍTULO.</p><h2 id="journey-title">A interface muda.<br>A história continua.</h2><p>Modernizar não é começar do zero. É descobrir o conhecimento que existe no legado e dar a ele uma nova experiência.</p><p>Compare os dois ambientes reais da imersão: do terminal Natural à plataforma moderna. Nos dois, seu acesso é somente leitura.</p><a class="text-link" href="https://sifap-modern-fiepi9.eastus2.cloudapp.azure.com/pt-BR" target="_blank" rel="noopener noreferrer">Conhecer o SIFAP moderno <span aria-hidden="true">↗</span></a></div>
+      <div class="journey-diagram"><div class="journey-node legacy-node"><span class="node-index">01 / LEGADO</span><div class="node-heading"><span class="prompt-symbol" aria-hidden="true">&gt;_</span><h3>Natural + Adabas</h3></div><p>Tela de terminal. Conhecimento preservado.</p><span class="node-badge">VOCÊ ESTÁ AQUI</span></div>
+      <div class="journey-connector"><span aria-hidden="true">↓</span><p>Entender. Preservar. Evoluir.</p></div><div class="journey-node modern-node"><span class="node-index">02 / MODERNO</span><div class="node-heading"><span class="modern-symbol" aria-hidden="true">↗</span><h3>Java + Next.js</h3></div><p>Uma nova experiência para a próxima etapa.</p></div></div>
+    </div></section>
+    <section class="access-section container" id="acesso" aria-labelledby="access-title"><div class="access-heading">
+      <p class="eyebrow"><span class="square-dot" aria-hidden="true"></span>03 — SUA PRÓXIMA TELA</p><h2 id="access-title">Pronto para voltar<br>à origem?</h2><p>O SIFAP original, direto no navegador.</p>
+      <form method="post" action="/auth/viewer"><input type="hidden" name="locale" value="pt-BR"><button class="button button-primary" type="submit">Acessar SIFAP legado <span aria-hidden="true">↗</span></button></form><span class="access-route">SESSÃO NATURAL / SOMENTE LEITURA</span>
+    </div><div class="access-guide"><h3>Como acessar</h3><ol>
+      <li><span class="step-number" aria-hidden="true">01</span><div><h4>Clique para entrar</h4><p>Uma sessão viewer é criada no servidor. Você não precisa informar usuário ou senha.</p></div></li><li><span class="step-number" aria-hidden="true">02</span><div><h4>Explore o terminal</h4><p>Consulte beneficiários na sessão Natural restrita VIEWBENF, sem acesso à linha de comando.</p></div></li><li><span class="step-number" aria-hidden="true">03</span><div><h4>Saia quando terminar</h4><p>Use Sair para encerrar a sessão. Administração e alterações permanecem bloqueadas.</p></div></li>
+    </ol></div></section>
+    <div class="container operations-container"><details class="operations" id="operacao"><summary><span>Informações do ambiente</span><span class="operations-hint">PARA FACILITADORES E OPERADORES</span><span class="operations-toggle" aria-hidden="true">+</span></summary><div class="operations-body">
+      <section class="status-panel" aria-labelledby="status-title"><h3 id="status-title">Disponibilidade do laboratório</h3><div id="status" role="status" aria-live="polite" data-loading="Consultando…" data-online="Endpoint HTTPS disponível. Aplicação e banco são verificados pela rotina matinal." data-offline="Não foi possível confirmar a disponibilidade. Tente novamente ou avise o facilitador.">O status ainda não foi consultado.</div><button class="button button-secondary" id="refresh-status" type="button">Consultar disponibilidade <span aria-hidden="true">↻</span></button><p>Esta verificação confirma o endpoint HTTPS. A rotina matinal verifica separadamente aplicação e banco.</p></section>
+      <section class="operations-links"><h3>Acesso técnico</h3><a class="text-link" href="/admin/">Console Adabas <span aria-hidden="true">↗</span></a><p>Restrito a operadores com credenciais próprias. A sessão viewer não autoriza administração.</p><a class="text-link" href="/healthz">HTTPS / healthz <span aria-hidden="true">↗</span></a></section>
+    </div></details></div>
+  </main>
+  <footer class="site-footer container"><a class="brand footer-brand" href="/pt-BR/" aria-label="SIFAP — Página inicial"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>SIFAP<span class="brand-dot">.</span></span></a><div class="footer-copy"><p>Preservar o passado. Construir o próximo.</p><span>Laboratório com dados sintéticos. Não é um serviço público de benefícios.</span></div><p class="footer-edition">NATURAL + ADABAS<br><span>LEGACY EDITION / 2026</span></p></footer>
+</body></html>

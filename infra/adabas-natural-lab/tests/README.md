@@ -36,8 +36,10 @@ literal. `SIFAP_VIEWER_USERNAME` defaults to `viewer`; `SIFAP_LAB_URL` defaults 
 the documented lab HTTPS origin. TLS verification is mandatory, and redirects
 are not followed with the credential.
 
-The probe verifies public health, anonymous denial, authenticated landing and
-terminal access, and denial of both administration URL variants. Passwords are
+The probe verifies public landing/health, anonymous terminal redirection,
+credential-based viewer terminal access, and denial of both administration URL
+variants. The public one-click guest flow is additionally covered by the
+session gateway tests and the modern repository's live Playwright suite. Passwords are
 passed to curl through standard input and are never printed. A missing credential,
 network error, or unexpected status fails the probe.
 

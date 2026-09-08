@@ -1,0 +1,100 @@
+{
+	admin off
+}
+:8081 {
+	respond /healthz "ok" 200
+}
+{$SIFAP_HOST} {
+	encode gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+		Strict-Transport-Security "max-age=31536000"
+	}
+	handle /healthz {
+		respond "ok" 200
+	}
+	@public path / /index.html /en /en/ /es /es/ /pt-BR /pt-BR/ /login /viewer /auth/viewer /auth/logout
+	handle @public {
+		reverse_proxy viewer-access:8082
+	}
+	@assets path /landing.css /landing.js /favicon.svg /fonts/*
+	handle @assets {
+		root * /srv
+		file_server
+	}
+	handle /terminal {
+		redir /terminal/ 308
+	}
+	handle /terminal/* {
+		header X-Frame-Options SAMEORIGIN
+		@credential {
+			header Authorization *
+			not header Cookie *sifap_viewer=*
+		}
+		handle @credential {
+			basic_auth {
+				"{$SIFAP_BASIC_AUTH_USER}" "{$SIFAP_BASIC_AUTH_HASH}"
+				"{$SIFAP_VIEWER_USER}" "{$SIFAP_VIEWER_HASH}"
+			}
+			@viewer expression {http.auth.user.id} == "{$SIFAP_VIEWER_USER}"
+			handle @viewer {
+				reverse_proxy ttyd-viewer:7681 {
+					header_up -Authorization
+					stream_timeout 1h
+				}
+			}
+			handle {
+				reverse_proxy ttyd:7681
+			}
+		}
+		handle {
+			forward_auth viewer-access:8082 {
+				uri /auth/check
+			}
+			reverse_proxy ttyd-viewer:7681 {
+				stream_timeout 1h
+			}
+		}
+	}
+	@admin path /admin /admin/*
+	handle @admin {
+		@guest header Cookie *sifap_viewer=*
+		handle @guest {
+			respond "Viewer access cannot administer Adabas." 403
+		}
+		handle {
+			basic_auth {
+				"{$SIFAP_BASIC_AUTH_USER}" "{$SIFAP_BASIC_AUTH_HASH}"
+				"{$SIFAP_VIEWER_USER}" "{$SIFAP_VIEWER_HASH}"
+			}
+			@viewer expression {http.auth.user.id} == "{$SIFAP_VIEWER_USER}"
+			handle @viewer {
+				respond "Viewer access cannot administer Adabas." 403
+			}
+			@bare path /admin
+			redir @bare /admin/ 308
+			handle_path /admin/* {
+				reverse_proxy adabas-db:8190 {
+					header_up X-Forwarded-Prefix /admin
+				}
+			}
+		}
+	}
+	handle /app* {
+		redir https://sifap-modern-fiepi9.eastus2.cloudapp.azure.com/pt-BR 302
+	}
+	handle {
+		@guest header Cookie *sifap_viewer=*
+		handle @guest {
+			respond "Viewer access cannot open operator resources." 403
+		}
+		handle {
+			basic_auth {
+				"{$SIFAP_BASIC_AUTH_USER}" "{$SIFAP_BASIC_AUTH_HASH}"
+			}
+			root * /srv
+			file_server
+		}
+	}
+}
