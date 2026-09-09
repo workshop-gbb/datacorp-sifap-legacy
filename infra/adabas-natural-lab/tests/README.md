@@ -31,17 +31,15 @@ records, executing business programs, or changing infrastructure:
 bash infra/adabas-natural-lab/verify-viewer-access.sh
 ```
 
-Supply `SIFAP_VIEWER_PASSWORD` through a protected environment, not a command-line
-literal. `SIFAP_VIEWER_USERNAME` defaults to `viewer`; `SIFAP_LAB_URL` defaults to
-the documented lab HTTPS origin. TLS verification is mandatory, and redirects
-are not followed with the credential.
+`SIFAP_LAB_URL` defaults to the documented lab HTTPS origin. TLS verification is
+mandatory, and redirects are not followed. This anonymous probe does not receive
+or transmit an account credential.
 
 The probe verifies public landing/health, anonymous terminal redirection,
-credential-based viewer terminal access, and denial of both administration URL
-variants. Credentialed ADMIN/VIEWER flows are additionally covered by the
-session gateway tests and the modern repository's live Playwright suite. Passwords are
-passed to curl through standard input and are never printed. A missing credential,
-network error, or unexpected status fails the probe.
+and admin redirection to sign-in. Credentialed ADMIN/VIEWER flows, terminal role
+routing and admin denial are covered by the session gateway tests and the modern
+repository's live Playwright suite. A network error or unexpected status fails
+the probe.
 
 This proves the HTTP viewer boundary, not every Natural business workflow. The
 offline `test_viewer_account.py` separately protects the `VIEWBENF;FIN` terminal

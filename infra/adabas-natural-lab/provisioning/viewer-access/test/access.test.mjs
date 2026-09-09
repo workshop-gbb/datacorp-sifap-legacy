@@ -134,6 +134,7 @@ test("REQ-121 REQ-122 REQ-123: sign-in enforces credentials, role and logout", a
 });
 
 test("REQ-123: production origins cannot disable TLS or embed credentials", () => {
+  assert.throws(() => createViewerServer({ origin: "", accounts }), /SIFAP_ORIGIN is required/);
   assert.throws(() => createViewerServer({ origin: "http://public.test", accounts }));
   assert.throws(() => createViewerServer({ origin: "https://user:secret@public.test", accounts }));
   assert.throws(() => createViewerServer({ origin: "https://public.test", secure: false, accounts }));

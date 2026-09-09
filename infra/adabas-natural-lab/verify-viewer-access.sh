@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# A credencial fica na entrada padrao do curl, nunca em seus argumentos ou logs.
+# Sonda somente rotas anônimas. Perfis autenticados são cobertos no browser E2E.
 base_url="${SIFAP_LAB_URL:-https://sifap-lab-438k30.eastus2.cloudapp.azure.com}"
 if [[ ! "$base_url" =~ ^https://[a-zA-Z0-9.-]+(:[0-9]+)?$ ]]; then
   printf 'ERROR: SIFAP_LAB_URL must be an HTTPS origin without credentials or a path.\n' >&2

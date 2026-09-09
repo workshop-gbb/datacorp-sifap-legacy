@@ -10,6 +10,8 @@ const template = readFileSync(new URL("./landing.html", import.meta.url), "utf8"
 export function createViewerServer({
   origin, secure = true, store = createSessionStore(), accounts = loadAccounts(), now = Date.now,
 } = {}) {
+  if (typeof origin !== "string" || !origin)
+    throw new Error("SIFAP_ORIGIN is required.");
   const expected = new URL(origin);
   const localTest = expected.protocol === "http:" && ["127.0.0.1", "localhost"].includes(expected.hostname);
   if (expected.origin !== origin || (expected.protocol !== "https:" && !localTest))
