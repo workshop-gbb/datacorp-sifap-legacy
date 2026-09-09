@@ -37,7 +37,6 @@ async function asset(name) {
   if (local.length !== entry.size) throw new Error("Artifact size mismatch.");
   return { url:value, hash:createHash("sha256").update(local).digest("hex") };
 }
-const image = await asset("images-final.tar.gz");
 const runtime = await asset("runtime-final.tar.gz");
 const body = {
   location:"eastus2",
@@ -45,10 +44,10 @@ const body = {
     source:{ script:readFileSync(new URL("./deploy-release.sh", import.meta.url),"utf8") },
     timeoutInSeconds:900, asyncExecution:false,
     parameters:[
-      { name:"SIFAP_IMAGE_SHA", value:image.hash }, { name:"SIFAP_RUNTIME_SHA", value:runtime.hash },
+      { name:"SIFAP_RUNTIME_SHA", value:runtime.hash },
     ],
     protectedParameters:[
-      { name:"SIFAP_IMAGE_URL", value:image.url }, { name:"SIFAP_RUNTIME_URL", value:runtime.url },
+      { name:"SIFAP_RUNTIME_URL", value:runtime.url },
     ],
   },
 };
