@@ -58,6 +58,19 @@ def test_should_reap_the_restricted_natural_process_on_disconnect():
     assert "--max-clients=1" in (ACCESS / "compose.viewer.yaml").read_text()
 
 
+def test_should_reap_only_previous_administrator_sessions_before_login():
+    # REQ-124: o próximo login admin não herda uma vaga órfã do buffer pool.
+    session = (ACCESS / "admin-session.sh").read_text()
+    assert "natural*VIEWBENF*" in session
+    assert "natural*) kill -TERM" in session
+    assert "natural*) kill -KILL" in session
+    assert "timeout 3300" in session
+    assert "/usr/local/bin/sifap-session" in session
+    compose = (ACCESS / "compose.viewer.yaml").read_text()
+    assert "--max-clients=1" in compose
+    assert "sifap-admin-session" in compose
+
+
 def test_should_derive_account_hashes_from_existing_key_vault_secrets():
     seed = (ACCESS / "seed-accounts.sh").read_text()
     assert "demo-basic-auth-password" in seed

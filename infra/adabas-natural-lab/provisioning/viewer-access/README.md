@@ -26,7 +26,10 @@ Portuguese render on the server, including with browser JavaScript disabled.
   disconnects. Because Docker exec cannot always propagate an abrupt browser
   close, the next viewer session also reaps only older `VIEWBENF` processes
   before starting. The restricted terminal accepts one concurrent client and
-  has a 55-minute hard runtime limit. Operator sessions are never matched.
+  has a 55-minute hard runtime limit. The administrator terminal applies the
+  same one-client/55-minute bound and reaps only older interactive `natural`
+  processes; it explicitly excludes `VIEWBENF` and the Natural development
+  server.
 
 ## Runtime
 

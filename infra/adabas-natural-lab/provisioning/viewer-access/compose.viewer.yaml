@@ -24,6 +24,19 @@ services:
       - --ping-interval=20
       - --terminal-type=xterm-256color
       - /usr/local/bin/sifap-viewer-session
+  ttyd:
+    command:
+      - ttyd
+      - --port=7681
+      - --base-path=/terminal
+      - --writable
+      - --check-origin
+      - --max-clients=1
+      - --ping-interval=20
+      - --terminal-type=xterm-256color
+      - /usr/local/bin/sifap-admin-session
+    volumes:
+      - /opt/sifap/provisioning/viewer-access/admin-session.sh:/usr/local/bin/sifap-admin-session:ro
   caddy:
     environment:
       SIFAP_HOST: ${SIFAP_HOST:?Provide legacy public hostname}

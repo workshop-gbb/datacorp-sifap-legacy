@@ -26,6 +26,7 @@ image="$(docker inspect --format '{{.Config.Image}}' caddy)"
 # The restricted Natural session driver must release its buffer-pool slot on
 # disconnect; without it a closed browser tab exhausts Natural CE capacity.
 install -m 0755 "$directory/viewer-session.sh" /opt/sifap/viewer-session.sh
+chmod 0755 "$directory/admin-session.sh"
 
 export SIFAP_HOST="$hostname"
 docker run --rm --network none -e SIFAP_HOST \
@@ -37,7 +38,7 @@ fi
 compose=(docker compose --project-name "$project" --env-file "$accounts"
   -f /opt/sifap/docker-compose.yml -f "$directory/compose.viewer.yaml")
 
-"${compose[@]}" up -d --no-deps --no-build --force-recreate --wait --wait-timeout 60 viewer-access ttyd-viewer
+"${compose[@]}" up -d --no-deps --no-build --force-recreate --wait --wait-timeout 60 viewer-access ttyd-viewer ttyd
 cp -p /opt/sifap/Caddyfile /opt/sifap/Caddyfile.previous-viewer
 install -m 0644 "$directory/Caddyfile" /opt/sifap/Caddyfile
 if ! "${compose[@]}" up -d --force-recreate --no-deps --no-build --wait --wait-timeout 90 caddy; then
