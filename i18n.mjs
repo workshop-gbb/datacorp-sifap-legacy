@@ -407,3 +407,10 @@ export function date(locale, value) {
 export function period(locale, value) {
   return new Intl.DateTimeFormat(normalizeLocale(locale), { timeZone: "UTC", month: "short", year: "numeric" }).format(new Date(`${value}-01T12:00:00Z`));
 }
+
+// Competência em coluna de terminal: MM/AAAA fixo, como as telas originais imprimiam.
+export function periodShort(locale, value) {
+  const [year, month] = String(value).split("-");
+  if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month)) throw new TypeError("Invalid period.");
+  return `${month}/${year}`;
+}
