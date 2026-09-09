@@ -28,35 +28,39 @@
 	}
 	# The role comes from the gateway, never from the client. A forged
 	# X-Sifap-Role header is stripped before the session is validated.
-	route /terminal* {
-		request_header -X-Sifap-Role
-		header X-Frame-Options SAMEORIGIN
-		forward_auth viewer-access:8082 {
-			uri /auth/check
-			copy_headers X-Sifap-Role
-		}
-		@admin header X-Sifap-Role ADMIN
-		handle @admin {
-			reverse_proxy ttyd:7681 {
-				stream_timeout 1h
+	handle /terminal* {
+		route {
+			request_header -X-Sifap-Role
+			header X-Frame-Options SAMEORIGIN
+			forward_auth viewer-access:8082 {
+				uri /auth/check
+				copy_headers X-Sifap-Role
 			}
-		}
-		handle {
-			reverse_proxy ttyd-viewer:7681 {
-				stream_timeout 1h
+			@admin header X-Sifap-Role ADMIN
+			handle @admin {
+				reverse_proxy ttyd:7681 {
+					stream_timeout 1h
+				}
+			}
+			handle {
+				reverse_proxy ttyd-viewer:7681 {
+					stream_timeout 1h
+				}
 			}
 		}
 	}
-	route /admin* {
-		request_header -X-Sifap-Role
-		forward_auth viewer-access:8082 {
-			uri /auth/check-admin
-		}
-		@bare path /admin
-		redir @bare /admin/ 308
-		handle_path /admin/* {
-			reverse_proxy adabas-db:8190 {
-				header_up X-Forwarded-Prefix /admin
+	handle /admin* {
+		route {
+			request_header -X-Sifap-Role
+			forward_auth viewer-access:8082 {
+				uri /auth/check-admin
+			}
+			@bare path /admin
+			redir @bare /admin/ 308
+			handle_path /admin/* {
+				reverse_proxy adabas-db:8190 {
+					header_up X-Forwarded-Prefix /admin
+				}
 			}
 		}
 	}
