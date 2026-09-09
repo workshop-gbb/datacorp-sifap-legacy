@@ -219,6 +219,16 @@ jobs:
       - name: Verify the Brasilia morning window and target boundaries
         shell: pwsh
         run: ./infra/morning-start/tests/runbook.tests.ps1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+      - name: Verify public landing and viewer-session boundaries
+        working-directory: infra/adabas-natural-lab/provisioning/viewer-access
+        run: |
+          npm run build
+          npm test
+          node build-landing.mjs
+          git diff --exit-code -- ../../payload-static/www/index.html
       - name: Build and verify the SSH payload archive
         run: |
           set -euo pipefail

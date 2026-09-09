@@ -1,0 +1,29 @@
+services:
+  viewer-access:
+    image: sifap-legacy-viewer:workshop-v2
+    container_name: sifap-viewer-access
+    environment:
+      SIFAP_ORIGIN: https://${SIFAP_HOST:?Provide legacy public hostname}
+      SIFAP_ADMIN_USERNAME: ${SIFAP_ADMIN_USERNAME:?Provide the administrator account}
+      SIFAP_ADMIN_PASSWORD_HASH: ${SIFAP_ADMIN_PASSWORD_HASH:?Provide the administrator scrypt hash}
+      SIFAP_VIEWER_USERNAME: ${SIFAP_VIEWER_USERNAME:?Provide the viewer account}
+      SIFAP_VIEWER_PASSWORD_HASH: ${SIFAP_VIEWER_PASSWORD_HASH:?Provide the viewer scrypt hash}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [sifap-lab]
+  ttyd-viewer:
+    command:
+      - ttyd
+      - --port=7681
+      - --base-path=/terminal
+      - --writable
+      - --check-origin
+      - --max-clients=1
+      - --ping-interval=20
+      - --terminal-type=xterm-256color
+      - /usr/local/bin/sifap-viewer-session
+  caddy:
+    environment:
+      SIFAP_HOST: ${SIFAP_HOST:?Provide legacy public hostname}
