@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 import sys
 
+sys.dont_write_bytecode = True
+
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR = ROOT / "infra/adabas-natural-lab/provisioning/seed/generate_seed.py"
 

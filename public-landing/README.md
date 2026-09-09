@@ -59,10 +59,11 @@ publishing the presentation does not merge `main` or deploy Azure.
 
 The simulation is a **dedicated full-screen page** at [`demo/`](demo/), opened in a
 new tab from the landing. It has no site header or footer: the browser window is
-the terminal. It replaces the instructor `demo-html/sifap-terminal.html` script
-while keeping its menu, command line, history, program lists, report, blocked
-operations, help, logout and guided walkthrough. The supplied instructor files
-remain unchanged; the maintained, published version lives here.
+the terminal. It supersedes the original instructor terminal while keeping its
+menu, command line, history, program lists, report, blocked operations, help,
+logout and guided walkthrough. The maintained publication source lives here and
+the instructor copy under `datacorp-mm-team-kit/demo-html/` is synchronized from
+these approved static assets.
 
 The screen is a real character grid: exactly **80 columns by 24 rows**, uppercase
 ASCII, `HORA`/`DATA` header with program name, level, user and library, `===`
