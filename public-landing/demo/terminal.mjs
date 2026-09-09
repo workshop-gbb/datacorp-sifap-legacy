@@ -1,4 +1,4 @@
-import { money, date, period } from "../i18n.mjs";
+import { money, date, period, periodShort } from "../i18n.mjs";
 import { maskCpf } from "./model.mjs";
 
 export const COLUMNS = 80;
@@ -115,7 +115,7 @@ function body(model, t, locale) {
     lines.push("", indent(`NIS: ${record.nis}   ${pad(record.name, 34)} ${programLabel(t, record.program)}`), "",
       ...table([t("demo.period"), currency(t("demo.gross"), locale), currency(t("demo.discount"), locale), currency(t("demo.net"), locale), "STS", t("demo.type")],
         [9, 12, 11, 12, 3, 9], view.slice,
-        row => [period(locale, row.period), amount(locale, row.grossCents), amount(locale, row.discountCents),
+        row => [periodShort(locale, row.period), amount(locale, row.grossCents), amount(locale, row.discountCents),
           amount(locale, row.netCents), row.status, t(`paymentType.${row.type}`)]),
       "", indent(`${view.footer}   PF6 ${t("demo.query")}   PF8 ${t("demo.detail")}`));
   } else if (state.screen === "programs") {
@@ -137,7 +137,7 @@ function body(model, t, locale) {
     lines.push("", indent(`${t("demo.period")}: ${period(locale, state.period)}    ${t("demo.program")}: ${state.program === "ALL" ? t("demo.all") : state.program}`), "",
       ...table([t("demo.period"), "NIS", t("demo.name"), currency(t("demo.net"), locale), "STS"],
         [9, 11, 23, 12, 3], view.slice,
-        row => [period(locale, row.period), model.byCpf.get(row.cpf).nis, model.byCpf.get(row.cpf).name,
+        row => [periodShort(locale, row.period), model.byCpf.get(row.cpf).nis, model.byCpf.get(row.cpf).name,
           amount(locale, row.netCents), row.status]),
       "", indent(`${view.footer}   PER=1..${model.data.periods.length}  PROG=COD/ALL  PF7/PF8`));
   } else if (state.screen === "report") {

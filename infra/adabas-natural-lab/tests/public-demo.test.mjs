@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { DemoModel, validateDataset, maskCpf } from "../../../public-landing/demo/model.mjs";
 import { composeScreen, promptLabel, pfKeys, ascii, pad, spread, COLUMNS, ROWS } from "../../../public-landing/demo/terminal.mjs";
-import { messages, translate, normalizeLocale, money, date, period } from "../../../public-landing/i18n.mjs";
+import { messages, translate, normalizeLocale, money, date, period, periodShort } from "../../../public-landing/i18n.mjs";
 
 const fixture = JSON.parse(readFileSync(new URL("../../../public-landing/demo/data.json", import.meta.url)));
 const first = fixture.beneficiaries[0];
@@ -26,6 +26,9 @@ test("all site and demo translations have identical keys and no empty values", (
   assert.match(money("es", 123456), /1234,56|1\.234,56/);
   assert.notEqual(date("en", "2018-03-14"), date("pt-BR", "2018-03-14"));
   assert.notEqual(period("en", "2018-01"), period("es", "2018-01"));
+  for (const language of ["pt-BR", "en", "es"]) {
+    assert.match(periodShort(language, "2018-01"), /^\d{2}\/2018$/);
+  }
 });
 
 test("dataset validation refuses live, malformed or inconsistent fixtures", () => {
@@ -162,6 +165,22 @@ test("terminal tables show complete amounts and blocked screens warn on the stat
   assert.match(report, /R\$/);
   model.command("MENU"); model.command("6");
   assert.match(composeScreen(model, t, "pt-BR", clock).at(-1), /\*\*\*/);
+});
+
+test("table columns never truncate periods, amounts or codes in any language", () => {
+  const model = new DemoModel(fixture);
+  model.command(`PAG CPF=${first.cpf}`);
+  for (const language of ["pt-BR", "en", "es"]) {
+    const rows = composeScreen(model, key => translate(language, key), language, clock)
+      .filter(line => /\|\s*\d{2}\/\d{4}\s*\|/.test(line));
+    assert.ok(rows.length > 0, language);
+    for (const row of rows) {
+      const cells = row.split("|").slice(1, -1).map(cell => cell.trim());
+      assert.match(cells[0], /^\d{2}\/\d{4}$/, `${language}: ${row}`);
+      for (const cell of cells.slice(1, 4)) assert.match(cell, /^[\d.,]+$/, `${language}: ${row}`);
+      assert.ok(!row.includes("…"), row);
+    }
+  }
 });
 
 test("blocked, error and empty states stay visible on the status line", () => {
