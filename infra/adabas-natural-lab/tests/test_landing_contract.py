@@ -85,7 +85,8 @@ def test_should_open_the_azure_session_entry_without_javascript(
     assert len(actions) >= 2, "Both the hero and closing section need real access links."
     for action in actions:
         assert action["href"] == ENTRY_URL
-        assert action.get("target") == "_self"
+        assert action.get("target") == "_blank"
+        assert "noopener" in (action.get("rel") or "")
         assert action.get("referrerpolicy") == "no-referrer"
         assert "onclick" not in action
 
@@ -114,7 +115,7 @@ def test_should_keep_authentication_and_operations_out_of_the_public_site(
 
     assert not document.attributes("form"), "Do not introduce a second login flow."
     assert not document.attributes("input")
-    assert not document.attributes("script"), "The public site must not fetch private status."
+    assert document.attributes("script") == [{"type": "module", "src": "./site.mjs"}]
     assert not document.attributes("iframe")
     assert "/app/" not in hrefs, "The placeholder is not the deployed modern product."
     assert all(
@@ -125,7 +126,7 @@ def test_should_keep_authentication_and_operations_out_of_the_public_site(
     assert external == {ENTRY_URL}
     assert all(urlsplit(href).path != "/terminal/" for href in external)
     text = " ".join(document.text)
-    assert "Sem senha" in text
+    assert "sem senha" in text.lower()
     assert "credenciais" not in text.lower()
 
 
@@ -182,3 +183,69 @@ def test_should_resolve_home_assets_and_azure_login_from_each_host(
             assert urljoin(base, attrs["href"]) == ENTRY_URL
         if tag == "link":
             assert urljoin(base, attrs["href"]).startswith(base)
+
+
+def test_should_link_the_complete_simulation_and_offer_all_site_languages(
+    document: LandingDocument,
+) -> None:
+    locales = {
+        attrs["data-locale"]: attrs["href"]
+        for attrs in document.attributes("a") if "data-locale" in attrs
+    }
+    assert locales == {
+        "pt-BR": "?lang=pt-BR", "en": "?lang=en", "es": "?lang=es",
+    }
+    demo_links = [
+        attrs["href"] for attrs in document.attributes("a") if "data-demo-link" in attrs
+    ]
+    assert len(demo_links) >= 3
+    assert set(demo_links) == {"./demo/?lang=pt-BR"}
+    assert (PUBLIC_SITE / "demo/index.html").is_file()
+    for attrs in document.attributes("a"):
+        if attrs.get("href", "").startswith(("#", "?")) or "data-home-link" in attrs:
+            continue
+        assert attrs.get("target") == "_blank", attrs.get("href")
+        assert "noopener" in (attrs.get("rel") or ""), attrs.get("href")
+
+
+def test_should_open_the_simulation_full_screen_without_site_chrome():
+    demo = (PUBLIC_SITE / "demo/index.html").read_text(encoding="utf-8")
+    document = LandingDocument(demo)
+    body = next(attrs for tag, attrs in document.elements if tag == "body")
+
+    assert body.get("data-page") == "demo"
+    assert "demo-body" in (body.get("class") or "")
+    assert not document.attributes("header")
+    assert not document.attributes("footer")
+    assert any(attrs.get("id") == "screen" for attrs in document.attributes("pre"))
+    assert any(attrs.get("id") == "fullscreen" for attrs in document.attributes("button"))
+    assert "./landing.css" not in demo and "../landing.css" not in demo
+    css = (PUBLIC_SITE / "demo/demo.css").read_text(encoding="utf-8")
+    assert "100dvh" in css
+    assert ":fullscreen" in css
+    assert "[hidden]" in css, "Hidden panels must not survive display:flex rules."
+    assert "prefers-reduced-motion" in css
+    script = (PUBLIC_SITE / "demo/demo.mjs").read_text(encoding="utf-8")
+    assert "requestFullscreen" in script
+    assert "armAutomaticFullScreen" in script, "Full screen must be armed for the first gesture."
+    assert "ResizeObserver" in script, "The 80x24 grid must refit when the window changes."
+    for attrs in document.attributes("a"):
+        if attrs.get("href", "").startswith(("#", "?")):
+            continue
+        assert attrs.get("target") == "_blank"
+        assert "noopener" in (attrs.get("rel") or "")
+
+
+def test_should_translate_nested_demo_assets_without_including_remote_runtime():
+    document = LandingDocument((PUBLIC_SITE / "demo/index.html").read_text(encoding="utf-8"))
+    assert len(document.attributes("h1")) == 1
+    for tag, attrs in document.elements:
+        assert not any(name.startswith("on") for name in attrs)
+        if tag in ("script", "link"):
+            asset = attrs.get("src") or attrs.get("href")
+            target = (PUBLIC_SITE / "demo" / asset).resolve()
+            assert target.is_relative_to(PUBLIC_SITE.resolve())
+            assert target.is_file()
+    assert not document.attributes("iframe")
+    assert not any(attrs.get("type") == "password" for attrs in document.attributes("input"))
+    assert any(meta.get("http-equiv") == "Content-Security-Policy" and "connect-src 'self'" in meta["content"] for meta in document.attributes("meta"))

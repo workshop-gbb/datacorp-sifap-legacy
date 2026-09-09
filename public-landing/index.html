@@ -3,179 +3,111 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Conheça o SIFAP legado: 29 anos de história em Natural e Adabas. Explore o sistema original de fiscalização e administração de pagamentos pelo terminal no navegador.">
+    <meta name="description" data-i18n-content="site.description" content="Conheça o SIFAP legado e explore uma demonstração completa, simulada e multilíngue de Natural e Adabas.">
     <meta name="theme-color" content="#0a0d0b">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
     <title>SIFAP Legado — a origem da evolução</title>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
     <link rel="preload" href="./fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="./fonts/jetbrains-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="./landing.css">
+    <script type="module" src="./site.mjs"></script>
   </head>
-  <body>
-    <a class="skip-link" href="#main">Pular para o conteúdo</a>
-
+  <body data-page="site">
+    <a class="skip-link" href="#main" data-i18n="site.skip">Pular para o conteúdo</a>
     <header class="site-header container">
-      <a class="brand" href="./" aria-label="SIFAP — página inicial">
+      <a class="brand" href="./?lang=pt-BR" data-home-link data-i18n-aria-label="site.home" aria-label="SIFAP — página inicial">
         <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
         <span>SIFAP<span class="brand-dot">.</span></span>
-        <span class="brand-edition">LEGADO</span>
+        <span class="brand-edition" data-i18n="site.legacy">LEGADO</span>
       </a>
-      <nav class="site-nav" aria-label="Navegação principal">
-        <a href="#sobre">O sistema</a>
-        <a href="#acesso">A experiência</a>
-        <a class="nav-terminal" href="https://sifap-lab-438k30.eastus2.cloudapp.azure.com/login?locale=pt-BR" target="_self" referrerpolicy="no-referrer">Entrar no sistema <span aria-hidden="true">↗</span></a>
+      <nav class="site-nav" aria-label="Navegação principal" data-i18n-aria-label="site.navigation">
+        <a href="#sobre" data-i18n="site.about">O sistema</a>
+        <a href="./demo/?lang=pt-BR" data-demo-link target="_blank" rel="noopener" data-i18n="site.demo">Demo simulada</a>
+        <a class="nav-terminal" href="https://sifap-lab-438k30.eastus2.cloudapp.azure.com/login?locale=pt-BR" data-real-link target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span data-i18n="site.enter">Sistema real</span><span aria-hidden="true">↗</span></a>
+      </nav>
+      <nav class="locale-switch" aria-label="Idioma do site e da demo" data-i18n-aria-label="site.language">
+        <a href="?lang=pt-BR" data-locale="pt-BR" lang="pt-BR" hreflang="pt-BR" aria-current="page">PT-BR</a>
+        <a href="?lang=en" data-locale="en" lang="en" hreflang="en">EN</a>
+        <a href="?lang=es" data-locale="es" lang="es" hreflang="es">ES</a>
       </nav>
     </header>
-
     <main id="main" tabindex="-1">
       <section class="hero container" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow"><span class="square-dot" aria-hidden="true"></span>ARQUIVO VIVO / SIFAP ORIGINAL</p>
-          <h1 id="hero-title">O futuro começa<span>na tela preta.</span></h1>
-          <p class="hero-description">Antes das novas interfaces, já existiam as regras que fazem tudo funcionar. Conheça o SIFAP legado: 29 anos de história, escritos em Natural e guardados no Adabas.</p>
+          <p class="eyebrow"><span class="square-dot" aria-hidden="true"></span><span data-i18n="site.eyebrow">ARQUIVO VIVO / SIFAP ORIGINAL</span></p>
+          <h1 id="hero-title"><span class="hero-first" data-i18n="site.heroFirst">O futuro começa</span><span data-i18n="site.heroSecond">na tela preta.</span></h1>
+          <p class="hero-description" data-i18n="site.heroCopy">Antes das novas interfaces, já existiam as regras que fazem tudo funcionar. Conheça o SIFAP legado: 29 anos de história, escritos em Natural e guardados no Adabas.</p>
           <div class="hero-actions">
-            <a class="button button-primary" href="https://sifap-lab-438k30.eastus2.cloudapp.azure.com/login?locale=pt-BR" target="_self" referrerpolicy="no-referrer">Acessar SIFAP legado <span aria-hidden="true">↗</span></a>
-            <a class="text-link" href="#sobre">Conheça a história <span aria-hidden="true">↓</span></a>
+            <a class="button button-primary" href="./demo/?lang=pt-BR" data-demo-link target="_blank" rel="noopener"><span data-i18n="site.openDemo">Explorar demo simulada</span><span aria-hidden="true">→</span></a>
+            <a class="text-link" href="https://sifap-lab-438k30.eastus2.cloudapp.azure.com/login?locale=pt-BR" data-real-link target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span data-i18n="site.access">Acessar SIFAP legado</span><span aria-hidden="true">↗</span></a>
           </div>
-          <p class="access-note">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z"/><path d="m8 12 3 3 5-6"/></svg>
-            Acesso de consulta no Azure. Sem senha. Dados sintéticos.
-          </p>
+          <p class="access-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6l-8-3Z"/><path d="m8 12 3 3 5-6"/></svg><span data-i18n="site.accessNote">Demo no navegador, sem conexão ao Azure. Sistema real: consulta viewer.</span></p>
         </div>
-
         <figure class="terminal-figure">
-          <div class="terminal-label" aria-hidden="true">
-            <span>01 / THE ORIGINAL</span>
-            <span class="terminal-label-right">NATURAL + ADABAS</span>
-          </div>
+          <div class="terminal-label" aria-hidden="true"><span data-i18n="site.original">01 / O ORIGINAL</span><span class="terminal-label-right">NATURAL + ADABAS</span></div>
           <div class="terminal-frame">
             <div class="terminal-screen" aria-hidden="true">
-              <div class="terminal-topline"><span>SIFAPPRD</span><span>TERMINAL / 001</span></div>
+              <div class="terminal-topline"><span>SIFAPPRD</span><span data-i18n="site.terminal">TERMINAL / 001</span></div>
               <div class="terminal-wordmark">SIFAP<span>_</span></div>
-              <p class="terminal-subtitle">SISTEMA DE FISCALIZAÇÃO E<br>ADMINISTRAÇÃO DE PAGAMENTOS</p>
+              <p class="terminal-subtitle" data-i18n="site.system">Sistema de Fiscalização e Administração de Pagamentos</p>
               <div class="terminal-menu">
-                <div class="terminal-row terminal-row-selected"><span>01</span><span>BENEFICIÁRIOS</span><span>&lt;</span></div>
-                <div class="terminal-row"><span>02</span><span>PROGRAMAS SOCIAIS</span></div>
-                <div class="terminal-row"><span>03</span><span>PAGAMENTOS</span></div>
-                <div class="terminal-row"><span>04</span><span>AUDITORIA</span></div>
+                <div class="terminal-row terminal-row-selected"><span>01</span><span data-i18n="demo.query">Consultar beneficiário</span><span>&lt;</span></div>
+                <div class="terminal-row"><span>02</span><span data-i18n="demo.history">Histórico de pagamentos</span></div>
+                <div class="terminal-row"><span>03</span><span data-i18n="demo.programs">Listagem por programa</span></div>
+                <div class="terminal-row"><span>04</span><span data-i18n="demo.report">Relatório consolidado</span></div>
               </div>
               <div class="terminal-prompt"><span>&gt; SIFAPPRD</span><span class="cursor"></span></div>
-              <div class="terminal-bottomline"><span>LEGACY SYSTEM</span><span>VOL. 01</span></div>
+              <div class="terminal-bottomline"><span data-i18n="site.legacy">LEGADO</span><span>VOL. 01</span></div>
             </div>
-            <div class="monitor-chin" aria-hidden="true"><span>SIFAP / ORIGINAL EDITION</span><span class="monitor-grille"></span></div>
+            <div class="monitor-chin" aria-hidden="true"><span data-i18n="site.originalEdition">SIFAP / EDIÇÃO ORIGINAL</span><span class="monitor-grille"></span></div>
           </div>
-          <figcaption><span class="caption-cross" aria-hidden="true">+</span> A estética de uma era. O ponto de partida da próxima.<span class="illustration-note">Ilustração não interativa</span></figcaption>
+          <figcaption><span class="caption-cross" aria-hidden="true">+</span><span data-i18n="site.caption">A estética de uma era. O ponto de partida da próxima.</span><span class="illustration-note" data-i18n="site.illustration">Ilustração não interativa</span></figcaption>
         </figure>
       </section>
-
       <div class="heritage container">
-        <p class="heritage-intro"><span class="eyebrow">O LEGADO EM PERSPECTIVA</span>Não é uma simulação.<br> É a nossa origem.</p>
+        <p class="heritage-intro"><span class="eyebrow" data-i18n="site.perspective">O LEGADO EM PERSPECTIVA</span><span data-i18n="site.origin">Código preservado. Uma história real.</span></p>
         <dl class="heritage-facts">
-          <div><dt>Anos de história</dt><dd>29<span>anos</span></dd></div>
-          <div><dt>Membros Natural</dt><dd>24<span>fontes</span></dd></div>
-          <div><dt>DDMs Adabas</dt><dd>04<span>mapas</span></dd></div>
+          <div><dt data-i18n="site.years">Anos de história</dt><dd>29<span data-i18n="site.yearsUnit">anos</span></dd></div>
+          <div><dt data-i18n="site.sources">Membros Natural</dt><dd>24<span data-i18n="site.sourcesUnit">fontes</span></dd></div>
+          <div><dt data-i18n="site.maps">DDMs Adabas</dt><dd>04<span data-i18n="site.mapsUnit">mapas</span></dd></div>
         </dl>
       </div>
-
       <section class="about-section container" id="sobre" aria-labelledby="about-title">
         <div class="section-heading">
-          <p class="eyebrow">01 — POR TRÁS DA TELA</p>
-          <div>
-            <h2 id="about-title">Uma tela simples.<br>Um universo de regras.</h2>
-            <p>O <strong>Sistema de Fiscalização e Administração de Pagamentos</strong> reúne cadastros, programas sociais, pagamentos e auditoria. Cada rotina conta um pedaço da história que a modernização precisa entender e preservar.</p>
-          </div>
+          <p class="eyebrow" data-i18n="site.behind">01 — POR TRÁS DA TELA</p>
+          <div><h2 id="about-title"><span data-i18n="site.aboutFirst">Uma tela simples.</span><br><span data-i18n="site.aboutSecond">Um universo de regras.</span></h2><p data-i18n="site.aboutCopy">O Sistema de Fiscalização e Administração de Pagamentos reúne cadastros, programas sociais, pagamentos e auditoria. Cada rotina conta um pedaço da história que a modernização precisa entender e preservar.</p></div>
         </div>
         <div class="capability-grid">
-          <article class="capability">
-            <div class="capability-top">
-              <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="10" r="5"/><path d="M6 28v-3a10 10 0 0 1 20 0v3M5 28h22"/></svg>
-              <span>01</span>
-            </div>
-            <h3>Beneficiários</h3>
-            <p>Cadastros e consultas que conectam pessoas aos programas sociais.</p>
-            <span class="capability-code" aria-hidden="true">[ CADASTRAR · CONSULTAR ]</span>
-          </article>
-          <article class="capability">
-            <div class="capability-top">
-              <svg viewBox="0 0 32 32" aria-hidden="true"><path d="m16 3 13 7-13 7L3 10l13-7ZM3 17l13 7 13-7M3 24l13 7 13-7"/></svg>
-              <span>02</span>
-            </div>
-            <h3>Programas sociais</h3>
-            <p>Informações e regras que organizam os programas administrados pelo sistema.</p>
-            <span class="capability-code" aria-hidden="true">[ ORGANIZAR · VINCULAR ]</span>
-          </article>
-          <article class="capability">
-            <div class="capability-top">
-              <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="7" width="26" height="19" rx="2"/><path d="M3 13h26M8 21h6M21 3v4"/></svg>
-              <span>03</span>
-            </div>
-            <h3>Pagamentos</h3>
-            <p>Rotinas de cálculo, processamento e acompanhamento de pagamentos.</p>
-            <span class="capability-code" aria-hidden="true">[ CALCULAR · PROCESSAR ]</span>
-          </article>
-          <article class="capability">
-            <div class="capability-top">
-              <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 4h17v25H8zM4 9h7M4 16h7M4 23h7m3-13 2 2 5-5M15 19h6M15 24h6"/></svg>
-              <span>04</span>
-            </div>
-            <h3>Auditoria</h3>
-            <p>Registros de operações para acompanhar o que aconteceu ao longo do caminho.</p>
-            <span class="capability-code" aria-hidden="true">[ REGISTRAR · RASTREAR ]</span>
-          </article>
+          <article class="capability"><div class="capability-top"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="10" r="5"/><path d="M6 28v-3a10 10 0 0 1 20 0v3M5 28h22"/></svg><span>01</span></div><h3 data-i18n="demo.query">Consultar beneficiário</h3><p data-i18n="site.peopleCopy">Cadastros e consultas que conectam pessoas aos programas sociais.</p><span class="capability-code" data-i18n="site.peopleCode">[ CADASTRAR · CONSULTAR ]</span></article>
+          <article class="capability"><div class="capability-top"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="m16 3 13 7-13 7L3 10l13-7ZM3 17l13 7 13-7M3 24l13 7 13-7"/></svg><span>02</span></div><h3 data-i18n="demo.programs">Listagem por programa</h3><p data-i18n="site.programsCopy">Informações e regras que organizam os programas administrados pelo sistema.</p><span class="capability-code" data-i18n="site.programsCode">[ ORGANIZAR · VINCULAR ]</span></article>
+          <article class="capability"><div class="capability-top"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="7" width="26" height="19" rx="2"/><path d="M3 13h26M8 21h6M21 3v4"/></svg><span>03</span></div><h3 data-i18n="demo.payments">Pagamentos por competência</h3><p data-i18n="site.paymentsCopy">Rotinas históricas de cálculo, processamento e acompanhamento de pagamentos.</p><span class="capability-code" data-i18n="site.paymentsCode">[ CALCULAR · PROCESSAR ]</span></article>
+          <article class="capability"><div class="capability-top"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 4h17v25H8zM4 9h7M4 16h7M4 23h7m3-13 2 2 5-5M15 19h6M15 24h6"/></svg><span>04</span></div><h3 data-i18n="demo.audit">Eventos de auditoria</h3><p data-i18n="site.auditCopy">Registros de operações para acompanhar o que aconteceu ao longo do caminho.</p><span class="capability-code" data-i18n="site.auditCode">[ REGISTRAR · RASTREAR ]</span></article>
         </div>
-        <p class="section-footnote"><span aria-hidden="true">↳</span> Capacidades do sistema original. As funções disponíveis no terminal dependem do seu perfil de acesso.</p>
+        <p class="section-footnote"><span aria-hidden="true">↳</span><span data-i18n="site.capabilityNote">Capacidades do sistema original. O viewer real é restrito à consulta de beneficiários. Os demais percursos podem ser explorados na simulação.</span></p>
       </section>
-
       <section class="journey-section" aria-labelledby="journey-title">
         <div class="container journey-layout">
-          <div class="journey-copy">
-            <p class="eyebrow">02 — A MESMA HISTÓRIA. UM NOVO CAPÍTULO.</p>
-            <h2 id="journey-title">A interface muda.<br>A história continua.</h2>
-            <p>Modernizar não é começar do zero. É descobrir o conhecimento que existe no legado e dar a ele uma nova experiência.</p>
-            <p>Aqui você conhece o original que orienta a evolução do SIFAP: da tela de terminal às interfaces modernas, com as regras de negócio como ponto de partida.</p>
-            <a class="text-link" href="#acesso">Comece pela origem <span aria-hidden="true">↗</span></a>
-          </div>
-          <div class="journey-diagram" aria-label="Jornada de modernização: Natural e Adabas para Java e Next.js">
-            <div class="journey-node legacy-node">
-              <span class="node-index">01 / LEGADO</span>
-              <div class="node-heading"><span class="prompt-symbol" aria-hidden="true">&gt;_</span><h3>Natural + Adabas</h3></div>
-              <p>Tela de terminal. Conhecimento preservado.</p>
-              <span class="node-badge">VOCÊ ESTÁ AQUI</span>
-            </div>
-            <div class="journey-connector"><span aria-hidden="true">↓</span><p>Entender. Preservar. Evoluir.</p></div>
-            <div class="journey-node modern-node">
-              <span class="node-index">02 / MODERNO</span>
-              <div class="node-heading"><span class="modern-symbol" aria-hidden="true">↗</span><h3>Java + Next.js</h3></div>
-              <p>Uma nova experiência para a próxima etapa.</p>
-            </div>
+          <div class="journey-copy"><p class="eyebrow" data-i18n="site.chapter">02 — A MESMA HISTÓRIA. UM NOVO CAPÍTULO.</p><h2 id="journey-title"><span data-i18n="site.journeyFirst">A interface muda.</span><br><span data-i18n="site.journeySecond">A história continua.</span></h2><p data-i18n="site.journeyCopy">Modernizar não é começar do zero. É descobrir o conhecimento que existe no legado e dar a ele uma nova experiência.</p><p data-i18n="site.journeyMore">A demo acompanha o laboratório atual: Natural CE 9.3.3, Adabas CE 7.4.0, DBID 12 e arquivos 150 a 153. Os dados são uma cópia sintética histórica, não uma leitura ao vivo.</p><a class="text-link" href="./demo/?lang=pt-BR" data-demo-link target="_blank" rel="noopener"><span data-i18n="site.openDemo">Explorar demo simulada</span><span aria-hidden="true">→</span></a></div>
+          <div class="journey-diagram" data-i18n-aria-label="site.journeyLabel" aria-label="Jornada de modernização: Natural e Adabas para Java e Next.js">
+            <div class="journey-node legacy-node"><span class="node-index">01 / <span data-i18n="site.legacy">LEGADO</span></span><div class="node-heading"><span class="prompt-symbol" aria-hidden="true">&gt;_</span><h3>Natural + Adabas</h3></div><p data-i18n="site.legacyNode">Tela de terminal. Conhecimento preservado.</p><span class="node-badge" data-i18n="site.here">VOCÊ ESTÁ AQUI</span></div>
+            <div class="journey-connector"><span aria-hidden="true">↓</span><p data-i18n="site.steps">Entender. Preservar. Evoluir.</p></div>
+            <div class="journey-node modern-node"><span class="node-index">02 / <span data-i18n="site.modern">MODERNO</span></span><div class="node-heading"><span class="modern-symbol" aria-hidden="true">↗</span><h3>Java + Next.js</h3></div><p data-i18n="site.modernNode">Uma nova experiência para a próxima etapa.</p></div>
           </div>
         </div>
       </section>
-
       <section class="access-section container" id="acesso" aria-labelledby="access-title">
-        <div class="access-heading">
-          <p class="eyebrow"><span class="square-dot" aria-hidden="true"></span>03 — SUA PRÓXIMA TELA</p>
-          <h2 id="access-title">Pronto para voltar<br>à origem<span class="accent">?</span></h2>
-          <p>O SIFAP original, direto no navegador.<br>Sem atalhos para a história.</p>
-          <a class="button button-primary" href="https://sifap-lab-438k30.eastus2.cloudapp.azure.com/login?locale=pt-BR" target="_self" referrerpolicy="no-referrer">Acessar SIFAP legado <span aria-hidden="true">↗</span></a>
-          <span class="access-route">PÁGINA PÚBLICA / SISTEMA PROTEGIDO NO AZURE</span>
+        <div class="access-heading"><p class="eyebrow"><span class="square-dot" aria-hidden="true"></span><span data-i18n="site.nextScreen">03 — ESCOLHA SUA EXPERIÊNCIA</span></p><h2 id="access-title"><span data-i18n="site.readyFirst">Pronto para voltar</span><br><span class="accent" data-i18n="site.readySecond">à origem?</span></h2><p data-i18n="site.readyCopy">Explore a demo sem depender do servidor, ou abra uma sessão no sistema real do Azure.</p>
+          <div class="hero-actions"><a class="button button-primary" href="./demo/?lang=pt-BR" data-demo-link target="_blank" rel="noopener"><span data-i18n="site.openDemo">Explorar demo simulada</span><span aria-hidden="true">→</span></a><a class="text-link" href="https://sifap-lab-438k30.eastus2.cloudapp.azure.com/login?locale=pt-BR" data-real-link target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span data-i18n="site.access">Acessar SIFAP legado</span><span aria-hidden="true">↗</span></a></div>
+          <span class="access-route" data-i18n="site.route">SIMULAÇÃO LOCAL / SISTEMA REAL SEPARADO</span>
         </div>
-        <div class="access-guide">
-          <h3>Antes de entrar</h3>
-          <ol>
-            <li><span class="step-number" aria-hidden="true">01</span><div><h4>Abra a entrada do laboratório</h4><p>O botão leva à página de acesso do SIFAP no Azure, na mesma aba.</p></div></li>
-            <li><span class="step-number" aria-hidden="true">02</span><div><h4>Inicie sua sessão de consulta</h4><p>No Azure, selecione “Acessar SIFAP legado” para abrir o terminal como viewer, sem informar senha.</p></div></li>
-            <li><span class="step-number" aria-hidden="true">03</span><div><h4>Explore os dados da imersão</h4><p>A sessão usa dados sintéticos e permite apenas consulta. Manutenção e administração continuam restritas aos operadores.</p></div></li>
-          </ol>
-        </div>
+        <div class="access-guide"><h3 data-i18n="site.before">Dois caminhos, sem confusão</h3><ol>
+          <li><span class="step-number" aria-hidden="true">01</span><div><h4 data-i18n="site.step1">Explore a demo completa</h4><p data-i18n="site.step1copy">Consulta, histórico, programas, pagamentos, relatório e auditoria simulados. Nenhum comando é enviado ao Azure.</p></div></li>
+          <li><span class="step-number" aria-hidden="true">02</span><div><h4 data-i18n="site.step2">Mude o idioma</h4><p data-i18n="site.step2copy">Português, inglês ou espanhol: o site e todas as telas da demo acompanham sua escolha, sem perder a consulta.</p></div></li>
+          <li><span class="step-number" aria-hidden="true">03</span><div><h4 data-i18n="site.step3">Visite o sistema real</h4><p data-i18n="site.step3copy">O acesso real abre o Azure na mesma aba. Inicie uma sessão viewer sem senha; administração permanece bloqueada.</p></div></li>
+        </ol></div>
       </section>
-
     </main>
-
-    <footer class="site-footer container">
-      <a class="brand footer-brand" href="./" aria-label="SIFAP — voltar ao início"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>SIFAP<span class="brand-dot">.</span></span></a>
-      <div class="footer-copy"><p>Preservar o passado. Construir o próximo.</p><span>Laboratório de modernização. Não é um serviço público de benefícios.</span></div>
-      <p class="footer-edition">NATURAL + ADABAS<br><span>LEGACY EDITION / 2026</span></p>
-    </footer>
+    <footer class="site-footer container"><a class="brand footer-brand" href="./?lang=pt-BR" data-home-link data-i18n-aria-label="site.home" aria-label="SIFAP — página inicial"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>SIFAP<span class="brand-dot">.</span></span></a><div class="footer-copy"><p data-i18n="site.footer">Preservar o passado. Construir o próximo.</p><span data-i18n="site.disclaimer">Laboratório com dados sintéticos. Não é um serviço público de benefícios.</span></div><p class="footer-edition">NATURAL + ADABAS<br><span data-i18n="site.edition">EDIÇÃO LEGADO / 2026</span></p></footer>
   </body>
 </html>
