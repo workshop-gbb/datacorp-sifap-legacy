@@ -1,11 +1,20 @@
 const pt = {
+  signIn: "Entrar", username: "Usuário", password: "Senha", accessType: "Tipo de acesso",
+  adminOption: "Administrador — acesso completo", viewerOption: "Viewer — somente consulta",
+  adminRole: "ADMINISTRADOR", viewerRole: "VIEWER · SOMENTE LEITURA",
+  invalidCredentials: "Usuário, senha ou tipo de acesso incorretos.",
+  rateLimited: "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+  adminOnly: "Este recurso é restrito ao acesso de administrador.",
+  credentialsNote: "As credenciais são fornecidas pelo facilitador.",
+  adminTerminalHelp: "Sessão Natural de administrador. Você também pode abrir o console Adabas.",
+  loginTitle: "Acesse o SIFAP legado", loginHelp: "Escolha o tipo de acesso e informe suas credenciais.",
   lang: "pt-BR", title: "SIFAP Legado — a origem da evolução", edition: "LEGADO",
   description: "Conheça o SIFAP legado: 29 anos de história em Natural e Adabas. Explore o sistema original com acesso somente leitura.",
   skip: "Ir para o conteúdo", nav: "Navegação principal", language: "Idioma",
   about: "O sistema", experience: "A experiência", login: "Entrar como viewer", access: "Acessar SIFAP legado",
   eyebrow: "ARQUIVO VIVO / SIFAP ORIGINAL", heroFirst: "O futuro começa", heroSecond: "na tela preta.",
   heroCopy: "Antes das novas interfaces, já existiam as regras que fazem tudo funcionar. Conheça o SIFAP legado: 29 anos de história, escritos em Natural e guardados no Adabas.",
-  history: "Conheça a história", note: "Um clique. Sem senha. Somente leitura, com dados sintéticos.",
+  history: "Conheça a história", note: "Login com perfil. Credenciais fornecidas pelo facilitador.",
   system: "Sistema de Fiscalização e Administração de Pagamentos",
   beneficiaries: "Beneficiários", programs: "Programas sociais", payments: "Pagamentos", audit: "Auditoria",
   caption: "A estética de uma era. O ponto de partida da próxima.", illustration: "Ilustração não interativa",
@@ -23,7 +32,7 @@ const pt = {
   steps: "Entender. Preservar. Evoluir.", modernEdition: "MODERNO", modernNode: "Uma nova experiência para a próxima etapa.",
   nextScreen: "03 — SUA PRÓXIMA TELA", readyFirst: "Pronto para voltar", readySecond: "à origem?",
   readyCopy: "O SIFAP original, direto no navegador.", route: "SESSÃO NATURAL / SOMENTE LEITURA", before: "Como acessar",
-  step1: "Clique para entrar", step1copy: "Uma sessão viewer é criada no servidor. Você não precisa informar usuário ou senha.",
+  step1: "Escolha o perfil", step1copy: "Selecione Administrador ou Viewer e informe a conta correspondente.",
   step2: "Explore o terminal", step2copy: "Consulte beneficiários na sessão Natural restrita VIEWBENF, sem acesso à linha de comando.",
   step3: "Saia quando terminar", step3copy: "Use Sair para encerrar a sessão. Administração e alterações permanecem bloqueadas.",
   environment: "Informações do ambiente", technical: "PARA FACILITADORES E OPERADORES", statusTitle: "Disponibilidade do laboratório",
@@ -39,13 +48,22 @@ const pt = {
   offline: "Não foi possível confirmar a disponibilidade. Tente novamente ou avise o facilitador.",
 };
 const en = {
+  signIn: "Sign in", username: "Username", password: "Password", accessType: "Access type",
+  adminOption: "Administrator — full access", viewerOption: "Viewer — read only",
+  adminRole: "ADMINISTRATOR", viewerRole: "VIEWER · READ ONLY",
+  invalidCredentials: "Incorrect username, password or access type.",
+  rateLimited: "Too many attempts. Wait a few minutes and try again.",
+  adminOnly: "This resource is restricted to administrator access.",
+  credentialsNote: "Credentials are provided by the facilitator.",
+  adminTerminalHelp: "Administrator Natural session. You can also open the Adabas console.",
+  loginTitle: "Sign in to legacy SIFAP", loginHelp: "Choose the access type and enter your credentials.",
   lang: "en", title: "SIFAP Legacy — where evolution begins", edition: "LEGACY",
   description: "Discover the legacy SIFAP: 29 years of Natural and Adabas. Explore the original system with read-only access.",
   skip: "Skip to content", nav: "Main navigation", language: "Language",
-  about: "The system", experience: "The experience", login: "Enter as viewer", access: "Access legacy SIFAP",
+  about: "The system", experience: "The experience", login: "Sign in", access: "Access legacy SIFAP",
   eyebrow: "LIVING ARCHIVE / ORIGINAL SIFAP", heroFirst: "The future begins", heroSecond: "on a black screen.",
   heroCopy: "Before the new interfaces, the rules were already there. Discover the legacy SIFAP: 29 years of history, written in Natural and preserved in Adabas.",
-  history: "Explore the history", note: "One click. No password. Read only, with synthetic data.",
+  history: "Explore the history", note: "Role-based sign-in. Credentials are provided by the facilitator.",
   system: "Payment Inspection and Administration System",
   beneficiaries: "Beneficiaries", programs: "Social programs", payments: "Payments", audit: "Audit",
   caption: "The aesthetic of an era. The starting point of the next.", illustration: "Non-interactive illustration",
@@ -63,7 +81,7 @@ const en = {
   steps: "Understand. Preserve. Evolve.", modernEdition: "MODERN", modernNode: "A new experience for the next stage.",
   nextScreen: "03 — YOUR NEXT SCREEN", readyFirst: "Ready to return", readySecond: "to the beginning?",
   readyCopy: "The original SIFAP, right in your browser.", route: "NATURAL SESSION / READ ONLY", before: "How to enter",
-  step1: "Click to enter", step1copy: "A viewer session is created on the server. No username or password is required.",
+  step1: "Choose the role", step1copy: "Select Administrator or Viewer and enter the matching account.",
   step2: "Explore the terminal", step2copy: "Consult beneficiaries through the restricted VIEWBENF Natural session, without command-line access.",
   step3: "Sign out when finished", step3copy: "Use Sign out to end your session. Administration and changes remain blocked.",
   environment: "Environment information", technical: "FOR FACILITATORS AND OPERATORS", statusTitle: "Lab availability",
@@ -79,13 +97,22 @@ const en = {
   offline: "Availability could not be confirmed. Retry or contact the facilitator.",
 };
 const es = {
+  signIn: "Acceder", username: "Usuario", password: "Contraseña", accessType: "Tipo de acceso",
+  adminOption: "Administrador — acceso completo", viewerOption: "Viewer — solo consulta",
+  adminRole: "ADMINISTRADOR", viewerRole: "VIEWER · SOLO LECTURA",
+  invalidCredentials: "Usuario, contraseña o tipo de acceso incorrectos.",
+  rateLimited: "Demasiados intentos. Espere unos minutos e inténtelo de nuevo.",
+  adminOnly: "Este recurso está restringido al acceso de administrador.",
+  credentialsNote: "El facilitador proporciona las credenciales.",
+  adminTerminalHelp: "Sesión Natural de administrador. También puede abrir la consola Adabas.",
+  loginTitle: "Acceda al SIFAP legado", loginHelp: "Elija el tipo de acceso e introduzca sus credenciales.",
   lang: "es", title: "SIFAP Legado — el origen de la evolución", edition: "LEGADO",
   description: "Conozca el SIFAP legado: 29 años de historia en Natural y Adabas. Explore el sistema original con acceso de solo lectura.",
   skip: "Ir al contenido", nav: "Navegación principal", language: "Idioma",
   about: "El sistema", experience: "La experiencia", login: "Entrar como viewer", access: "Acceder a SIFAP legado",
   eyebrow: "ARCHIVO VIVO / SIFAP ORIGINAL", heroFirst: "El futuro comienza", heroSecond: "en la pantalla negra.",
   heroCopy: "Antes de las nuevas interfaces, ya existían las reglas. Conozca el SIFAP legado: 29 años de historia, escritos en Natural y preservados en Adabas.",
-  history: "Conocer la historia", note: "Un clic. Sin contraseña. Solo lectura, con datos sintéticos.",
+  history: "Conocer la historia", note: "Acceso por perfil. El facilitador proporciona las credenciales.",
   system: "Sistema de Fiscalización y Administración de Pagos",
   beneficiaries: "Beneficiarios", programs: "Programas sociales", payments: "Pagos", audit: "Auditoría",
   caption: "La estética de una época. El punto de partida de la próxima.", illustration: "Ilustración no interactiva",
@@ -103,7 +130,7 @@ const es = {
   steps: "Entender. Preservar. Evolucionar.", modernEdition: "MODERNO", modernNode: "Una nueva experiencia para la próxima etapa.",
   nextScreen: "03 — SU PRÓXIMA PANTALLA", readyFirst: "¿Listo para volver", readySecond: "al origen?",
   readyCopy: "El SIFAP original, directamente en el navegador.", route: "SESIÓN NATURAL / SOLO LECTURA", before: "Cómo acceder",
-  step1: "Haga clic para entrar", step1copy: "Se crea una sesión viewer en el servidor. No necesita usuario ni contraseña.",
+  step1: "Elija el perfil", step1copy: "Seleccione Administrador o Viewer e introduzca la cuenta correspondiente.",
   step2: "Explore el terminal", step2copy: "Consulte beneficiarios en la sesión Natural restringida VIEWBENF, sin acceso a la línea de comandos.",
   step3: "Cierre la sesión al terminar", step3copy: "Use Salir para cerrar la sesión. La administración y las modificaciones siguen bloqueadas.",
   environment: "Información del entorno", technical: "PARA FACILITADORES Y OPERADORES", statusTitle: "Disponibilidad del laboratorio",
@@ -123,10 +150,13 @@ export const localeOf = value => Object.hasOwn(messages, value ?? "") ? value : 
 export function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, char => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[char]));
 }
-export function render(template, locale) {
+export function render(template, locale, options = {}) {
   const dictionary = messages[localeOf(locale)];
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+  const rendered = template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
     if (!Object.hasOwn(dictionary, key)) throw new Error(`Missing landing message: ${key}`);
     return escapeHtml(dictionary[key]);
   });
+  return rendered.replace(/^[ \t]*\{\{!error\}\}[ \t]*$/m, options.failed
+    ? `<p class="form-error" role="alert">${escapeHtml(dictionary.invalidCredentials)}</p>`
+    : "");
 }

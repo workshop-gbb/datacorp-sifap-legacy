@@ -1,10 +1,14 @@
 name: sifap-direct-viewer-test
 services:
   viewer-access:
-    image: sifap-legacy-viewer:workshop-v1
+    image: sifap-legacy-viewer:workshop-v2
     environment:
       SIFAP_ORIGIN: http://127.0.0.1:4389
       SIFAP_COOKIE_SECURE: "false"
+      SIFAP_ADMIN_USERNAME: admin
+      SIFAP_ADMIN_PASSWORD_HASH: ${TEST_ADMIN_HASH:?Set a local test hash}
+      SIFAP_VIEWER_USERNAME: viewer
+      SIFAP_VIEWER_PASSWORD_HASH: ${TEST_VIEWER_HASH:?Set a local test hash}
   ttyd-viewer:
     image: node:24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf
     command: ["node", "/upstream.mjs"]
@@ -32,7 +36,3 @@ services:
       - ../../../payload-static/www:/srv:ro
     environment:
       SIFAP_HOST: ":80"
-      SIFAP_BASIC_AUTH_USER: operator
-      SIFAP_BASIC_AUTH_HASH: ${TEST_BCRYPT_HASH:?Set a local test hash}
-      SIFAP_VIEWER_USER: viewer
-      SIFAP_VIEWER_HASH: ${TEST_BCRYPT_HASH:?Set a local test hash}

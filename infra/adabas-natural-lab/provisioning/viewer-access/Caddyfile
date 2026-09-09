@@ -14,7 +14,7 @@
 	handle /healthz {
 		respond "ok" 200
 	}
-	@public path / /index.html /en /en/ /es /es/ /pt-BR /pt-BR/ /login /viewer /auth/viewer /auth/logout
+	@public path / /index.html /en /en/ /es /es/ /pt-BR /pt-BR/ /login /viewer /auth/login /auth/logout
 	handle @public {
 		reverse_proxy viewer-access:8082
 	}
@@ -26,58 +26,37 @@
 	handle /terminal {
 		redir /terminal/ 308
 	}
-	handle /terminal/* {
+	# The role comes from the gateway, never from the client. A forged
+	# X-Sifap-Role header is stripped before the session is validated.
+	route /terminal/* {
+		request_header -X-Sifap-Role
 		header X-Frame-Options SAMEORIGIN
-		@credential {
-			header Authorization *
-			not header Cookie *sifap_viewer=*
+		forward_auth viewer-access:8082 {
+			uri /auth/check
+			copy_headers X-Sifap-Role
 		}
-		handle @credential {
-			basic_auth {
-				"{$SIFAP_BASIC_AUTH_USER}" "{$SIFAP_BASIC_AUTH_HASH}"
-				"{$SIFAP_VIEWER_USER}" "{$SIFAP_VIEWER_HASH}"
-			}
-			@viewer expression {http.auth.user.id} == "{$SIFAP_VIEWER_USER}"
-			handle @viewer {
-				reverse_proxy ttyd-viewer:7681 {
-					header_up -Authorization
-					stream_timeout 1h
-				}
-			}
-			handle {
-				reverse_proxy ttyd:7681
+		@admin header X-Sifap-Role ADMIN
+		handle @admin {
+			reverse_proxy ttyd:7681 {
+				stream_timeout 1h
 			}
 		}
 		handle {
-			forward_auth viewer-access:8082 {
-				uri /auth/check
-			}
 			reverse_proxy ttyd-viewer:7681 {
 				stream_timeout 1h
 			}
 		}
 	}
-	@admin path /admin /admin/*
-	handle @admin {
-		@guest header Cookie *sifap_viewer=*
-		handle @guest {
-			respond "Viewer access cannot administer Adabas." 403
+	route /admin* {
+		request_header -X-Sifap-Role
+		forward_auth viewer-access:8082 {
+			uri /auth/check-admin
 		}
-		handle {
-			basic_auth {
-				"{$SIFAP_BASIC_AUTH_USER}" "{$SIFAP_BASIC_AUTH_HASH}"
-				"{$SIFAP_VIEWER_USER}" "{$SIFAP_VIEWER_HASH}"
-			}
-			@viewer expression {http.auth.user.id} == "{$SIFAP_VIEWER_USER}"
-			handle @viewer {
-				respond "Viewer access cannot administer Adabas." 403
-			}
-			@bare path /admin
-			redir @bare /admin/ 308
-			handle_path /admin/* {
-				reverse_proxy adabas-db:8190 {
-					header_up X-Forwarded-Prefix /admin
-				}
+		@bare path /admin
+		redir @bare /admin/ 308
+		handle_path /admin/* {
+			reverse_proxy adabas-db:8190 {
+				header_up X-Forwarded-Prefix /admin
 			}
 		}
 	}
@@ -85,16 +64,6 @@
 		redir https://sifap-modern-fiepi9.eastus2.cloudapp.azure.com/pt-BR 302
 	}
 	handle {
-		@guest header Cookie *sifap_viewer=*
-		handle @guest {
-			respond "Viewer access cannot open operator resources." 403
-		}
-		handle {
-			basic_auth {
-				"{$SIFAP_BASIC_AUTH_USER}" "{$SIFAP_BASIC_AUTH_HASH}"
-			}
-			root * /srv
-			file_server
-		}
+		respond "Not found" 404
 	}
 }

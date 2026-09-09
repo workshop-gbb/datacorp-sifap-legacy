@@ -1,30 +1,41 @@
 import assert from "node:assert/strict";
 const base = process.env.SIFAP_TEST_ORIGIN ?? "http://127.0.0.1:4389";
-const check = (path, init = {}) => fetch(base + path, { redirect:"manual", ...init });
+const admin = process.env.TEST_ADMIN_PASSWORD;
+const viewer = process.env.TEST_VIEWER_PASSWORD;
+if (!admin || !viewer) throw new Error("Provide TEST_ADMIN_PASSWORD and TEST_VIEWER_PASSWORD.");
+
+const check = (path, init = {}) => fetch(base + path, { redirect: "manual", ...init });
+const login = (role, user, password) => check("/auth/login", {
+  method: "POST",
+  headers: { Origin: base, "Content-Type": "application/x-www-form-urlencoded" },
+  body: `locale=en&role=${role}&username=${user}&password=${encodeURIComponent(password)}`,
+});
+
 assert.equal((await check("/")).status, 200);
-assert.equal((await check("/admin/")).status, 401);
-assert.equal((await check("/terminal/")).status, 303);
-const login = await check("/auth/viewer", { method:"POST",
-  headers:{ Origin:base, "Content-Type":"application/x-www-form-urlencoded" }, body:"locale=en" });
-assert.equal(login.status, 303);
-const cookie = login.headers.get("set-cookie").split(";")[0];
-const guest = { headers: { Cookie:cookie, "X-Sifap-Role":"ADMIN", "X-Forwarded-User":"operator" } };
-assert.equal(await (await check("/terminal/", guest)).text(), "restricted-viewer");
-assert.equal((await check("/admin/", guest)).status, 403);
-assert.equal((await check("/admin", guest)).status, 403);
-const operator = { headers:{ Authorization:"Basic " + Buffer.from("operator:local-test-only").toString("base64") } };
-const cachedOperator = { headers:{...operator.headers, Cookie:cookie} };
-assert.equal(await (await check("/terminal/", cachedOperator)).text(), "restricted-viewer");
-assert.equal((await check("/admin/", cachedOperator)).status, 403);
-assert.equal((await check("/status.html", cachedOperator)).status, 403);
-assert.equal(await (await check("/terminal/", operator)).text(), "operator-terminal");
-assert.equal(await (await check("/admin/", operator)).text(), "operator-admin");
-const basicViewer = { headers:{ Authorization:"Basic " + Buffer.from("viewer:local-test-only").toString("base64") } };
-assert.equal(await (await check("/terminal/", basicViewer)).text(), "restricted-viewer");
-assert.equal((await check("/admin/", basicViewer)).status, 403);
-assert.equal((await check("/auth/check")).status, 401);
-const logout = await check("/auth/logout", { method:"POST", headers: {
-  Origin:base, Cookie:cookie, "Content-Type":"application/x-www-form-urlencoded" }, body:"locale=en" });
+assert.equal((await check("/terminal/")).status, 303, "anonymous terminal must redirect to sign-in");
+assert.equal((await check("/admin/")).status, 303, "anonymous admin must redirect to sign-in");
+assert.equal((await login("VIEWER", "viewer", "wrong")).status, 401);
+
+const viewerLogin = await login("VIEWER", "viewer", viewer);
+assert.equal(viewerLogin.status, 303);
+const viewerCookie = viewerLogin.headers.get("set-cookie").split(";")[0];
+const asViewer = { headers: { Cookie: viewerCookie } };
+const forged = { headers: { Cookie: viewerCookie, "X-Sifap-Role": "ADMIN" } };
+assert.equal(await (await check("/terminal/", asViewer)).text(), "restricted-viewer");
+assert.equal(await (await check("/terminal/", forged)).text(), "restricted-viewer", "a forged role header must be stripped");
+assert.equal((await check("/admin/", asViewer)).status, 403);
+assert.equal((await check("/admin", forged)).status, 403);
+
+const adminLogin = await login("ADMIN", "admin", admin);
+const asAdmin = { headers: { Cookie: adminLogin.headers.get("set-cookie").split(";")[0] } };
+assert.equal(await (await check("/terminal/", asAdmin)).text(), "operator-terminal");
+assert.equal(await (await check("/admin/", asAdmin)).text(), "operator-admin");
+
+const logout = await check("/auth/logout", {
+  method: "POST",
+  headers: { Origin: base, Cookie: viewerCookie, "Content-Type": "application/x-www-form-urlencoded" },
+  body: "locale=en",
+});
 assert.equal(logout.status, 303);
-assert.equal((await check("/terminal/", guest)).status, 303);
-console.log("Gateway contract: public landing, one-click viewer, admin denial, operator compatibility and logout passed.");
+assert.equal((await check("/terminal/", asViewer)).status, 303);
+console.log("Gateway: credential sign-in, role routing, forged-header denial, admin console and logout all passed.");
