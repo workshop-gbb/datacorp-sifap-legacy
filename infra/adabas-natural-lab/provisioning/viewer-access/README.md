@@ -14,8 +14,8 @@ Portuguese render on the server, including with browser JavaScript disabled.
 - The browser receives only an HttpOnly, Secure, SameSite=Strict cookie.
 - Sessions are stored server-side, expire after one hour and are capacity-limited.
 - `GET` never logs a visitor in. Login/logout require the configured Origin.
-- The selector cannot elevate privileges. A VIEWER credential requested as
-  ADMIN is rejected, and client-supplied role headers are stripped by Caddy.
+- The account determines the role. Client-supplied role headers are stripped by
+  Caddy, so a VIEWER credential cannot reach administrator resources.
 - Caddy sends VIEWER only to `ttyd-viewer`, pinned to `VIEWBENF;FIN`, and sends
   ADMIN to the operator Natural terminal. Only ADMIN reaches `/admin/`.
 - The gateway has no Docker socket, database connection or plaintext passwords.
