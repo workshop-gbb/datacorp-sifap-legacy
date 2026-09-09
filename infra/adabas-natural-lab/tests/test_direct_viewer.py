@@ -7,7 +7,7 @@ ACCESS = LAB / "provisioning" / "viewer-access"
 def test_should_route_only_the_authenticated_server_role():
     # REQ-122: o cabecalho do cliente e removido antes da decisao de perfil.
     caddy = (ACCESS / "Caddyfile").read_text()
-    terminal = caddy.split("route /terminal/*", 1)[1].split("route /admin*", 1)[0]
+    terminal = caddy.split("handle /terminal*", 1)[1].split("handle /admin*", 1)[0]
     assert "request_header -X-Sifap-Role" in terminal
     assert "uri /auth/check" in terminal
     assert "copy_headers X-Sifap-Role" in terminal
@@ -50,8 +50,12 @@ def test_should_reap_the_restricted_natural_process_on_disconnect():
     assert "MARKER=" in session
     assert "kill -TERM" in session
     assert "kill -KILL" in session
+    assert "cleanup_previous" in session
+    assert "natural*VIEWBENF*" in session
+    assert "timeout 3300" in session
     assert "VIEWBENF;FIN" in session
     assert "/bin/bash" not in session
+    assert "--max-clients=1" in (ACCESS / "compose.viewer.yaml").read_text()
 
 
 def test_should_derive_account_hashes_from_existing_key_vault_secrets():

@@ -69,6 +69,8 @@ open the operator terminal and console. Passwords remain private and are never
 embedded in this landing or repository.
 The [viewer gateway](infra/adabas-natural-lab/provisioning/viewer-access/README.md)
 documents session limits, testing, deployment and rollback.
+The private [demo runbook](docs/DEMO.md) starts with this legacy system and then
+demonstrates the equivalent read-only journey in SIFAP Modern.
 
 ---
 

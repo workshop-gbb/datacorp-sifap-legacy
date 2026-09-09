@@ -13,6 +13,17 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     networks: [sifap-lab]
+  ttyd-viewer:
+    command:
+      - ttyd
+      - --port=7681
+      - --base-path=/terminal
+      - --writable
+      - --check-origin
+      - --max-clients=1
+      - --ping-interval=20
+      - --terminal-type=xterm-256color
+      - /usr/local/bin/sifap-viewer-session
   caddy:
     environment:
       SIFAP_HOST: ${SIFAP_HOST:?Provide legacy public hostname}

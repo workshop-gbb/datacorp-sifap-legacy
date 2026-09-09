@@ -23,7 +23,10 @@ Portuguese render on the server, including with browser JavaScript disabled.
 - Logout invalidates the opaque session and removes the cookie. Navigating away
   from the viewer page closes its terminal iframe.
 - The viewer session driver reaps its Natural process when the browser
-  disconnects, avoiding buffer-pool exhaustion from orphan sessions.
+  disconnects. Because Docker exec cannot always propagate an abrupt browser
+  close, the next viewer session also reaps only older `VIEWBENF` processes
+  before starting. The restricted terminal accepts one concurrent client and
+  has a 55-minute hard runtime limit. Operator sessions are never matched.
 
 ## Runtime
 

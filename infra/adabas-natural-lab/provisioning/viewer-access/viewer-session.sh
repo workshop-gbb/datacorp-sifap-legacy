@@ -43,6 +43,30 @@ cleanup() {
   ' _ "$MARKER" >/dev/null 2>&1 || true
 }
 
+cleanup_previous() {
+  # Only one viewer client is allowed. A browser can terminate ttyd without
+  # giving this wrapper a final signal, while Docker leaves the exec process
+  # inside natural-ce. Reap only prior VIEWBENF sessions before opening the
+  # next one; operator Natural sessions are never matched.
+  docker exec "$CONTAINER" sh -c '
+    for p in /proc/[0-9]*; do
+      [ -r "$p/cmdline" ] || continue
+      cmd=$(tr "\0" " " < "$p/cmdline" 2>/dev/null) || continue
+      case "$cmd" in
+        natural*VIEWBENF*) kill -TERM "${p#/proc/}" 2>/dev/null || true ;;
+      esac
+    done
+    sleep 2
+    for p in /proc/[0-9]*; do
+      [ -r "$p/cmdline" ] || continue
+      cmd=$(tr "\0" " " < "$p/cmdline" 2>/dev/null) || continue
+      case "$cmd" in
+        natural*VIEWBENF*) kill -KILL "${p#/proc/}" 2>/dev/null || true ;;
+      esac
+    done
+  ' >/dev/null 2>&1 || true
+}
+
 stop() {
   say ""
   say "$1"
@@ -57,6 +81,8 @@ if ! docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null | grep -q t
   stop "The Natural container ($CONTAINER) is not running."
 fi
 
+cleanup_previous
+
 say "SIFAP - read-only session"
 say ""
 say "This account opens the beneficiary query screen only. It cannot reach"
@@ -65,4 +91,4 @@ say "the Adabas console are all out of reach. Leaving the screen with PF3"
 say "ends the session."
 say ""
 
-docker exec -it "$CONTAINER" sh -c ": $MARKER; $VIEWER_CMD"
+docker exec -it "$CONTAINER" sh -c ": $MARKER; exec timeout 3300 $VIEWER_CMD"
