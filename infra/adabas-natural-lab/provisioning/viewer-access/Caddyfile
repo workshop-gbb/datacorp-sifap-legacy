@@ -28,7 +28,7 @@
 	}
 	# The role comes from the gateway, never from the client. A forged
 	# X-Sifap-Role header is stripped before the session is validated.
-	route /terminal/* {
+	route /terminal* {
 		request_header -X-Sifap-Role
 		header X-Frame-Options SAMEORIGIN
 		forward_auth viewer-access:8082 {

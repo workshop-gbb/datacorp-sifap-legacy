@@ -13,6 +13,7 @@ const login = (role, user, password) => check("/auth/login", {
 
 assert.equal((await check("/")).status, 200);
 assert.equal((await check("/terminal/")).status, 303, "anonymous terminal must redirect to sign-in");
+assert.equal((await check("/terminal")).status, 303, "bare terminal must redirect to sign-in");
 assert.equal((await check("/admin/")).status, 303, "anonymous admin must redirect to sign-in");
 assert.equal((await login("VIEWER", "viewer", "wrong")).status, 401);
 
