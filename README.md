@@ -56,6 +56,22 @@ The lab runs as one shared environment. Nobody redeploys it per team.
 
 Credentials are shared out of band by the facilitator and are never committed here.
 
+### Retro landing and role-based sign-in
+
+The public origin now presents the retro SIFAP story in EN, ES and PT-BR.
+Enter the credentials supplied by the facilitator. The server identifies the
+role from the account: `admin` opens administrator access, while `viewer` opens
+the restricted consultation session.
+
+The viewer Natural session remains pinned to `VIEWBENF;FIN` and never reaches
+the operator terminal or Adabas administration. Administrator credentials
+open the operator terminal and console. Passwords remain private and are never
+embedded in this landing or repository.
+The [viewer gateway](infra/adabas-natural-lab/provisioning/viewer-access/README.md)
+documents session limits, testing, deployment and rollback.
+The private [demo runbook](docs/DEMO.md) starts with this legacy system and then
+demonstrates the equivalent read-only journey in SIFAP Modern.
+
 ---
 
 ## Operating the lab

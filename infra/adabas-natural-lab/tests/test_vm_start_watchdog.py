@@ -53,6 +53,7 @@ def test_should_require_application_and_database_readiness():
     assert "/actuator/health" in RUNBOOK
     assert "Invoke-Validation $target" in RUNBOOK
     assert "adabas-db natural-ce ttyd-viewer caddy" in VALIDATOR
+    assert "sifap-viewer-access" in VALIDATOR
     assert "/usr/local/bin/healthcheck.sh" in VALIDATOR
     assert '[[ "$health" == missing ]]' in VALIDATOR
 

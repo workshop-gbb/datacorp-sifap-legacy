@@ -1,0 +1,38 @@
+name: sifap-direct-viewer-test
+services:
+  viewer-access:
+    image: sifap-legacy-viewer:workshop-v2
+    environment:
+      SIFAP_ORIGIN: http://127.0.0.1:4389
+      SIFAP_COOKIE_SECURE: "false"
+      SIFAP_ADMIN_USERNAME: admin
+      SIFAP_ADMIN_PASSWORD_HASH: ${TEST_ADMIN_HASH:?Set a local test hash}
+      SIFAP_VIEWER_USERNAME: viewer
+      SIFAP_VIEWER_PASSWORD_HASH: ${TEST_VIEWER_HASH:?Set a local test hash}
+  ttyd-viewer:
+    image: node:24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf
+    command: ["node", "/upstream.mjs"]
+    volumes: ["./upstream.mjs:/upstream.mjs:ro"]
+    environment:
+      UPSTREAM_ROLE: restricted-viewer
+  ttyd:
+    image: node:24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf
+    command: ["node", "/upstream.mjs"]
+    volumes: ["./upstream.mjs:/upstream.mjs:ro"]
+    environment:
+      UPSTREAM_ROLE: operator-terminal
+  adabas-db:
+    image: node:24-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80b641307de684d4a015ba7a4eaf
+    command: ["node", "/upstream.mjs"]
+    volumes: ["./upstream.mjs:/upstream.mjs:ro"]
+    environment:
+      UPSTREAM_ROLE: operator-admin
+      PORT: 8190
+  caddy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    ports: ["127.0.0.1:4389:80"]
+    volumes:
+      - ../Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../../payload-static/www:/srv:ro
+    environment:
+      SIFAP_HOST: ":80"

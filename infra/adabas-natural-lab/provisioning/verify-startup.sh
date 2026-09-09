@@ -9,7 +9,9 @@ esac
 
 if ! $check_only; then systemctl start docker; fi
 deadline=$((SECONDS + 480))
-for container in adabas-db natural-ce ttyd-viewer caddy; do
+containers=(adabas-db natural-ce ttyd-viewer caddy)
+if [[ -f /opt/sifap/guest-viewer-enabled ]]; then containers+=(sifap-viewer-access); fi
+for container in "${containers[@]}"; do
   if ! state="$(docker inspect --format '{{.State.Running}}' "$container")"; then
     printf 'ERROR: cannot inspect required container %s; verify Docker and the runtime installation.\n' "$container" >&2
     exit 1

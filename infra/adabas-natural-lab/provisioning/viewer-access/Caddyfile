@@ -1,0 +1,73 @@
+{
+	admin off
+}
+:8081 {
+	respond /healthz "ok" 200
+}
+{$SIFAP_HOST} {
+	encode gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+		Strict-Transport-Security "max-age=31536000"
+	}
+	handle /healthz {
+		respond "ok" 200
+	}
+	@public path / /index.html /en /en/ /es /es/ /pt-BR /pt-BR/ /login /viewer /auth/login /auth/logout
+	handle @public {
+		reverse_proxy viewer-access:8082
+	}
+	@assets path /landing.css /landing.js /favicon.svg /fonts/*
+	handle @assets {
+		root * /srv
+		file_server
+	}
+	handle /terminal {
+		redir /terminal/ 308
+	}
+	# The role comes from the gateway, never from the client. A forged
+	# X-Sifap-Role header is stripped before the session is validated.
+	handle /terminal* {
+		route {
+			request_header -X-Sifap-Role
+			header X-Frame-Options SAMEORIGIN
+			forward_auth viewer-access:8082 {
+				uri /auth/check
+				copy_headers X-Sifap-Role
+			}
+			@admin header X-Sifap-Role ADMIN
+			handle @admin {
+				reverse_proxy ttyd:7681 {
+					stream_timeout 1h
+				}
+			}
+			handle {
+				reverse_proxy ttyd-viewer:7681 {
+					stream_timeout 1h
+				}
+			}
+		}
+	}
+	handle /admin* {
+		route {
+			request_header -X-Sifap-Role
+			forward_auth viewer-access:8082 {
+				uri /auth/check-admin
+			}
+			@bare path /admin
+			redir @bare /admin/ 308
+			handle_path /admin/* {
+				reverse_proxy adabas-db:8190 {
+					header_up X-Forwarded-Prefix /admin
+				}
+			}
+		}
+	}
+	handle /app* {
+		redir https://sifap-modern-fiepi9.eastus2.cloudapp.azure.com/pt-BR 302
+	}
+	handle {
+		respond "Not found" 404
+	}
+}
