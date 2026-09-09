@@ -6,12 +6,11 @@
 > channel. Never paste a password into an issue, pull request, commit message,
 > chat transcript, screenshot or application log.
 
-Both SIFAP environments require a **username, a password and an access type**
-chosen from a selector on the sign-in screen. Roles are enforced on the server:
-the selector cannot grant a permission the account does not hold, and a viewer
-credential is rejected when the administrator role is requested.
+Both SIFAP environments require a **username and password**. The server derives
+the role from the account: `admin` is reserved for the facilitator, while
+`viewer` is the participant's read-only account.
 
-| Access type | Username | Legacy (Natural / Adabas) | Modern (Java / Next.js) |
+| Account | Username | Legacy (Natural / Adabas) | Modern (Java / Next.js) |
 |---|---|---|---|
 | **Administrator** | `admin` | Operator Natural session and the Adabas console | Reads every screen, report and integration |
 | **Viewer** | `viewer` | Pinned `VIEWBENF` query screen only; no console | Reads every screen, report and integration |
@@ -34,7 +33,7 @@ machine's managed identity at start-up.
 Record the values you distribute in the facilitator's own protected notes, or
 fill the table below **only in a local working copy that is never committed**:
 
-| Access type | Username | Password |
+| Account | Username | Password |
 |---|---|---|
 | Administrator | `admin` | _(fill in locally — do not commit)_ |
 | Viewer | `viewer` | _(fill in locally — do not commit)_ |

@@ -61,12 +61,14 @@ export function loadAccounts(environment = process.env) {
   return accounts;
 }
 
-export function authenticate(accounts, role, username, password) {
-  const account = accounts.get(role);
-  // Verify a decoy hash for an unknown role so response time cannot enumerate accounts.
-  const reference = account ?? { username: "\u0000", hash: accounts.values().next().value.hash };
-  const correctPassword = verifyPassword(password, reference.hash);
-  const correctUser = Buffer.byteLength(username ?? "") === Buffer.byteLength(reference.username) &&
-    timingSafeEqual(Buffer.from(username ?? ""), Buffer.from(reference.username));
-  return Boolean(account) && correctPassword && correctUser ? role : null;
+export function authenticate(accounts, username, password) {
+  let role = null;
+  for (const [candidateRole, account] of accounts) {
+    const correctPassword = verifyPassword(password, account.hash);
+    const supplied = Buffer.from(username ?? "");
+    const expected = Buffer.from(account.username);
+    const correctUser = supplied.length === expected.length && timingSafeEqual(supplied, expected);
+    if (correctPassword && correctUser) role = candidateRole;
+  }
+  return role;
 }

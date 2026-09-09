@@ -59,9 +59,9 @@ Credentials are shared out of band by the facilitator and are never committed he
 ### Retro landing and role-based sign-in
 
 The public origin now presents the retro SIFAP story in EN, ES and PT-BR.
-Choose Administrator or Viewer and enter the credentials supplied by the
-facilitator. The role selector never grants access by itself: it must match the
-account authenticated by the server.
+Enter the credentials supplied by the facilitator. The server identifies the
+role from the account: `admin` opens administrator access, while `viewer` opens
+the restricted consultation session.
 
 The viewer Natural session remains pinned to `VIEWBENF;FIN` and never reaches
 the operator terminal or Adabas administration. Administrator credentials

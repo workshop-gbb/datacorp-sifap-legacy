@@ -74,7 +74,7 @@ export function createViewerServer({
       }
       const form = new URLSearchParams(body);
       const allowed = url.pathname === "/auth/logout"
-        ? new Set(["locale"]) : new Set(["locale", "role", "username", "password"]);
+        ? new Set(["locale"]) : new Set(["locale", "username", "password"]);
       if ([...form.keys()].some(key => !allowed.has(key)) || form.getAll("locale").length !== 1 ||
         !Object.hasOwn(messages, form.get("locale")) || url.search)
         return failure(400, "forbidden");
@@ -89,11 +89,9 @@ export function createViewerServer({
       const item = attempts.get(source) ?? { count: 0, until: time + 300000 };
       if (item.count >= 20 || attempts.size >= 1024) return failure(429, "rateLimited");
       attempts.set(source, { count: item.count + 1, until: item.until });
-      const requested = form.get("role");
-      if (!["ADMIN", "VIEWER"].includes(requested) || form.getAll("role").length !== 1 ||
-        form.getAll("username").length !== 1 || form.getAll("password").length !== 1)
+      if (form.getAll("username").length !== 1 || form.getAll("password").length !== 1)
         return failure(400, "forbidden");
-      const granted = authenticate(accounts, requested, form.get("username"), form.get("password"));
+      const granted = authenticate(accounts, form.get("username"), form.get("password"));
       if (!granted) return failure(401, "invalidCredentials");
       const session = store.create(granted, id);
       if (!session) return failure(503, "capacity");

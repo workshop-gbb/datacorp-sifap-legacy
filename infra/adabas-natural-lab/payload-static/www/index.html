@@ -55,11 +55,6 @@
       <p class="eyebrow"><span class="square-dot" aria-hidden="true"></span>03 — SUA PRÓXIMA TELA</p><h2 id="access-title">Pronto para voltar<br>à origem?</h2><p>O SIFAP original, direto no navegador.</p>
       <form class="login-form" method="post" action="/auth/login">
         <input type="hidden" name="locale" value="pt-BR">
-        <label for="role">Tipo de acesso</label>
-        <select id="role" name="role" required>
-          <option value="VIEWER">Viewer — somente consulta</option>
-          <option value="ADMIN">Administrador — acesso completo</option>
-        </select>
         <label for="username">Usuário</label>
         <input id="username" name="username" autocomplete="username" required maxlength="32" spellcheck="false" autocapitalize="none">
         <label for="password">Senha</label>
@@ -69,7 +64,7 @@
         <p class="login-note">As credenciais são fornecidas pelo facilitador.</p>
       </form><span class="access-route">SESSÃO NATURAL / SOMENTE LEITURA</span>
     </div><div class="access-guide"><h3>Como acessar</h3><ol>
-      <li><span class="step-number" aria-hidden="true">01</span><div><h4>Escolha o perfil</h4><p>Selecione Administrador ou Viewer e informe a conta correspondente.</p></div></li><li><span class="step-number" aria-hidden="true">02</span><div><h4>Explore o terminal</h4><p>Consulte beneficiários na sessão Natural restrita VIEWBENF, sem acesso à linha de comando.</p></div></li><li><span class="step-number" aria-hidden="true">03</span><div><h4>Saia quando terminar</h4><p>Use Sair para encerrar a sessão. Administração e alterações permanecem bloqueadas.</p></div></li>
+      <li><span class="step-number" aria-hidden="true">01</span><div><h4>Informe suas credenciais</h4><p>A conta admin é reservada à facilitadora; viewer abre somente a consulta.</p></div></li><li><span class="step-number" aria-hidden="true">02</span><div><h4>Explore o terminal</h4><p>Consulte beneficiários na sessão Natural restrita VIEWBENF, sem acesso à linha de comando.</p></div></li><li><span class="step-number" aria-hidden="true">03</span><div><h4>Saia quando terminar</h4><p>Use Sair para encerrar a sessão. Administração e alterações permanecem bloqueadas.</p></div></li>
     </ol></div></section>
     <div class="container operations-container"><details class="operations" id="operacao"><summary><span>Informações do ambiente</span><span class="operations-hint">PARA FACILITADORES E OPERADORES</span><span class="operations-toggle" aria-hidden="true">+</span></summary><div class="operations-body">
       <section class="status-panel" aria-labelledby="status-title"><h3 id="status-title">Disponibilidade do laboratório</h3><div id="status" role="status" aria-live="polite" data-loading="Consultando…" data-online="Endpoint HTTPS disponível. Aplicação e banco são verificados pela rotina matinal." data-offline="Não foi possível confirmar a disponibilidade. Tente novamente ou avise o facilitador.">O status ainda não foi consultado.</div><button class="button button-secondary" id="refresh-status" type="button">Consultar disponibilidade <span aria-hidden="true">↻</span></button><p>Esta verificação confirma o endpoint HTTPS. A rotina matinal verifica separadamente aplicação e banco.</p></section>

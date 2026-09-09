@@ -34,7 +34,7 @@ def test_should_ship_a_public_local_asset_landing():
     index = (LAB / "payload-static" / "www" / "index.html").read_text()
     assert 'lang="pt-BR"' in index
     assert 'method="post" action="/auth/login"' in index
-    assert 'name="role"' in index
+    assert 'name="role"' not in index
     assert 'type="password"' in index
     assert "Ilustração não interativa" in index
     assert 'href="/en/"' in index and 'href="/es/"' in index

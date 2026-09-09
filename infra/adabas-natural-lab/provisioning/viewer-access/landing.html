@@ -55,11 +55,6 @@
       <p class="eyebrow"><span class="square-dot" aria-hidden="true"></span>{{nextScreen}}</p><h2 id="access-title">{{readyFirst}}<br>{{readySecond}}</h2><p>{{readyCopy}}</p>
       <form class="login-form" method="post" action="/auth/login">
         <input type="hidden" name="locale" value="{{lang}}">
-        <label for="role">{{accessType}}</label>
-        <select id="role" name="role" required>
-          <option value="VIEWER">{{viewerOption}}</option>
-          <option value="ADMIN">{{adminOption}}</option>
-        </select>
         <label for="username">{{username}}</label>
         <input id="username" name="username" autocomplete="username" required maxlength="32" spellcheck="false" autocapitalize="none">
         <label for="password">{{password}}</label>

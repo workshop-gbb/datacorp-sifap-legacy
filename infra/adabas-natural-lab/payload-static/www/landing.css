@@ -123,8 +123,7 @@ button {
   letter-spacing: .05em;
   text-transform: uppercase;
 }
-.login-form input,
-.login-form select {
+.login-form input {
   width: 100%;
   min-height: 46px;
   padding: 10px 12px;
@@ -134,7 +133,6 @@ button {
   color: var(--ink);
   font: 14px var(--mono);
 }
-.login-form select { cursor: pointer; }
 .login-form .button { margin-top: 12px; width: 100%; }
 .login-note { color: var(--muted); font-size: 11px; }
 .form-error {

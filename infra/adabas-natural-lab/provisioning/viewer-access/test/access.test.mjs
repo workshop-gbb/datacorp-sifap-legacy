@@ -36,13 +36,10 @@ test("REQ-121: configuration rejects missing or malformed accounts", () => {
 });
 
 test("REQ-122: the requested role must match its own account", () => {
-  assert.equal(authenticate(accounts, "ADMIN", "admin", ADMIN_PASSWORD), "ADMIN");
-  assert.equal(authenticate(accounts, "VIEWER", "viewer", VIEWER_PASSWORD), "VIEWER");
-  // A viewer credential must never obtain the administrator role.
-  assert.equal(authenticate(accounts, "ADMIN", "viewer", VIEWER_PASSWORD), null);
-  assert.equal(authenticate(accounts, "VIEWER", "admin", ADMIN_PASSWORD), null);
-  assert.equal(authenticate(accounts, "ADMIN", "admin", VIEWER_PASSWORD), null);
-  assert.equal(authenticate(accounts, "OPERATOR", "admin", ADMIN_PASSWORD), null);
+  assert.equal(authenticate(accounts, "admin", ADMIN_PASSWORD), "ADMIN");
+  assert.equal(authenticate(accounts, "viewer", VIEWER_PASSWORD), "VIEWER");
+  assert.equal(authenticate(accounts, "admin", VIEWER_PASSWORD), null);
+  assert.equal(authenticate(accounts, "viewer", ADMIN_PASSWORD), null);
 });
 
 test("REQ-122: sessions carry a role, expire and cannot be forged", () => {
@@ -70,7 +67,7 @@ test("REQ-121: the sign-in form is translated and exposes no credential", () => 
     assert.ok(html.includes(`<html lang="${locale}">`));
     assert.ok(!html.includes("{{"));
     assert.ok(html.includes('action="/auth/login"'));
-    assert.ok(html.includes('name="role"') && html.includes('type="password"'));
+    assert.ok(!html.includes('name="role"') && html.includes('type="password"'));
     assert.ok(!html.includes("/auth/viewer"));
     assert.equal((html.match(/<h1 /g) ?? []).length, 1);
     assert.ok(render(template, locale, { failed: true }).includes(messages[locale].invalidCredentials));
@@ -89,18 +86,17 @@ test("REQ-121 REQ-122 REQ-123: sign-in enforces credentials, role and logout", a
     method: "POST", redirect: "manual",
     headers: { Origin: origin, "Content-Type": "application/x-www-form-urlencoded", ...extra }, body,
   });
-  const credentials = (role, user, password) =>
-    `locale=en&role=${role}&username=${user}&password=${encodeURIComponent(password)}`;
+  const credentials = (user, password) =>
+    `locale=en&username=${user}&password=${encodeURIComponent(password)}`;
 
   assert.equal((await fetch(`${base}/en/`)).status, 200);
   assert.equal((await fetch(`${base}/auth/login`, { redirect: "manual" })).status, 404);
-  assert.equal((await post("/auth/login", credentials("VIEWER", "viewer", VIEWER_PASSWORD),
+  assert.equal((await post("/auth/login", credentials("viewer", VIEWER_PASSWORD),
     { Origin: "https://evil.test" })).status, 403);
-  assert.equal((await post("/auth/login", credentials("VIEWER", "viewer", "wrong"))).status, 401);
-  assert.equal((await post("/auth/login", credentials("ADMIN", "viewer", VIEWER_PASSWORD))).status, 401);
-  assert.equal((await post("/auth/login", `${credentials("ADMIN", "admin", ADMIN_PASSWORD)}&extra=1`)).status, 400);
+  assert.equal((await post("/auth/login", credentials("viewer", "wrong"))).status, 401);
+  assert.equal((await post("/auth/login", `${credentials("admin", ADMIN_PASSWORD)}&extra=1`)).status, 400);
 
-  const viewer = await post("/auth/login", credentials("VIEWER", "viewer", VIEWER_PASSWORD));
+  const viewer = await post("/auth/login", credentials("viewer", VIEWER_PASSWORD));
   assert.equal(viewer.status, 303);
   assert.equal(viewer.headers.get("location"), "/viewer?locale=en");
   const viewerCookie = viewer.headers.get("set-cookie");
@@ -114,7 +110,7 @@ test("REQ-121 REQ-122 REQ-123: sign-in enforces credentials, role and logout", a
   const page = await fetch(`${base}/viewer`, { headers: viewerSession });
   assert.ok((await page.text()).includes('iframe src="/terminal/"'));
 
-  const admin = await post("/auth/login", credentials("ADMIN", "admin", ADMIN_PASSWORD));
+  const admin = await post("/auth/login", credentials("admin", ADMIN_PASSWORD));
   const adminSession = { Cookie: admin.headers.get("set-cookie").split(";")[0] };
   const adminCheck = await fetch(`${base}/auth/check-admin`, { headers: adminSession });
   assert.equal(adminCheck.status, 204);
@@ -127,10 +123,10 @@ test("REQ-121 REQ-122 REQ-123: sign-in enforces credentials, role and logout", a
   assert.equal((await fetch(`${base}/auth/check`, { headers: adminSession, redirect: "manual" })).status, 303);
 
   for (let attempt = 0; attempt < 20; attempt++)
-    await post("/auth/login", credentials("VIEWER", "viewer", "wrong"));
-  assert.equal((await post("/auth/login", credentials("VIEWER", "viewer", VIEWER_PASSWORD))).status, 429);
+    await post("/auth/login", credentials("viewer", "wrong"));
+  assert.equal((await post("/auth/login", credentials("viewer", VIEWER_PASSWORD))).status, 429);
   clock += 300001;
-  assert.equal((await post("/auth/login", credentials("VIEWER", "viewer", VIEWER_PASSWORD))).status, 303);
+  assert.equal((await post("/auth/login", credentials("viewer", VIEWER_PASSWORD))).status, 303);
 });
 
 test("REQ-123: production origins cannot disable TLS or embed credentials", () => {

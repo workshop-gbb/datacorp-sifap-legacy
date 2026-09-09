@@ -2,7 +2,7 @@
 
 This workshop gateway implements REQ-116 and REQ-121 through REQ-124 from the
 modern repository. The landing is public, but both terminal roles require a
-username, password and matching access type.
+username and password. The server derives the role from the account.
 
 The retro landing reuses the existing editorial SIFAP design and licensed local
 fonts. The original draft worktree was preserved. English, Spanish and Brazilian
