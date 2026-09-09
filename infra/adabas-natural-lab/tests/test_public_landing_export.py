@@ -50,7 +50,7 @@ def test_should_export_exactly_the_approved_public_files(tmp_path: Path) -> None
     }
     assert actual == EXPECTED_FILES
     for name in EXPECTED_FILES - {".nojekyll"}:
-        source = ROOT / "infra/adabas-natural-lab/payload-static/www" / name
+        source = ROOT / "public-landing" / name
         assert (destination / name).read_bytes() == source.read_bytes()
     assert (destination / ".nojekyll").read_bytes() == b""
 

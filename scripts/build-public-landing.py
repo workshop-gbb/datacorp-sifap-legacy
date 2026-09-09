@@ -7,7 +7,7 @@ from pathlib import Path
 import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "infra" / "adabas-natural-lab" / "payload-static" / "www"
+SOURCE = ROOT / "public-landing"
 PUBLIC_FILES = (
     "index.html",
     "landing.css",
