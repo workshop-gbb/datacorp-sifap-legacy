@@ -20,6 +20,30 @@ gates have been resolved.
    facilitator only. Participants receive only `viewer`.
 4. Sign out of previous sessions. Do not leave an administrator session open in
    a shared browser.
+5. Keep the credential file outside the projected window. This runbook contains
+   one synthetic search identifier, but no password.
+
+## Canonical comparison record
+
+Both deployed systems now use the same normalized synthetic legacy snapshot.
+The paired demonstration record is:
+
+| Field | Expected value |
+|---|---|
+| Modern identifier | `BEN-000005` |
+| Name | `MARIA ALMEIDA ALMEIDA` |
+| Program | `GASF` |
+| Location | `CURITIBA` / `PR` |
+| Region | `05` |
+| Status | `A` |
+| Dependents | `8` |
+| Synthetic family income | `300.01` |
+| Payment periods | `2017-10`, `2017-11`, `2017-12`, `2018-01` |
+
+Use the synthetic NIS `68647404507` only to find this record in the Natural
+viewer. Do not display that identifier in screenshots or public material. The
+modern platform deliberately accepts only Maria's name or modern identifier and
+shows approved masks instead of complete CPF/NIS values.
 
 ## Part 1 — original SIFAP
 
@@ -47,9 +71,26 @@ Open <https://sifap-lab-438k30.eastus2.cloudapp.azure.com/pt-BR/>.
    SEARCH TYPE (C=CPF / N=NIS)
    ```
 
-5. Explain that this session is pinned to `VIEWBENF;FIN`; it cannot reach the
+5. Click inside the terminal. Enter `N` as the search type, move to the NIS
+   field with Tab, enter `68647404507`, and press Enter.
+6. Confirm that the result is `MARIA ALMEIDA ALMEIDA` and point out:
+   - program `GASF`;
+   - `CURITIBA / PR`, region `05`;
+   - status `A - ACTIVE`;
+   - eight dependents and synthetic family income `300.01`;
+   - four payment rows from October 2017 through January 2018.
+7. In the payment history, compare the exact preserved values:
+
+   | Period | Gross | Net | Status | Type |
+   |---|---:|---:|---|---|
+   | `2018-01` | `132.80` | `132.80` | `D` | `N` |
+   | `2017-12` | `152.72` | `152.72` | `D` | `A` |
+   | `2017-11` | `132.80` | `132.80` | `D` | `N` |
+   | `2017-10` | `132.80` | `132.80` | `D` | `N` |
+
+8. Explain that this session is pinned to `VIEWBENF;FIN`; it cannot reach the
    Natural command line, registration/batch programs or Adabas administration.
-6. Click **Sair**. The server invalidates the session and closes the terminal.
+9. Click **Sair**. The server invalidates the session and closes the terminal.
 
 Do not enter or narrate a real personal identifier. The workshop corpus is
 synthetic, but screenshots should still avoid record-level values.
@@ -77,15 +118,28 @@ Open <https://sifap-modern-fiepi9.eastus2.cloudapp.azure.com/pt-BR>.
 
 1. Select **Explorar a plataforma**.
 2. Enter the `viewer` account. The form contains only username and password.
-3. Show the read-only dashboard, payment trend, program distribution and
-   geographic coverage.
-4. Search for a synthetic participant, open program/payment details and return.
-5. Open **Relatórios**, apply a filter and download CSV.
-6. Open **Integrações** and explain:
+3. Confirm that the dashboard reports 500 beneficiaries, 6 programs, 500
+   payments in the selected period and the historical snapshot date
+   `2018-03-14`.
+4. Open **Beneficiários**, search for `MARIA ALMEIDA ALMEIDA`, and open
+   `BEN-000005`.
+5. Compare the same program, location, status, registration context,
+   dependents, family income and four payment periods shown in Natural.
+6. Point out the intentional modernization differences:
+   - CPF and NIS are masked;
+   - the search uses a modern identifier or name, never a complete CPF/NIS;
+   - gross, discount and net values are shown separately;
+   - legacy status/type codes remain visible when their meanings conflict.
+7. Open **Auditoria** and show that the 200 synthetic legacy events are
+   persisted and searchable rather than represented by a fabricated dashboard
+   item.
+8. Open **Relatórios**, filter program `GASF`, and download the CSV. Confirm the
+   export carries gross, discount, net, status code and type code.
+9. Open **Integrações** and explain:
    - Legacy is a real HTTPS liveness check, not full behavioral equivalence.
    - IBGE is real public geographic reference data.
-7. Show EN, ES and PT-BR while preserving the current route.
-8. Sign out and confirm protected routes return to login.
+10. Show EN, ES and PT-BR while preserving the current route.
+11. Sign out and confirm protected routes return to login.
 
 ### Modern administrator demonstration
 
@@ -101,7 +155,10 @@ not a fake hidden button.
 ## Messages to reinforce
 
 - Modernization starts by understanding the running original system.
-- The interface changes; traceable business evidence remains.
+- The interface changes; the same synthetic source records and traceable
+  business evidence remain.
+- The modern platform contains all 6 programs, 500 beneficiaries, 2,000
+  payments and 200 audit events from the approved normalized legacy snapshot.
 - Authentication and authorization are enforced by the servers, not by labels.
 - Viewer means consultation only.
 - The admin credential is facilitator-only.
