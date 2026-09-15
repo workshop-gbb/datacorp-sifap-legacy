@@ -6,12 +6,42 @@ network, disk or database.
 
 ## Schedule
 
-- Every day, including weekends, at **07:00 America/Sao_Paulo (Brasilia)**.
-- The current equivalent is 10:00 UTC; Azure retains the named time zone.
-- The runbook refuses scheduled starts outside 07:00-08:00.
-- VM/application readiness has a 25-minute deadline with bounded HTTP calls.
+- Start every day, including weekends, at **06:30 America/Sao_Paulo (Brasilia)**,
+   with both applications and databases expected ready **by 07:00**.
+- The current startup equivalent is 09:30 UTC; Azure retains the named time zone.
+- The runbook refuses scheduled starts outside 06:30-08:00.
+- Readiness has a 25-minute overall deadline and an 11-minute deadline per target.
+   A failure in either environment does not prevent checking the other.
 - Already running VMs are not restarted. No nighttime keep-alive is installed.
 - MCAPS shutdown policy and shutdown schedules are not changed.
+
+## Working-hours recovery
+
+Starting both VMs at 06:30 does not keep them available all day. Guest shutdown
+history (`last -x`) and Resource Health show both machines booting around 07:00
+and then shutting down cleanly mid-day (for example 13:07 and 15:04 on 15 Sep
+2026) without any ARM `deallocate`/`powerOff` operation, so the stop is initiated
+inside the guest or by the platform, not by an operator. Both VMs run
+`patchMode=AutomaticByPlatform` with no maintenance configuration, and several of
+those stops follow a completed `installPatches` within 1-9 minutes.
+
+The `sifap-daytime-availability` schedule therefore runs the same runbook hourly
+in `Daytime` mode. It only acts between **07:00 and 19:00 America/Sao_Paulo**:
+it restarts a stopped VM, then re-runs the guest and public readiness checks.
+Outside that window it writes one line and exits successfully, so the nightly
+MCAPS shutdown is preserved and no overnight keep-alive exists. When a VM is
+already serving its public endpoints the check stops after a short probe instead
+of running a guest command, which keeps job minutes low.
+
+Patch orchestration is deliberately left unchanged: the VMs are deallocated
+overnight, so confining patching to a night window would stop security updates
+from ever being installed.
+
+The Azure schedule retains the historical resource name `sifap-morning-0700`
+to preserve its existing resource ID and job binding; its actual time is 06:30.
+The Terraform `start_time` is ignored after creation to avoid daily replacements.
+Changing that default alone does not migrate a deployed schedule: update the
+existing Azure schedule explicitly and verify its actual `nextRun` afterwards.
 
 The targets are the existing `sifap-lab-vm-eus2` and `sifap-modern-vm`. The optional
 DDM workstation is deliberately not included.
@@ -28,9 +58,13 @@ The modern validator is owned by
 It checks PostgreSQL with `SELECT 1`, Spring database health and frontend health.
 The existing boot service is used for startup; data volumes are preserved.
 
-Both validators must emit `SIFAP_STARTUP_VALIDATION=OK`. The runbook also checks
-the actual public HTTPS endpoints. VM running or systemd active alone is not
-accepted as proof of readiness.
+Both validators must emit `SIFAP_STARTUP_VALIDATION=OK`. Each invocation uses the
+VM's fixed `sifap-morning-readiness` managed Run Command with a unique execution
+marker and expiration time, so a stale result cannot pass or replay startup later.
+Readiness requires `instanceView.executionState=Succeeded`, exit code zero, and
+both markers, even if the ARM provisioning operation remains pending. The runbook
+also checks the actual public HTTPS endpoints. VM running or systemd active alone
+is not accepted as proof of readiness.
 
 The on-demand `ValidateOnly` mode is safe outside the morning window: it never
 starts a stopped VM and passes `--check-only` to guest validators.
@@ -50,8 +84,9 @@ bounded and no cloud credential is copied into a runbook.
    Do not touch unrelated or MCAPS schedules.
 4. Validate the new managed-identity job in `ValidateOnly` mode.
 5. Remove old `Virtual Machine Contributor` grants belonging to the retired
-   watchdog. The new role permits only VM read, instance view, start and Run
-   Command validation on the two target VM resource IDs.
+   watchdog. The new role permits only VM read, instance view, start and managed
+   Run Command read/write on the two target VM resource IDs. No operator grants
+   or subscription-wide role assignments are added.
 6. Verify the Azure schedule's actual `nextRun`, time zone, daily recurrence,
    job binding and final successful validation job.
 
@@ -63,9 +98,17 @@ change from accidentally replacing the live lab infrastructure.
 
 Existing pytest tests cover the schedule/RBAC/guest validation contracts. Run
 `tests/runbook.tests.ps1` in PowerShell to verify the actual Brasilia boundary,
-weekends, and duplicate target rejection. No Az PowerShell module is required;
-the runbook uses managed identity and Azure Resource Manager directly.
+weekends, stale-result rejection, failure isolation, and non-mutating validation.
+Run `terraform test -filter=tests/availability.tftest.hcl` for the mocked schedule
+and permission gates. No Az PowerShell module is required; the runbook uses
+managed identity and Azure Resource Manager directly.
 
 No operator permissions, cloud credentials or application secrets are granted
 or copied by the runbook. Readiness failures fail the job and are visible in the
 Automation job history.
+
+## References
+
+- [Azure Automation schedules](https://learn.microsoft.com/azure/automation/shared-resources/schedules)
+- [Managed Run Command for Linux](https://learn.microsoft.com/azure/virtual-machines/linux/run-command-managed)
+- [Terraform Automation schedule](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/automation_schedule)
