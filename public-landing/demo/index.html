@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" data-i18n-content="demo.description" content="Simulação local completa do SIFAP, com dados sintéticos do laboratório e interface em português, inglês e espanhol.">
+    <meta name="theme-color" content="#05070a">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+    <title>SIFAP — demonstração simulada</title>
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./demo.css">
+    <script type="module" src="./demo.mjs"></script>
+  </head>
+  <body data-page="demo" class="demo-body">
+    <a class="skip-link" href="#terminal" data-i18n="site.skip">Pular para o conteúdo</a>
+    <div class="workstation">
+      <h1 class="sr-only" data-i18n="demo.title">SIFAP — demonstração simulada</h1>
+      <div class="crt" id="terminal">
+        <div class="crt-bezel">
+          <div class="crt-tube">
+            <div class="crt-viewport">
+              <pre id="screen" class="crt-screen" aria-hidden="true"></pre>
+              <div id="load-state" class="crt-loading" role="status"><p data-i18n="demo.loading">Carregando a massa sintética…</p></div>
+              <noscript><p class="crt-loading" data-i18n="demo.noScript">Ative JavaScript para usar a simulação interativa. O acesso ao sistema real continua disponível no site.</p></noscript>
+            </div>
+            <form class="crt-command" id="command-form" autocomplete="off" hidden>
+              <label id="prompt-label" for="command">COMANDO ===&gt;</label>
+              <input id="command" name="command" type="text" maxlength="60" spellcheck="false" autocapitalize="characters" autocorrect="off" aria-label="COMANDO ===&gt;">
+              <button type="submit" class="crt-enter">ENTER</button>
+            </form>
+            <div class="crt-pf" id="pf-keys"></div>
+          </div>
+        </div>
+        <div class="crt-chin">
+          <span class="chin-brand" aria-hidden="true">DATACORP <b>·</b> T0001</span>
+          <span class="crt-led" aria-hidden="true"></span>
+          <div class="chin-controls">
+            <nav class="locale-switch" aria-label="Idioma do site e da demo" data-i18n-aria-label="site.language">
+              <a href="?lang=pt-BR" data-locale="pt-BR" lang="pt-BR" hreflang="pt-BR" aria-current="page">PT-BR</a>
+              <a href="?lang=en" data-locale="en" lang="en" hreflang="en">EN</a>
+              <a href="?lang=es" data-locale="es" lang="es" hreflang="es">ES</a>
+            </nav>
+            <button type="button" id="guide" class="chin-button" disabled data-i18n="demo.guide">Visita guiada</button>
+            <button type="button" id="reset" class="chin-button" disabled data-i18n="demo.reset">Reiniciar demo</button>
+            <button type="button" id="fullscreen" class="chin-button" data-i18n="demo.fullscreen">Tela cheia</button>
+            <a class="chin-button" href="https://sifap-lab-438k30.eastus2.cloudapp.azure.com/login?locale=pt-BR" data-real-link target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><span data-i18n="demo.real">Abrir sistema real</span><span aria-hidden="true">↗</span></a>
+            <a class="chin-button" href="../?lang=pt-BR" data-home-link target="_blank" rel="noopener" data-i18n="demo.backSite">Voltar ao site</a>
+          </div>
+        </div>
+      </div>
+      <div class="guide-panel" id="guide-panel" hidden aria-live="polite">
+        <div><p id="guide-progress" class="guide-progress"></p><p id="guide-copy"></p></div>
+        <div class="guide-actions">
+          <button type="button" id="guide-prev" class="chin-button" data-i18n="demo.previous">Anterior</button>
+          <button type="button" id="guide-next" class="chin-button chin-button-primary" data-i18n="demo.next">Próximo</button>
+          <button type="button" id="guide-stop" class="chin-button" data-i18n="demo.stopGuide">Encerrar guia</button>
+        </div>
+      </div>
+      <p id="screen-announcer" class="sr-only" role="status" aria-live="polite"></p>
+      <p class="workstation-note"><span class="demo-badge" data-i18n="demo.badge">DEMO SIMULADA</span><span data-i18n="demo.notice">Esta é uma simulação no navegador. Não executa Natural, não consulta o Azure e não altera dados reais.</span></p>
+    </div>
+  </body>
+</html>
