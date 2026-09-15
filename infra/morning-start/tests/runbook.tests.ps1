@@ -87,15 +87,15 @@ foreach ($case in @(
     @{ utc = "2026-09-13T16:00:00Z"; expected = $true }
 )) {
     if ((Test-DaytimeWindow ([datetime]$case.utc)) -ne $case.expected) {
-        throw "REQ-116: incorrect daytime window for $($case.utc)"
+        throw "REQ-117: incorrect daytime window for $($case.utc)"
     }
 }
 $Mode = "Daytime"
 if (Test-StartWindow ([datetime]"2026-09-09T05:00:00Z")) {
-    throw "REQ-116: daytime recovery would start a VM overnight."
+    throw "REQ-117: daytime recovery would start a VM overnight."
 }
 if (-not (Test-StartWindow ([datetime]"2026-09-09T16:00:00Z"))) {
-    throw "REQ-116: daytime recovery refused a valid working-hours restart."
+    throw "REQ-117: daytime recovery refused a valid working-hours restart."
 }
 $Mode = "Scheduled"
 if (Test-StartWindow ([datetime]"2026-09-09T16:00:00Z")) {
@@ -122,7 +122,7 @@ $script:validatedTargets = @()
 $script:startedTargets = @()
 Invoke-Targets @(Get-Targets) | Out-Null
 if (($script:validatedTargets -join ",") -ne "legacy,modern" -or $script:startedTargets.Count -ne 2) {
-    throw "REQ-116: a mid-day outage did not restart and revalidate both systems."
+    throw "REQ-117: a mid-day outage did not restart and revalidate both systems."
 }
 function Test-DaytimeWindow { param([datetime] $UtcNow = [datetime]::UtcNow) return $false }
 $script:powerCalls = 0
@@ -131,6 +131,6 @@ $script:startedTargets = @()
 $failed = $false
 try { Invoke-Targets @(Get-Targets) | Out-Null } catch { $failed = $true }
 if (-not $failed -or $script:startedTargets.Count -ne 0) {
-    throw "REQ-116: a stopped VM was started outside the daytime window."
+    throw "REQ-117: a stopped VM was started outside the daytime window."
 }
 Write-Output "Runbook window, target, guest-result, failure-isolation and daytime-recovery tests passed."
