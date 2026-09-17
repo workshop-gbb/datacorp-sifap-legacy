@@ -12,12 +12,12 @@ output "runbook_name" {
   value       = azurerm_automation_runbook.morning.name
 }
 output "daytime_schedule" {
-  description = "Hourly recovery check bounded to working hours; it never starts a VM overnight."
+  description = "Recovery check every 15 minutes bounded to working hours; it never starts a VM overnight."
   value = {
-    name     = azurerm_automation_schedule.daytime.name
-    timezone = azurerm_automation_schedule.daytime.timezone
+    names    = sort([for schedule in azurerm_automation_schedule.daytime : schedule.name])
+    timezone = "America/Sao_Paulo"
     window   = "07:00-19:00"
-    interval = "Every hour"
+    interval = "Every 15 minutes"
   }
 }
 output "targets" {

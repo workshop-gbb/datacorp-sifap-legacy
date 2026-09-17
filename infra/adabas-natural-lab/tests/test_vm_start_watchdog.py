@@ -15,7 +15,8 @@ def test_should_start_daily_before_seven_brasilia_instead_of_hourly():
     assert 'frequency               = "Day"' in MAIN
     assert 'timezone                = "America/Sao_Paulo"' in MAIN
     assert "T06:30:00-03:00" in MAIN
-    # O unico agendamento horario aceito e o de horario comercial (REQ-117).
+    # A recuperacao diurna roda a cada 15 minutos (REQ-117).
+    assert 'toset(["00", "15", "30", "45"])' in MAIN
     assert MAIN.count('frequency               = "Hour"') == 1
     assert 'mode           = "Daytime"' in MAIN
     assert '$local.Hour -ge 7 -and $local.Hour -lt 19' in RUNBOOK
@@ -25,7 +26,7 @@ def test_should_start_daily_before_seven_brasilia_instead_of_hourly():
 
 def test_should_recover_both_systems_during_working_hours_only():
     # REQ-117: uma parada no meio do dia nao pode durar ate o dia seguinte.
-    assert 'name                    = "sifap-daytime-availability"' in MAIN
+    assert 'name                    = "sifap-daytime-availability-' in MAIN
     assert 'mode           = "Daytime"' in MAIN
     assert '$local.Hour -ge 7 -and $local.Hour -lt 19' in RUNBOOK
     assert 'if ($Mode -eq "Daytime")' in RUNBOOK

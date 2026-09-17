@@ -58,13 +58,13 @@ run "daily_readiness_for_both_systems" {
 
   assert {
     condition = (
-      azurerm_automation_schedule.daytime.frequency == "Hour" &&
-      azurerm_automation_schedule.daytime.interval == 1 &&
-      azurerm_automation_schedule.daytime.timezone == "America/Sao_Paulo" &&
-      azurerm_automation_job_schedule.daytime.parameters["mode"] == "Daytime" &&
-      azurerm_automation_job_schedule.daytime.runbook_name == azurerm_automation_runbook.morning.name &&
-      jsondecode(base64decode(azurerm_automation_job_schedule.daytime.parameters["targetsbase64"])) == local.targets
+      length(azurerm_automation_schedule.daytime) == 4 &&
+      alltrue([for s in azurerm_automation_schedule.daytime : s.frequency == "Hour" && s.interval == 1 && s.timezone == "America/Sao_Paulo"]) &&
+      toset([for k, s in azurerm_automation_schedule.daytime : endswith(s.start_time, "T07:${k}:00-03:00")]) == toset([true]) &&
+      alltrue([for j in azurerm_automation_job_schedule.daytime : j.parameters["mode"] == "Daytime" &&
+        j.runbook_name == azurerm_automation_runbook.morning.name &&
+      jsondecode(base64decode(j.parameters["targetsbase64"])) == local.targets])
     )
-    error_message = "An hourly working-hours recovery check must cover both systems using the same runbook."
+    error_message = "Four offset schedules must give a 15-minute working-hours recovery check covering both systems."
   }
 }

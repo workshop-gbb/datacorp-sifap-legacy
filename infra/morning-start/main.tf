@@ -83,24 +83,28 @@ resource "azurerm_automation_schedule" "morning" {
   }
 }
 
+# O provider azurerm 3.x nao aceita frequencia "Minute"; quatro agendas horarias
+# deslocadas entregam a mesma cadencia de 15 minutos de forma declarativa.
 resource "azurerm_automation_schedule" "daytime" {
-  name                    = "sifap-daytime-availability"
+  for_each                = toset(["00", "15", "30", "45"])
+  name                    = "sifap-daytime-availability-${each.key}"
   resource_group_name     = var.automation_resource_group
   automation_account_name = var.automation_account_name
   frequency               = "Hour"
   interval                = 1
   timezone                = "America/Sao_Paulo"
-  start_time              = "${formatdate("YYYY-MM-DD", timeadd(timestamp(), "21h"))}T07:00:00-03:00"
-  description             = "Hourly recovery check; the runbook only acts between 07:00 and 19:00 Sao Paulo and never starts a VM overnight."
+  start_time              = "${formatdate("YYYY-MM-DD", timeadd(timestamp(), "21h"))}T07:${each.key}:00-03:00"
+  description             = "Working-hours recovery check at minute ${each.key}; the runbook only acts between 07:00 and 19:00 Sao Paulo and never starts a VM overnight."
   lifecycle {
     ignore_changes = [start_time]
   }
 }
 
 resource "azurerm_automation_job_schedule" "daytime" {
+  for_each                = azurerm_automation_schedule.daytime
   resource_group_name     = var.automation_resource_group
   automation_account_name = var.automation_account_name
-  schedule_name           = azurerm_automation_schedule.daytime.name
+  schedule_name           = each.value.name
   runbook_name            = azurerm_automation_runbook.morning.name
   parameters = {
     subscriptionid = var.subscription_id

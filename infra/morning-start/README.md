@@ -25,17 +25,19 @@ inside the guest or by the platform, not by an operator. Both VMs run
 `patchMode=AutomaticByPlatform` with no maintenance configuration, and several of
 those stops follow a completed `installPatches` within 1-9 minutes.
 
-The `sifap-daytime-availability` schedule therefore runs the same runbook hourly
-in `Daytime` mode. It only acts between **07:00 and 19:00 America/Sao_Paulo**:
-it restarts a stopped VM, then re-runs the guest and public readiness checks.
-Outside that window it writes one line and exits successfully, so the nightly
-MCAPS shutdown is preserved and no overnight keep-alive exists. When a VM is
-already serving its public endpoints the check stops after a short probe instead
-of running a guest command, which keeps job minutes low.
+The `sifap-daytime-availability` schedule therefore runs the same runbook every
+15 minutes in `Daytime` mode. It only acts between **07:00 and 19:00
+America/Sao_Paulo**: it restarts a stopped VM, then re-runs the guest and public
+readiness checks. Outside that window it writes one line and exits successfully,
+so the nightly MCAPS shutdown is preserved and no overnight keep-alive exists.
+When a VM is already serving its public endpoints the check stops after a short
+probe instead of running a guest command, which keeps job minutes low.
 
-Patch orchestration is deliberately left unchanged: the VMs are deallocated
-overnight, so confining patching to a night window would stop security updates
-from ever being installed.
+Patch orchestration is **not** ours to change: both VMs are already assigned to
+MCAPS maintenance configurations in the governed `mcapsgov-updatemanagementcenter`
+subscription. Do not create a competing configuration or remove those assignments;
+moving the patch window requires the policy owner. Recovery latency is therefore
+bounded by this 15-minute check rather than by preventing the reboot.
 
 The Azure schedule retains the historical resource name `sifap-morning-0700`
 to preserve its existing resource ID and job binding; its actual time is 06:30.
