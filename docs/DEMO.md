@@ -64,15 +64,25 @@ Open <https://sifap-lab-438k30.eastus2.cloudapp.azure.com/pt-BR/>.
 2. Enter the `viewer` username and viewer password. There is no role dropdown;
    the account determines the permission.
 3. Confirm the header displays `VIEWER · SOMENTE LEITURA`.
-4. Wait for the real Natural screen:
+4. Wait for the real Natural screen. The viewer session opens `VIEWBENF`
+   directly — there is no program to launch and no Natural command line:
 
    ```text
    SIFAP - BENEFICIARY QUERY
-   SEARCH TYPE (C=CPF / N=NIS)
+   ==========================
+   SEARCH TYPE (C=CPF / N=NIS): N
+   CPF..........:
+   NIS..........: 68647404507
    ```
 
-5. Click inside the terminal. Enter `N` as the search type, move to the NIS
-   field with Tab, enter `68647404507`, and press Enter.
+5. Click inside the terminal, type `N`, press Tab twice — the cursor passes
+   through `CPF` before reaching `NIS` — type `68647404507`, and press Enter.
+   Leave `CPF` empty. Three details decide whether this works:
+   - `SEARCH TYPE` must be `N`. A blank value defaults to `C`, so filling only
+     the NIS searches for an empty CPF and returns `BENEFICIARY NOT FOUND`.
+   - Both fields are `N11`, so type all eleven digits.
+   - The lookup is an exact Adabas key match; any other value returns
+     `BENEFICIARY NOT FOUND`.
 6. Confirm that the result is `MARIA ALMEIDA ALMEIDA` and point out:
    - program `GASF`;
    - `CURITIBA / PR`, region `05`;
@@ -102,10 +112,18 @@ Use this only when operator access is relevant:
 1. Sign in using the private `admin` account.
 2. Confirm the header displays `ADMINISTRADOR`.
 3. Show that the operator Natural terminal is available.
-4. Open **Console Adabas** only long enough to demonstrate the separate
+4. From the Natural command line, type `CONSBENF` to reach the same
+   beneficiary query screen used in the viewer session (`VIEWBENF` is a
+   read-only runtime copy generated from this frozen member). Repeat the
+   `N` + synthetic NIS `68647404507` lookup to show it is the identical
+   program, now reachable directly instead of through the pinned viewer
+   stack. Do not open `CADBENEF` or `CADDEPEN`: those are maintenance
+   screens (create/update/delete), not query screens, and are out of scope
+   for this runbook.
+5. Open **Console Adabas** only long enough to demonstrate the separate
    administrative boundary.
-5. Do not create, update, delete, load or execute a payment batch.
-6. Sign out immediately.
+6. Do not create, update, delete, load or execute a payment batch.
+7. Sign out immediately.
 
 The server derives the role from the credentials. Supplying a forged role header
 or using the viewer account can never reach the administrator routes.
@@ -130,16 +148,25 @@ Open <https://sifap-modern-fiepi9.eastus2.cloudapp.azure.com/pt-BR>.
    - the search uses a modern identifier or name, never a complete CPF/NIS;
    - gross, discount and net values are shown separately;
    - legacy status/type codes remain visible when their meanings conflict.
-7. Open **Auditoria** and show that the 200 synthetic legacy events are
+7. Optional — demonstrate why the identifier still matters. Search for
+   `MARIA RIBEIRO SILVA` and show that the snapshot holds two distinct people
+   under that name: `BEN-000246` in `SALVADOR / BA` on program `IDOS`, and
+   `BEN-000453` in `MANAUS / AM` on program `PETI`. Natural never had this
+   problem because `CONSBENF` searches an exact Adabas key
+   (`FIND ... WITH NUM-NIS`), so name search is a modern affordance that must
+   disambiguate rather than a like-for-like replacement. The snapshot contains
+   29 beneficiaries whose first name is `MARIA`, including two such homonym
+   pairs.
+8. Open **Auditoria** and show that the 200 synthetic legacy events are
    persisted and searchable rather than represented by a fabricated dashboard
    item.
-8. Open **Relatórios**, filter program `GASF`, and download the CSV. Confirm the
+9. Open **Relatórios**, filter program `GASF`, and download the CSV. Confirm the
    export carries gross, discount, net, status code and type code.
-9. Open **Integrações** and explain:
-   - Legacy is a real HTTPS liveness check, not full behavioral equivalence.
-   - IBGE is real public geographic reference data.
-10. Show EN, ES and PT-BR while preserving the current route.
-11. Sign out and confirm protected routes return to login.
+10. Open **Integrações** and explain:
+    - Legacy is a real HTTPS liveness check, not full behavioral equivalence.
+    - IBGE is real public geographic reference data.
+11. Show EN, ES and PT-BR while preserving the current route.
+12. Sign out and confirm protected routes return to login.
 
 ### Modern administrator demonstration
 
@@ -172,6 +199,14 @@ not a fake hidden button.
 - A legacy terminal that shows **Press Enter to Reconnect**: run the versioned
   startup validator and inspect Natural buffer-pool users. The current
   restricted-session driver reaps the associated Natural process on disconnect.
+- A legacy terminal that shows `BENEFICIARY NOT FOUND`: either `SEARCH TYPE`
+  was left blank — which defaults to `C` and searches for an empty CPF — or the
+  NIS was mistyped. The snapshot holds 500 beneficiaries, but `68647404507` is
+  the only NIS this runbook sanctions for the demonstration. Note that
+  `CONSBENF` validates mod-11 on the CPF branch only — it calls `SUBVALCP` for
+  `C`, while the `N` branch goes straight to the Adabas `FIND`. A malformed NIS
+  therefore returns "not found" instead of a validation message. That asymmetry
+  is genuine legacy behavior worth pointing out, not a lab defect.
 - A modern login failure: verify both account hashes exist in the private
   `workshop-runtime` Key Vault secret and restart only the API/frontend service.
 - Never fix a demo by publishing a password, disabling authorization, widening
